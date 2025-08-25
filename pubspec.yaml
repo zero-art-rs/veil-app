@@ -37,6 +37,7 @@ dependencies:
   rust_lib_zk_notion_app:
     path: rust_builder
   flutter_rust_bridge: 2.11.1
+  google_fonts: ^6.3.0
 
 dev_dependencies:
   flutter_test:
