@@ -34,6 +34,7 @@ impl BAutoCommit {
         Ok(BAutoCommit { autocommit })
     }
 
+
     #[flutter_rust_bridge::frb(sync)]
     pub fn put_root_object(&mut self, label: &str, value: BObjType) -> anyhow::Result<()> {
         let object = match value {

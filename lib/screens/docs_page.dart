@@ -1,52 +1,114 @@
 import 'package:flutter/material.dart';
+import 'package:zk_notion_app/managers/document_storage.dart';
 
-class DocsUiOnlyPage extends StatelessWidget {
-  const DocsUiOnlyPage({super.key});
+class _StateDocsPage extends State<DocsPage> {
+  final _storage = DocumentStorage();
+  List<Document> docs = [];
+  final _textFieldController = TextEditingController();
+
+  createDoc(String title) {
+    final resTitle = title.isEmpty ? 'Document' : title;
+
+    _storage
+        .createDocument(title: resTitle, owner: 'Yevhenii Serdiukov')
+        .then((value) => setState(() => docs.add(value)));
+  }
+
+  deleteDoc(String id) {
+    _storage
+        .removeDocument(id)
+        .then(
+          (value) =>
+              setState(() => docs.removeWhere((element) => element.id == id)),
+        );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _storage.getDocuments().then((value) {
+      setState(() => docs = value);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final docs = [];
-
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 12,
         title: Row(
+          spacing: 8,
           children: [
-            const SizedBox(width: 8),
             const Icon(Icons.description_outlined),
-            const SizedBox(width: 12),
             Text('Docs', style: Theme.of(context).textTheme.titleLarge),
           ],
         ),
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Create document tapped')),
-          );
-        },
+        onPressed: () => showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: Text('Create a document'),
+            content: TextField(
+              controller: _textFieldController,
+              decoration: InputDecoration(label: Text('Input document title')),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'Cancel'),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  createDoc(_textFieldController.text);
+                  _textFieldController.clear();
+                  Navigator.pop(context, 'Create');
+                },
+                child: const Text('Create'),
+              ),
+            ],
+          ),
+        ),
         icon: const Icon(Icons.add),
         label: const Text('Create document'),
       ),
-      body: docs.isEmpty ? _NodocumentsYet() : GridView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 280,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10, // одинаковый spacing
-          childAspectRatio: 1,
-        ),
-        itemCount: docs.length,
-        itemBuilder: (context, i) => _DocCard(doc: docs[i]),
-      ),
+      body: docs.isEmpty
+          ? _NodocumentsYet()
+          : GridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 280,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1,
+              ),
+              itemCount: docs.length,
+              itemBuilder: (context, i) =>
+                  _DocCard(doc: docs[i], onDelete: () => deleteDoc(docs[i].id)),
+            ),
     );
   }
 }
 
+class DocsPage extends StatefulWidget {
+  const DocsPage({super.key});
+
+  @override
+  State<StatefulWidget> createState() {
+    return _StateDocsPage();
+  }
+}
+
+enum _DocAction { edit, delete }
+
 class _DocCard extends StatelessWidget {
-  const _DocCard({required this.doc});
-  final _Doc doc;
+  const _DocCard({required this.doc, this.onEdit, this.onDelete});
+
+  final Document doc;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -58,11 +120,7 @@ class _DocCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       elevation: 1.5,
       child: InkWell(
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Open "${doc.title}" (UI only)')),
-          );
-        },
+        onTap: () => Navigator.pushNamed(context, '/editor'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -94,6 +152,56 @@ class _DocCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        clipBehavior: Clip.antiAlias,
+                        child: PopupMenuButton<_DocAction>(
+                          tooltip: 'More options',
+                          onSelected: (value) {
+                            switch (value) {
+                              case _DocAction.edit:
+                                if (onEdit != null) return onEdit!();
+                                Navigator.pushNamed(context, '/editor');
+                                break;
+                              case _DocAction.delete:
+                                if (onDelete != null) return onDelete!();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Document was deleted'),
+                                  ),
+                                );
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: _DocAction.edit,
+                              child: ListTile(
+                                leading: const Icon(Icons.edit),
+                                title: const Text('Edit'),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            PopupMenuItem(
+                              value: _DocAction.delete,
+                              child: ListTile(
+                                leading: const Icon(Icons.delete_outline),
+                                title: const Text('Delete'),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                          ],
+                          icon: const Icon(Icons.more_vert),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -110,7 +218,13 @@ class _DocCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 2),
+                    Text(
+                      doc.owner,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall,
+                    ),
                   ],
                 ),
               ),
@@ -123,7 +237,7 @@ class _DocCard extends StatelessWidget {
 }
 
 class _NodocumentsYet extends StatelessWidget {
-  const _NodocumentsYet({super.key});
+  const _NodocumentsYet();
 
   @override
   Widget build(BuildContext context) {
@@ -139,96 +253,3 @@ class _NodocumentsYet extends StatelessWidget {
     );
   }
 }
-
-class _Doc {
-  final String title;
-  final String subtitle; // e.g., "Edited 2 hours ago"
-  final String owner;
-  final int pages;
-
-  const _Doc({
-    required this.title,
-    required this.subtitle,
-    required this.owner,
-    required this.pages,
-  });
-}
-
-const _mockDocs = <_Doc>[
-  _Doc(
-    title:
-        'Project Plan Q3Project Plan Q3Project Plan Q3Project Plan Q3Project Plan Q3Project Plan Q3',
-    subtitle: 'Edited 2 hours ago',
-    owner: 'You',
-    pages: 3,
-  ),
-  _Doc(
-    title: 'Meeting Notes — Design Sync',
-    subtitle: 'Edited yesterday',
-    owner: 'Alice',
-    pages: 2,
-  ),
-  _Doc(
-    title: 'Product Requirements v1.2',
-    subtitle: 'Edited Aug 10',
-    owner: 'Bob',
-    pages: 6,
-  ),
-  _Doc(
-    title: 'Onboarding Checklist',
-    subtitle: 'Edited last week',
-    owner: 'Carol',
-    pages: 1,
-  ),
-  _Doc(
-    title: 'Marketing Brief (Draft)',
-    subtitle: 'Edited 3 days ago',
-    owner: 'You',
-    pages: 4,
-  ),
-  _Doc(
-    title: 'Team Retrospective',
-    subtitle: 'Edited 2 weeks ago',
-    owner: 'You',
-    pages: 5,
-  ),
-  _Doc(
-    title: 'iOS App Copy — Ukrainian',
-    subtitle: 'Edited Aug 1',
-    owner: 'Alice',
-    pages: 7,
-  ),
-  _Doc(
-    title: 'Security Review Notes',
-    subtitle: 'Edited Jul 30',
-    owner: 'Bob',
-    pages: 2,
-  ),
-  _Doc(
-    title: 'Sprint Planning 34',
-    subtitle: 'Edited Jul 29',
-    owner: 'Carol',
-    pages: 3,
-  ),
-  _Doc(
-    title: 'Watch Swap UX Wireframes',
-    subtitle: 'Edited Jul 25',
-    owner: 'You',
-    pages: 8,
-  ),
-  _Doc(
-    title: 'API Spec — Notifications',
-    subtitle: 'Edited Jul 21',
-    owner: 'Bob',
-    pages: 5,
-  ),
-  _Doc(
-    title: 'Localization Keys (EN/UK)',
-    subtitle: 'Edited Jul 18',
-    owner: 'You',
-    pages: 9,
-  ),
-];
-
-/* -------------------------- Usage ----------------------------- */
-// MaterialApp(home: DocsUiOnlyPage())
