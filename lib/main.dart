@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light(),
       themeMode: ThemeMode.system,
       home: DocsPage(),
-      routes: <String, WidgetBuilder>{'/editor': (context) => EditorPage()},
+      // routes: <String, WidgetBuilder>{'/editor': (context) => EditorPage(context.)},
     );
   }
 }

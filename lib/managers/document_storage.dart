@@ -10,7 +10,7 @@ class Document {
   final String id;
   final String title;
   final String owner;
-  final Uint8List content;
+  final BAutoCommit content;
 
   Document({
     required this.id,
@@ -22,13 +22,13 @@ class Document {
   toJson() => Map<String, dynamic>.from({
     'id': id,
     'title': title,
-    'content': content.toList(),
+    'content': content.save().toList(),
     'owner': owner,
   });
 
   factory Document.withGeneratedId({
     required String title,
-    required Uint8List content,
+    required BAutoCommit content,
     required String owner,
   }) => Document(
     id: UuidV4().generate(),
@@ -40,7 +40,9 @@ class Document {
   factory Document.fromJson(Map<String, dynamic> json) => Document(
     id: json['id'],
     title: json['title'],
-    content: Uint8List.fromList(List<int>.from(json['content'])),
+    content: BAutoCommit.fromBytes(
+      bytes: Uint8List.fromList(List<int>.from(json['content'])),
+    ),
     owner: json['owner'],
   );
 }
@@ -56,10 +58,8 @@ class DocumentStorage {
     final document = Document.withGeneratedId(
       title: title,
       owner: owner,
-      content: autocommit.save(),
+      content: autocommit,
     );
-
-    debugPrint(document.id);
 
     await _storage.write(
       key: document.id,
@@ -75,8 +75,6 @@ class DocumentStorage {
     final documents = rawDocuments.entries.map((entry) {
       return Document.fromJson(jsonDecode(entry.value));
     }).toList();
-
-    print(documents);
 
     return documents;
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/managers/document_storage.dart';
+import 'package:zk_notion_app/screens/editor_page.dart';
 
 class _StateDocsPage extends State<DocsPage> {
   final _storage = DocumentStorage();
@@ -120,7 +121,15 @@ class _DocCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       elevation: 1.5,
       child: InkWell(
-        onTap: () => Navigator.pushNamed(context, '/editor'),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EditorPage(doc: doc),
+            settings: RouteSettings(
+              arguments: {'id': 123, 'name': 'Example Item'},
+            ),
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -165,7 +174,11 @@ class _DocCard extends StatelessWidget {
                             switch (value) {
                               case _DocAction.edit:
                                 if (onEdit != null) return onEdit!();
-                                Navigator.pushNamed(context, '/editor');
+                                Navigator.pushNamed(
+                                  context,
+                                  '/editor',
+                                  arguments: {'doc': doc},
+                                );
                                 break;
                               case _DocAction.delete:
                                 if (onDelete != null) return onDelete!();

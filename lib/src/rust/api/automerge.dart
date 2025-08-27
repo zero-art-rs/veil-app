@@ -6,31 +6,23 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `put_root_object`, `root_id`
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>>
 abstract class BAutoCommit implements RustOpaqueInterface {
+  Future<void> deleteBlock({required BigInt index});
+
   static BAutoCommit fromBytes({required List<int> bytes}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitFromBytes(bytes: bytes);
 
   String info();
 
+  Future<void> insertBlock({required BigInt index, required String text});
+
   factory BAutoCommit() =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitNew();
 
-  void putRootObject({required String label, required BObjType value});
-
   Uint8List save();
-}
 
-enum BObjType {
-  /// A map
-  map,
-
-  /// Retained for backwards compatibility, tables are identical to maps
-  table,
-
-  /// A sequence of arbitrary values
-  list,
-
-  /// A sequence of characters
-  text,
+  Uint8List saveIncremental();
 }
