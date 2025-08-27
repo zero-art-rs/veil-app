@@ -31,6 +31,7 @@ impl BAutoCommit {
         Ok(BAutoCommit { autocommit })
     }
 
+    #[flutter_rust_bridge::frb(sync)]
     pub fn delete_block(&mut self, index: usize) -> anyhow::Result<()> {
         let Err(err) = self.autocommit.delete(self.blocks_list_id(), index) else {
             return Ok(());
@@ -39,6 +40,7 @@ impl BAutoCommit {
         bail!("Failed to delete root object: {}", err);
     }
 
+    #[flutter_rust_bridge::frb(sync)]
     pub fn insert_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
         let obj_id = match self.autocommit.insert_object(
             self.blocks_list_id(),
@@ -56,6 +58,7 @@ impl BAutoCommit {
         bail!("Failed to put root object: {}", err);
     }
 
+    #[flutter_rust_bridge::frb(sync)]
     pub fn get_block(&self, index: usize) -> anyhow::Result<String> {
         let Some(obj) = self
             .autocommit
@@ -81,6 +84,7 @@ impl BAutoCommit {
         Ok(text)
     }
 
+    #[flutter_rust_bridge::frb(sync)]
     pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
         let obj_id = match self.autocommit.get(self.blocks_list_id(), index) {
             Ok(Some(id)) => id.1,
