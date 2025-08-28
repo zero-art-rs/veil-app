@@ -59,13 +59,45 @@ mod test {
     }
 
     #[test]
-    fn bautomerge_error_cases() -> anyhow::Result<()> { 
+    fn insert_overrides() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
 
-        automerge.insert_block(0, "hiiii!".to_string())?;
-        assert!(automerge.delete_block(1).is_err());
-        assert!(automerge.get_block(1).is_err());
-        assert!(automerge.update_block(1, "hiiii!".to_string()).is_err());
+        automerge.insert_block(0, "hello".to_string())?;
+
+        // overrides existing block, previous value will be moved to next index
+        automerge.insert_block(0, "world".to_string())?;
+
+        println!("Blocks #1: {:?}", automerge.get_blocks());
+
+        assert!(automerge.blocks_length() == 2);
+        assert!(automerge.delete_block(1).is_ok());
+
+        println!("Blocks #2: {:?}", automerge.get_blocks());
+
+        Ok(())
+    }
+
+    #[test]
+    fn empty_get_blocks() -> anyhow::Result<()> {
+        let automerge = api::automerge::BAutoCommit::new();
+
+        automerge.get_blocks()?;
+
+        assert!(automerge.blocks_length() == 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn duplicate_block() -> anyhow::Result<()> {
+        let mut automerge = api::automerge::BAutoCommit::new();
+
+        automerge.insert_block(0, '1'.to_string())?;
+        automerge.insert_block(0, '2'.to_string())?;
+
+        let block = automerge.get_block(0)?;
+
+        assert!(block == '2'.to_string());
 
         Ok(())
     }

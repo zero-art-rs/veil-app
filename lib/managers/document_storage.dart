@@ -15,7 +15,7 @@ class Document {
   Document({
     required this.id,
     required this.title,
-    required this.content,
+    required  this.content,
     required this.owner,
   });
 
@@ -77,6 +77,13 @@ class DocumentStorage {
     }).toList();
 
     return documents;
+  }
+
+  Future<void> updateDocument(Document document) async {
+    await _storage.write(
+      key: document.id,
+      value: jsonEncode(document.toJson()),
+    );
   }
 
   removeDocument(String id) async {

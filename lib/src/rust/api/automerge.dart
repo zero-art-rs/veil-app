@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `blocks_list_id`, `setup_block_label`
+// These functions are ignored because they are not marked as `pub`: `blocks_list_id`, `new`, `setup_block_label`
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>>
 abstract class BAutoCommit implements RustOpaqueInterface {
@@ -21,8 +21,12 @@ abstract class BAutoCommit implements RustOpaqueInterface {
 
   List<String> getBlocks();
 
+  List<BChange> getChangeList();
+
   String info();
 
+  /// Insert block at specific index.
+  /// If index is duplicate it will add new value at this index and previous value will be moved to next index
   void insertBlock({required BigInt index, required String text});
 
   factory BAutoCommit() =>
@@ -33,4 +37,13 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   Uint8List saveIncremental();
 
   void updateBlock({required BigInt index, required String text});
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BChange>>
+abstract class BChange implements RustOpaqueInterface {
+  String actorIdHex();
+
+  String changeHash();
+
+  PlatformInt64 timestamp();
 }

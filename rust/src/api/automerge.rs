@@ -1,11 +1,39 @@
+use std::str::FromStr;
+
 use anyhow::bail;
-use automerge::{transaction::Transactable, AutoCommit, ObjType, ReadDoc};
+use automerge::{transaction::Transactable, ActorId, AutoCommit, Change, ObjType, ReadDoc};
+
+const BLOCKS_LABEL: &str = "blocks";
+
+pub struct BChange {
+    change: Change,
+}
+
+impl BChange {
+    fn new(change: Change) -> Self {
+        Self { change }
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn actor_id_hex(&self) -> String {
+        self.change.actor_id().to_hex_string()
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn change_hash(&self) -> String {
+        self.change.hash().to_string()
+    }
+    
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn timestamp(&self) -> i64 {
+        self.change.timestamp()
+    }
+}
+
 
 pub struct BAutoCommit {
     autocommit: AutoCommit,
 }
-
-const BLOCKS_LABEL: &str = "blocks";
 
 impl BAutoCommit {
     #[flutter_rust_bridge::frb(sync)]
@@ -40,6 +68,8 @@ impl BAutoCommit {
         bail!("Failed to delete root object: {}", err);
     }
 
+    /// Insert block at specific index.
+    /// If index is duplicate it will add new value at this index and previous value will be moved to next index
     #[flutter_rust_bridge::frb(sync)]
     pub fn insert_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
         let obj_id = match self.autocommit.insert_object(
@@ -134,6 +164,19 @@ impl BAutoCommit {
         let blocks_list_id = self.blocks_list_id();
 
         self.autocommit.length(blocks_list_id)
+    }
+
+    // pub fn set(&mut self) {
+    //     self.autocommit.with_actor(ActorId::from_str());
+    // }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn get_change_list(&mut self) -> Vec<BChange> {
+        self.autocommit
+            .get_changes(&[])
+            .iter()
+            .map(|change| BChange::new((*change).clone()))
+            .collect()
     }
 
     fn setup_block_label(&mut self) -> anyhow::Result<()> {
