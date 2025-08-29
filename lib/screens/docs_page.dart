@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/managers/document_storage.dart';
+import 'package:zk_notion_app/managers/app_storage.dart';
 import 'package:zk_notion_app/screens/editor_page.dart';
 
 class _StateDocsPage extends State<DocsPage> {
-  final _storage = DocumentStorage();
+  final _storage = AppStorage();
   List<Document> docs = [];
   final _textFieldController = TextEditingController();
 
-  createDoc(String title) {
+  createDoc(String title) async {
     final resTitle = title.isEmpty ? 'Document' : title;
 
-    _storage
-        .createDocument(title: resTitle, owner: 'Yevhenii Serdiukov')
-        .then((value) => setState(() => docs.add(value)));
+    final owner = await _storage.getAccount();
+    final doc = await _storage.createDocument(
+      title: resTitle,
+      owner: owner?.name ?? 'No owner',
+    );
+
+    setState(() {
+      _textFieldController.clear();
+      docs.add(doc);
+    });
   }
 
   deleteDoc(String id) {

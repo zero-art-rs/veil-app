@@ -1,7 +1,13 @@
-use std::str::FromStr;
+use std::{
+    str::FromStr,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use anyhow::bail;
-use automerge::{transaction::Transactable, ActorId, AutoCommit, Change, ObjType, ReadDoc};
+use automerge::{
+    transaction::{CommitOptions, Transactable},
+    ActorId, AutoCommit, Change, ObjType, ReadDoc,
+};
 
 const BLOCKS_LABEL: &str = "blocks";
 
@@ -23,13 +29,12 @@ impl BChange {
     pub fn change_hash(&self) -> String {
         self.change.hash().to_string()
     }
-    
+
     #[flutter_rust_bridge::frb(sync)]
     pub fn timestamp(&self) -> i64 {
         self.change.timestamp()
     }
 }
-
 
 pub struct BAutoCommit {
     autocommit: AutoCommit,
@@ -38,15 +43,9 @@ pub struct BAutoCommit {
 impl BAutoCommit {
     #[flutter_rust_bridge::frb(sync)]
     pub fn new() -> BAutoCommit {
-        let mut autocommit = BAutoCommit {
+        BAutoCommit {
             autocommit: AutoCommit::new(),
-        };
-
-        autocommit
-            .setup_block_label()
-            .expect("should put block object");
-
-        autocommit
+        }
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -166,9 +165,13 @@ impl BAutoCommit {
         self.autocommit.length(blocks_list_id)
     }
 
-    // pub fn set(&mut self) {
-    //     self.autocommit.with_actor(ActorId::from_str());
-    // }
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn set_actor_id(&mut self, uuid: String) -> anyhow::Result<()> {
+        let actor_id = ActorId::from_str(&uuid)?;
+        self.autocommit = self.autocommit.clone().with_actor(actor_id);
+
+        Ok(())
+    }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn get_change_list(&mut self) -> Vec<BChange> {
@@ -179,7 +182,26 @@ impl BAutoCommit {
             .collect()
     }
 
-    fn setup_block_label(&mut self) -> anyhow::Result<()> {
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn commit(&mut self) {
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("time should go forward")
+            .as_secs();
+
+        self.autocommit
+            .commit_with(CommitOptions::default().with_time(since_the_epoch as i64));
+    }
+
+    /// This function setups list of message blocks.
+    /// If it is exist it will be skipped
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn setup_block_label(&mut self) -> anyhow::Result<()> {
+        if self.block_list_exist()? {
+            return Ok(());
+        }
+
         match self
             .autocommit
             .put_object(automerge::ROOT, BLOCKS_LABEL, automerge::ObjType::List)
@@ -198,4 +220,18 @@ impl BAutoCommit {
             .expect("should be inited")
             .1
     }
+
+    pub fn block_list_exist(&self) -> anyhow::Result<bool> {
+        let label = self
+            .autocommit
+            .get(automerge::ROOT, BLOCKS_LABEL)
+            .map_err(|e| anyhow::anyhow!("Failed to get block list: {}", e))?;
+
+        Ok(label.is_some())
+    }
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn generate_actor_id() -> String {
+    ActorId::random().to_hex_string()
 }

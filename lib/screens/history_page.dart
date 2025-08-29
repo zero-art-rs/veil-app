@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
 
 /// UI-only demo screen that shows a list of change events.
 /// Each cell displays:
@@ -13,8 +12,6 @@ class HistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    print(items);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -64,7 +61,6 @@ class _ChangeEventCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title (change name)
                         Text(
                           'Change',
                           style: theme.textTheme.titleMedium?.copyWith(
@@ -72,7 +68,6 @@ class _ChangeEventCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        // Hex (change hash)
                         Text(
                           event.changeHashHex,
                           style: theme.textTheme.bodyMedium?.merge(mono),
@@ -89,7 +84,10 @@ class _ChangeEventCard extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _InfoChip(icon: Icons.today, label: _formatDate(event.date)),
+                  _InfoChip(
+                    icon: Icons.today,
+                    label: _formatDateFromSeconds(event.date),
+                  ),
                   _InfoChip(
                     icon: Icons.person_outline,
                     label: event.actorIdHex,
@@ -149,9 +147,9 @@ class _InfoChip extends StatelessWidget {
 }
 
 class ChangeEvent {
-  final String title; // e.g., "Profile updated"
-  final String changeHashHex; // e.g., 0xABCDEF...
-  final String actorIdHex; // e.g., 0x1234...
+  final String title;
+  final String changeHashHex;
+  final String actorIdHex;
   final int date;
 
   const ChangeEvent({
@@ -163,7 +161,12 @@ class ChangeEvent {
 }
 
 String _two(int v) => v.toString().padLeft(2, '0');
-String _formatDate(int timestamp) {
-  final d = DateTime.fromMicrosecondsSinceEpoch(timestamp);
-  return '${d.year}-${_two(d.month)}-${_two(d.day)} ${_two(d.hour)}:${_two(d.minute)}';
+
+String _formatDateFromSeconds(int seconds, {bool utc = false}) {
+  final dt = utc
+      ? DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true)
+      : DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+
+  return '${dt.year}-${_two(dt.month)}-${_two(dt.day)} '
+      '${_two(dt.hour)}:${_two(dt.minute)}';
 }

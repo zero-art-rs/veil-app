@@ -2,6 +2,14 @@ pub mod api;
 mod frb_generated;
 
 mod test {
+    use std::{any, time::{SystemTime, UNIX_EPOCH}};
+
+    use anyhow::Ok;
+    use automerge::{
+        transaction::{CommitOptions, Transactable},
+        AutoCommit, SaveOptions,
+    };
+
     use crate::api;
 
     #[test]
@@ -98,6 +106,71 @@ mod test {
         let block = automerge.get_block(0)?;
 
         assert!(block == '2'.to_string());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_timestamp() -> anyhow::Result<()> {
+        let mut automerge = AutoCommit::new();
+
+        let lbl = automerge.put_object(automerge::ROOT, "test", automerge::ObjType::List)?;
+        automerge.insert(lbl, 0, "")?;
+
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("time should go forward")
+            .as_secs();
+
+        automerge.commit_with(CommitOptions::default().with_time(since_the_epoch as i64));
+
+        let changes = automerge.get_changes(&[]);
+        println!("{:?}", changes[0].timestamp());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_btimestamp() -> anyhow::Result<()> {
+        let mut automerge = api::automerge::BAutoCommit::new();
+        automerge.setup_block_label()?;
+        automerge.insert_block(0, "hello".to_string())?;
+        automerge.commit();
+
+        automerge
+            .get_change_list()
+            .iter()
+            .for_each(|e| println!("{:?}", e.timestamp()));
+
+        println!("--------Changes--------");
+        let mut automerge2 = api::automerge::BAutoCommit::new();
+
+        automerge2
+            .get_change_list()
+            .iter()
+            .for_each(|e| println!("{:?}", e.timestamp()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn block_list_test() -> anyhow::Result<()> { 
+        let mut automerge = api::automerge::BAutoCommit::new();
+        assert!(automerge.block_list_exist().unwrap() == false);
+
+        automerge.setup_block_label().unwrap();
+        assert!(automerge.block_list_exist().unwrap());
+
+        automerge.commit();
+
+        automerge.insert_block(0, '1'.to_string())?;
+        automerge.insert_block(1, '5'.to_string())?;
+
+        automerge
+            .get_change_list()
+            .iter()
+            .for_each(|e| println!("{:?}", e.timestamp()));
 
         Ok(())
     }

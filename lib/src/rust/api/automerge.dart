@@ -6,11 +6,18 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `blocks_list_id`, `new`, `setup_block_label`
+// These functions are ignored because they are not marked as `pub`: `blocks_list_id`, `new`
+
+String generateActorId() =>
+    RustLib.instance.api.crateApiAutomergeGenerateActorId();
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>>
 abstract class BAutoCommit implements RustOpaqueInterface {
+  Future<bool> blockListExist();
+
   BigInt blocksLength();
+
+  void commit();
 
   void deleteBlock({required BigInt index});
 
@@ -35,6 +42,12 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   Uint8List save();
 
   Uint8List saveIncremental();
+
+  void setActorId({required String uuid});
+
+  /// This function setups list of message blocks.
+  /// If it is exist it will be skipped
+  void setupBlockLabel();
 
   void updateBlock({required BigInt index, required String text});
 }

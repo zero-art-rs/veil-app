@@ -2,12 +2,13 @@ import 'dart:async';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/managers/document_storage.dart' as storage;
+import 'package:zk_notion_app/main.dart';
+import 'package:zk_notion_app/managers/app_storage.dart' as storage;
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/utils/appflowy.dart';
 
 class _EditorPageState extends State<EditorPage> {
-  late final EditorState _editorState;
+  late EditorState _editorState = EditorState.blank();
 
   late final StreamSubscription<(TransactionTime, Transaction, ApplyOptions)>
   _txListener;
@@ -16,35 +17,50 @@ class _EditorPageState extends State<EditorPage> {
 
   @override
   void initState() {
-    final blocs = widget.doc.content.getBlocks();
+    super.initState();
+    _init();
+  }
 
-    print(widget.doc.content.info());
-    print('blocks empty: ${blocs.isEmpty}');
+  Future<void> _init() async {
+    final account = await widget._storage.getAccount();
 
-    if (blocs.isNotEmpty) {
+    if (account == null) {
+      logger.f('Account is null, unreachable flow!');
+      return;
+    }
+
+    widget.doc.content.setActorId(uuid: account.actorId);
+    widget.doc.content.setupBlockLabel();
+
+    final blocks = widget.doc.content.getBlocks();
+    if (blocks.isNotEmpty) {
       _editorState = EditorState(
         document: Document.fromJson(
           FlowyUtils.automerge2Flowy(widget.doc.content),
         ),
       );
     } else {
-      widget.doc.content.insertBlock(index: BigInt.from(0), text: '');
+      widget.doc.content.insertBlock(index: BigInt.zero, text: '');
       _editorState = EditorState.blank();
     }
 
     setupAutomergeDocSync();
-    setupSaveDocTicker();
-    super.initState();
+    setupCommitTicker();
+
+    commitAutomergeChanges();
+
+    // if (mounted) setState(() {});
   }
 
-  setupSaveDocTicker() {
-    _saveTicker = Timer.periodic(const Duration(seconds: 3), (timer) {
-      saveAutomergeDoc();
+  setupCommitTicker() {
+    _saveTicker = Timer.periodic(const Duration(seconds: 6), (timer) {
+      logger.d('Commit ticker triggered');
+      commitAutomergeChanges();
     });
   }
 
-  saveAutomergeDoc() {
-    widget.doc.content.saveIncremental();
+  commitAutomergeChanges() {
+    widget.doc.content.commit();
   }
 
   setupAutomergeDocSync() {
@@ -55,7 +71,6 @@ class _EditorPageState extends State<EditorPage> {
         try {
           final opDetails = op.toJson();
           final blockNum = int.parse(opDetails['path'][0].toString());
-          print(opDetails);
 
           switch (op.runtimeType) {
             case == InsertOperation:
@@ -78,7 +93,7 @@ class _EditorPageState extends State<EditorPage> {
               );
           }
         } catch (err) {
-          print(err.toString());
+          logger.e('Doc sync error: $err');
         }
       }
     });
@@ -96,6 +111,8 @@ class _EditorPageState extends State<EditorPage> {
               context,
               MaterialPageRoute(
                 builder: (context) {
+                  commitAutomergeChanges();
+
                   final items = widget.doc.content
                       .getChangeList()
                       .map(
@@ -106,7 +123,10 @@ class _EditorPageState extends State<EditorPage> {
                           date: e.timestamp(),
                         ),
                       )
+                      .toList()
+                      .reversed
                       .toList();
+
                   return HistoryPage(items: items);
                 },
               ),
@@ -132,15 +152,18 @@ class _EditorPageState extends State<EditorPage> {
   void dispose() {
     _saveTicker.cancel();
     _txListener.cancel();
-    saveAutomergeDoc();
+    commitAutomergeChanges();
     widget._storage.updateDocument(widget.doc);
+
+    logger.d('Deinit editor screen');
+
     super.dispose();
   }
 }
 
 class EditorPage extends StatefulWidget {
   final storage.Document doc;
-  final _storage = storage.DocumentStorage();
+  final _storage = storage.AppStorage();
   EditorPage({super.key, required this.doc});
 
   @override
