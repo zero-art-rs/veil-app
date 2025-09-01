@@ -1,0 +1,110 @@
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:hex/hex.dart';
+import 'package:uuid/v4.dart';
+import 'package:zk_notion_app/src/rust/api/automerge.dart';
+
+class Document {
+  final String id;
+  final String title;
+  final String owner;
+  final BAutoCommit content;
+  final List<Account> members;
+
+  Document({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.owner,
+    required this.members,
+  });
+
+  toJson() => Map<String, dynamic>.from({
+    'id': id,
+    'title': title,
+    'content': content.save().toList(),
+    'owner': owner,
+    'members': members,
+  });
+
+  factory Document.withGeneratedId({
+    required String title,
+    required BAutoCommit content,
+    required owner,
+  }) => Document(
+    id: UuidV4().generate(),
+    title: title,
+    content: content,
+    owner: owner,
+    members: [],
+  );
+
+  factory Document.fromJson(Map<String, dynamic> json) {
+    return Document(
+      id: json['id'],
+      title: json['title'],
+      content: BAutoCommit.fromBytes(
+        bytes: Uint8List.fromList(List<int>.from(json['content'])),
+      ),
+      owner: json['owner'],
+      members: (json['members'] as List<dynamic>)
+          .map((e) => Account.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class Keypair {
+  final String publicKey;
+  final String privateKey;
+
+  Keypair({required this.publicKey, required this.privateKey});
+
+  factory Keypair.fromJson(Map<String, dynamic> json) {
+    return Keypair(
+      publicKey: json['publicKey'],
+      privateKey: json['privateKey'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'publicKey': publicKey, 'privateKey': privateKey};
+  }
+
+  static Keypair generate() {
+    final random = Random.secure();
+    final publicKey = List<int>.generate(32, (_) => random.nextInt(256));
+    final privateKey = List<int>.generate(32, (_) => random.nextInt(256));
+
+    return Keypair(
+      publicKey: HEX.encode(publicKey),
+      privateKey: HEX.encode(privateKey),
+    );
+  }
+}
+
+class Account {
+  final String name;
+  final String actorId;
+  final Keypair keypair;
+
+  Account({required this.name, required this.actorId, required this.keypair});
+  factory Account.withName(String name, {bool isCurrentUser = true}) => Account(
+    name: name,
+    actorId: generateActorId(),
+    keypair: Keypair.generate(),
+  );
+
+  factory Account.fromJson(Map<String, dynamic> json) {
+    return Account(
+      name: json['name'],
+      actorId: json['actorId'],
+      keypair: Keypair.fromJson(json['keypair']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'actorId': actorId, 'keypair': keypair.toJson()};
+  }
+}

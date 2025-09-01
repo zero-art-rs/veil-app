@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/app_storage.dart' as storage;
+import 'package:zk_notion_app/storage/account_storage.dart';
+import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
+import 'package:zk_notion_app/storage/document_storage.dart';
+import 'package:zk_notion_app/storage/models.dart' as models;
 import 'package:zk_notion_app/utils/appflowy.dart';
 
 class _EditorPageState extends State<EditorPage> {
@@ -22,7 +25,7 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   Future<void> _init() async {
-    final account = await widget._storage.getAccount();
+    final account = await widget._accStorage.getAccount();
 
     if (account == null) {
       logger.f('Account is null, unreachable flow!');
@@ -46,10 +49,9 @@ class _EditorPageState extends State<EditorPage> {
 
     setupAutomergeDocSync();
     setupCommitTicker();
-
     commitAutomergeChanges();
 
-    // if (mounted) setState(() {});
+    if (mounted) setState(() {});
   }
 
   setupCommitTicker() {
@@ -66,6 +68,8 @@ class _EditorPageState extends State<EditorPage> {
   setupAutomergeDocSync() {
     _txListener = _editorState.transactionStream.listen((event) {
       final (time, transaction, options) = event;
+      logger.d("Doc sync event: $event");
+
       if (time == TransactionTime.before) return;
       for (final op in transaction.operations) {
         try {
@@ -105,6 +109,15 @@ class _EditorPageState extends State<EditorPage> {
       appBar: AppBar(
         title: Text(widget.doc.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.group),
+            onPressed: () => {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => GroupListScreen()),
+              ),
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.history),
             onPressed: () => Navigator.push(
@@ -153,7 +166,7 @@ class _EditorPageState extends State<EditorPage> {
     _saveTicker.cancel();
     _txListener.cancel();
     commitAutomergeChanges();
-    widget._storage.updateDocument(widget.doc);
+    widget._docStorage.updateDocument(widget.doc);
 
     logger.d('Deinit editor screen');
 
@@ -162,8 +175,9 @@ class _EditorPageState extends State<EditorPage> {
 }
 
 class EditorPage extends StatefulWidget {
-  final storage.Document doc;
-  final _storage = storage.AppStorage();
+  final models.Document doc;
+  final _docStorage = DocumentStorage();
+  final _accStorage = AccountStorage();
   EditorPage({super.key, required this.doc});
 
   @override

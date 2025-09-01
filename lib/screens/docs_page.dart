@@ -1,29 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/managers/app_storage.dart';
+import 'package:zk_notion_app/main.dart';
+import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/screens/editor_page.dart';
+import 'package:zk_notion_app/storage/document_storage.dart';
+import 'package:zk_notion_app/storage/models.dart';
 
 class _StateDocsPage extends State<DocsPage> {
-  final _storage = AppStorage();
+  final _docStorage = DocumentStorage();
+  final _accStorage = AccountStorage();
   List<Document> docs = [];
   final _textFieldController = TextEditingController();
 
   createDoc(String title) async {
     final resTitle = title.isEmpty ? 'Document' : title;
 
-    final owner = await _storage.getAccount();
-    final doc = await _storage.createDocument(
-      title: resTitle,
-      owner: owner?.name ?? 'No owner',
-    );
+    try {
+      final owner = await _accStorage.getAccount();
 
-    setState(() {
-      _textFieldController.clear();
-      docs.add(doc);
-    });
+      final doc = await _docStorage.createDocument(
+        title: resTitle,
+        owner: owner?.name ?? 'No owner',
+      );
+
+      setState(() {
+        _textFieldController.clear();
+        docs.add(doc);
+      });
+    } catch (err) {
+      logger.e('Failed to create document: $err');
+    }
   }
 
   deleteDoc(String id) {
-    _storage
+    _docStorage
         .removeDocument(id)
         .then(
           (value) =>
@@ -35,7 +44,7 @@ class _StateDocsPage extends State<DocsPage> {
   void initState() {
     super.initState();
 
-    _storage.getDocuments().then((value) {
+    _docStorage.getDocuments().then((value) {
       setState(() => docs = value);
     });
   }
@@ -198,6 +207,16 @@ class _DocCard extends StatelessWidget {
                             }
                           },
                           itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: _DocAction.delete,
+                              child: ListTile(
+                                leading: const Icon(Icons.ios_share_outlined),
+                                title: const Text('Share'),
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                            const PopupMenuDivider(),
                             PopupMenuItem(
                               value: _DocAction.edit,
                               child: ListTile(

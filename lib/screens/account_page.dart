@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/managers/app_storage.dart';
+import 'package:zk_notion_app/storage/account_storage.dart';
+import 'package:zk_notion_app/storage/app_storage.dart';
+import 'package:zk_notion_app/storage/models.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -10,10 +12,11 @@ class AccountPage extends StatefulWidget {
 
 class _AccountPageState extends State<AccountPage> {
   final _formKey = GlobalKey<FormState>();
-  final _storage = AppStorage.shared;
+  final _storage = AccountStorage();
 
   TextEditingController _nameCtrl = TextEditingController();
   TextEditingController _actorCtrl = TextEditingController();
+  TextEditingController _pubkeyCtrl = TextEditingController();
 
   bool _saving = false;
 
@@ -23,6 +26,9 @@ class _AccountPageState extends State<AccountPage> {
       setState(() {
         _nameCtrl = TextEditingController(text: value?.name ?? '');
         _actorCtrl = TextEditingController(text: value?.actorId ?? '');
+        _pubkeyCtrl = TextEditingController(
+          text: value?.keypair.publicKey ?? '',
+        );
       });
     });
     super.initState();
@@ -44,8 +50,9 @@ class _AccountPageState extends State<AccountPage> {
 
     setState(() => _saving = true);
 
-    final newAccount = Account.withId(_nameCtrl.text);
+    final newAccount = Account.withName(_nameCtrl.text);
     setState(() {
+      _pubkeyCtrl.text = newAccount.keypair.publicKey;
       _actorCtrl.text = newAccount.actorId;
       _storage.setAccount(newAccount);
       _saving = false;
@@ -112,6 +119,23 @@ class _AccountPageState extends State<AccountPage> {
                       ],
                     ),
                     interactionEnabled: false,
+                  ),
+                  const SizedBox(height: 12),
+                  _LabeledField(
+                    label: 'Public key',
+                    hint: '-',
+                    controller: _pubkeyCtrl,
+                    interactionEnabled: false,
+                    trailing: Row(
+                      spacing: 8,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        InkWell(
+                          child: Icon(Icons.copy, size: 22.0),
+                          onTap: () => (),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
