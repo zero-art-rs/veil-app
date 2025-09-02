@@ -44,6 +44,8 @@ dependencies:
   logger: ^2.6.1
   convert: ^3.1.2
   hex: ^0.2.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.0.1
 
 dev_dependencies:
   flutter_test:

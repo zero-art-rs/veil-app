@@ -5,6 +5,38 @@ import 'package:hex/hex.dart';
 import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 
+class ExternalAccount {
+  final String actorId;
+  final String name;
+  final String publicKey;
+
+  ExternalAccount({
+    required this.actorId,
+    required this.name,
+    required this.publicKey,
+  });
+
+  toJson() => Map<String, dynamic>.from({
+    'actorId': actorId,
+    'name': name,
+    'publicKey': publicKey,
+  });
+
+  factory ExternalAccount.fromAccount(Account account) => ExternalAccount(
+    actorId: account.actorId,
+    name: account.name,
+    publicKey: account.keypair.publicKey,
+  );
+
+  factory ExternalAccount.fromJson(Map<String, dynamic> json) {
+    return ExternalAccount(
+      actorId: json['actorId'],
+      name: json['name'],
+      publicKey: json['publicKey'],
+    );
+  }
+}
+
 class Document {
   final String id;
   final String title;

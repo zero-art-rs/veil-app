@@ -1,11 +1,7 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/app_storage.dart';
 import 'package:zk_notion_app/screens/tab_bar.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/src/rust/frb_generated.dart';
-import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/theme.dart';
 import 'package:logger/logger.dart';
 
@@ -17,7 +13,7 @@ Future<void> main() async {
 var logger = Logger(printer: PrettyPrinter());
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {

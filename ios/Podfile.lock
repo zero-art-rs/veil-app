@@ -42,6 +42,9 @@ PODS:
     - Flutter
   - keyboard_height_plugin (0.0.1):
     - Flutter
+  - mobile_scanner (7.0.0):
+    - Flutter
+    - FlutterMacOS
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -61,6 +64,7 @@ DEPENDENCIES:
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - keyboard_height_plugin (from `.symlinks/plugins/keyboard_height_plugin/ios`)
+  - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - rust_lib_zk_notion_app (from `.symlinks/plugins/rust_lib_zk_notion_app/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
@@ -85,6 +89,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/integration_test/ios"
   keyboard_height_plugin:
     :path: ".symlinks/plugins/keyboard_height_plugin/ios"
+  mobile_scanner:
+    :path: ".symlinks/plugins/mobile_scanner/darwin"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   rust_lib_zk_notion_app:
@@ -101,6 +107,7 @@ SPEC CHECKSUMS:
   flutter_secure_storage: d33dac7ae2ea08509be337e775f6b59f1ff45f12
   integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
   keyboard_height_plugin: 43fa8bba20fd5c4fdeed5076466b8b9d43cc6b86
+  mobile_scanner: 77265f3dc8d580810e91849d4a0811a90467ed5e
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   rust_lib_zk_notion_app: b2b41f76e135914647a80f5fb75136ec46c05861
   SDWebImage: f29024626962457f3470184232766516dee8dfea
