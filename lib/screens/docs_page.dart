@@ -199,6 +199,11 @@ class _DocCard extends StatelessWidget {
                                 );
                                 break;
                               case _DocAction.delete:
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Document was deleted'),
+                                  ),
+                                );
                                 if (onDelete != null) return onDelete!();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(

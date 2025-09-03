@@ -1,10 +1,13 @@
+import 'package:appflowy_editor/appflowy_editor.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/storage/document_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/models.dart' as m;
+import 'package:zk_notion_app/utils/banner.dart';
 
 class MemberScreenModel {
-  final DocumentMember member;
+  final m.DocumentMember member;
   final bool isYou;
 
   MemberScreenModel({required this.member, this.isYou = false});
@@ -19,7 +22,7 @@ class DocumentMemberListScreen extends StatefulWidget {
 
   final List<MemberScreenModel> members;
 
-  final Document doc;
+  final m.Document doc;
 
   @override
   State<DocumentMemberListScreen> createState() =>
@@ -30,11 +33,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   final _storage = DocumentStorage();
 
   void _onAddMember(BuildContext context) {
-    showModalBottomSheet(
+    showCupertinoSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (BuildContext context) {
         return ContactsScreen(
           onPick: (account) async => await _addMember(account),
@@ -43,17 +43,33 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  Future<void> _addMember(ExternalAccount member) async {
+  Future<void> _addMember(m.ExternalAccount member) async {
+    final duplicate = await _storage.addMember(
+      widget.doc.id,
+      m.DocumentMember(account: member, isOwner: false),
+    );
+
+    if (duplicate && mounted) {
+      TopBanner.show(
+        context: context,
+        message: 'Duplicate member',
+        kind: TopBannerCases.error,
+      );
+      return;
+    }
+
     setState(() {
+      widget.doc.members.add(m.DocumentMember(account: member, isOwner: false));
       widget.members.add(
         MemberScreenModel(
-          member: DocumentMember(account: member, isOwner: false),
+          member: m.DocumentMember(account: member, isOwner: false),
         ),
       );
     });
 
-    widget.doc.members.add(DocumentMember(account: member, isOwner: false));
-    await _storage.addMember(widget.doc.id, widget.doc.members.last);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   void _onRemoveMember(MemberScreenModel g) async {

@@ -44,7 +44,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Contacts')),
+      appBar: AppBar(
+        title: const Text('Contacts'),
+        automaticallyImplyLeading: widget.onPick == null,
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         itemCount: contacts.length,

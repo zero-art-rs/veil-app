@@ -45,15 +45,26 @@ class DocumentStorage {
     );
   }
 
-  Future<void> addMember(String id, DocumentMember member) async {
+  /// Returns true if member already exists
+  Future<bool> addMember(String id, DocumentMember member) async {
     final document = await _storage.getObject(
       key: _documentsKey,
       condition: (e) => e['id'] == id,
     );
 
-    if (document == null) throw FormatException('Document not found');
+    if (document == null) throw FormatException('Member not found');
+
+    final documentMembers = document['members'] as List<dynamic>;
+    if (documentMembers.any(
+      (e) => e['account']['actorId'] == member.account.actorId,
+    )) {
+      return true;
+    }
+
     document['members'].add(member.toJson());
     await _storage.updateWhere(_documentsKey, (e) => e['id'] == id, document);
+
+    return false;
   }
 
   Future<void> removeMember(String id, String actorId) async {
@@ -62,8 +73,8 @@ class DocumentStorage {
       condition: (e) => e['id'] == id,
     );
 
-    if (document == null) throw FormatException('Document not found');
-    document['members'].removeWhere((e) => e['actorId'] == actorId);
+    if (document == null) throw FormatException('Member not found');
+    document['members'].removeWhere((e) => e['account']['actorId'] == actorId);
     await _storage.updateWhere(_documentsKey, (e) => e['id'] == id, document);
   }
 

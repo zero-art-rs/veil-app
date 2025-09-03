@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/storage/contact_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/utils/banner.dart';
 import 'package:zk_notion_app/widgets/user_widget.dart';
 
 class QRScannerPage extends StatefulWidget {
@@ -77,7 +79,23 @@ class _QRScannerPageState extends State<QRScannerPage> {
   _addContact(ExternalAccount account, BuildContext context) async {
     final navigator = Navigator.of(context);
     try {
-      await _storage.addContact(account: account);
+      final duplicate = await _storage.addContact(account: account);
+
+      if (duplicate && context.mounted) {
+        TopBanner.show(
+          context: context,
+          message: 'Contact already exists',
+          kind: TopBannerCases.info,
+        );
+      }
+
+      if (!duplicate && context.mounted) {
+        TopBanner.show(
+          context: context,
+          message: 'Contact added',
+          kind: TopBannerCases.success,
+        );
+      }
 
       Timer(const Duration(seconds: 1), () {
         _processing = false;
@@ -103,6 +121,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
     if (code == null) return;
 
     _processing = true;
+    HapticFeedback.vibrate();
 
     try {
       final json = jsonDecode(code);
@@ -110,9 +129,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
       _showAccountDialog(
         context,
         account,
-        () async {
-          await _addContact(account, context);
-        },
+        () async => await _addContact(account, context),
         () {
           Future.delayed(const Duration(seconds: 1), () {
             _processing = false;
@@ -141,38 +158,41 @@ class _QRScannerPageState extends State<QRScannerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        final scanRect = Rect.fromCenter(
-          center: Offset(c.maxWidth / 2, c.maxHeight / 2),
-          width: _windowSize,
-          height: _windowSize,
-        );
+    return Scaffold(
+      appBar: AppBar(title: const Text('Scan QR')),
+      body: LayoutBuilder(
+        builder: (context, c) {
+          final scanRect = Rect.fromCenter(
+            center: Offset(c.maxWidth / 2, c.maxHeight / 2),
+            width: _windowSize,
+            height: _windowSize,
+          );
 
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            MobileScanner(
-              controller: _controller,
-              fit: BoxFit.cover,
-              scanWindow: scanRect,
-              onDetect: _onDetect,
-            ),
-            IgnorePointer(
-              child: Center(
-                child: Container(
-                  width: _windowSize,
-                  height: _windowSize,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white, width: 2),
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              MobileScanner(
+                controller: _controller,
+                fit: BoxFit.cover,
+                scanWindow: scanRect,
+                onDetect: _onDetect,
+              ),
+              IgnorePointer(
+                child: Center(
+                  child: Container(
+                    width: _windowSize,
+                    height: _windowSize,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }
