@@ -6,9 +6,13 @@ class DocumentStorage {
   final _storage = AppStorage();
   static const String _documentsKey = 'documents';
 
+  clear() {
+    _storage.setArray(_documentsKey, []);
+  }
+
   Future<Document> createDocument({
     required String title,
-    required String owner,
+    required DocumentMember owner,
   }) async {
     final autocommit = BAutoCommit();
 
@@ -39,6 +43,28 @@ class DocumentStorage {
       (e) => document.id == e['id'],
       document.toJson(),
     );
+  }
+
+  Future<void> addMember(String id, DocumentMember member) async {
+    final document = await _storage.getObject(
+      key: _documentsKey,
+      condition: (e) => e['id'] == id,
+    );
+
+    if (document == null) throw FormatException('Document not found');
+    document['members'].add(member.toJson());
+    await _storage.updateWhere(_documentsKey, (e) => e['id'] == id, document);
+  }
+
+  Future<void> removeMember(String id, String actorId) async {
+    final document = await _storage.getObject(
+      key: _documentsKey,
+      condition: (e) => e['id'] == id,
+    );
+
+    if (document == null) throw FormatException('Document not found');
+    document['members'].removeWhere((e) => e['actorId'] == actorId);
+    await _storage.updateWhere(_documentsKey, (e) => e['id'] == id, document);
   }
 
   removeDocument(String id) async {

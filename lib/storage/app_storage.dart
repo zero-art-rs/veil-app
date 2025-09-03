@@ -13,6 +13,16 @@ class AppStorage {
     return _storage.read(key: key);
   }
 
+  Future<Map<String, dynamic>?> getObject({
+    required String key,
+    required bool Function(Map<String, dynamic>) condition,
+  }) async {
+    final jsonString = await _storage.read(key: key);
+    if (jsonString == null) return null;
+    final raw = jsonDecode(jsonString) as List<dynamic>;
+    return raw.cast<Map<String, dynamic>>().where(condition).first;
+  }
+
   Future<void> write({required String key, required String value}) {
     return _storage.write(key: key, value: value);
   }

@@ -17,9 +17,16 @@ class _StateDocsPage extends State<DocsPage> {
     try {
       final owner = await _accStorage.getAccount();
 
+      if (owner == null) {
+        throw 'To create a document, you must have account';
+      }
+
       final doc = await _docStorage.createDocument(
         title: resTitle,
-        owner: owner?.name ?? 'No owner',
+        owner: DocumentMember(
+          account: ExternalAccount.fromAccount(owner),
+          isOwner: true,
+        ),
       );
 
       setState(() {
@@ -139,12 +146,7 @@ class _DocCard extends StatelessWidget {
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => EditorPage(doc: doc),
-            settings: RouteSettings(
-              arguments: {'id': 123, 'name': 'Example Item'},
-            ),
-          ),
+          MaterialPageRoute(builder: (context) => EditorPage(doc: doc)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -259,7 +261,7 @@ class _DocCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      doc.owner,
+                      doc.ownerName(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall,

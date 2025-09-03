@@ -47,25 +47,37 @@ class _EditorPageState extends State<EditorPage> {
       _editorState = EditorState.blank();
     }
 
-    setupAutomergeDocSync();
-    setupCommitTicker();
-    commitAutomergeChanges();
+    _setupAutomergeDocSync();
+    _setupCommitTicker();
+    _commitAutomergeChanges();
 
     if (mounted) setState(() {});
   }
 
-  setupCommitTicker() {
+  _setupCommitTicker() {
     _saveTicker = Timer.periodic(const Duration(seconds: 6), (timer) {
       logger.d('Commit ticker triggered');
-      commitAutomergeChanges();
+      _commitAutomergeChanges();
     });
   }
 
-  commitAutomergeChanges() {
+  _commitAutomergeChanges() {
     widget.doc.content.commit();
   }
 
-  setupAutomergeDocSync() {
+  Future<List<MemberScreenModel>> _prepareMembers() async {
+    final account = await widget._accStorage.getAccount();
+    return widget.doc.members
+        .map(
+          (e) => MemberScreenModel(
+            member: e,
+            isYou: e.account.actorId == account?.actorId,
+          ),
+        )
+        .toList();
+  }
+
+  _setupAutomergeDocSync() {
     _txListener = _editorState.transactionStream.listen((event) {
       final (time, transaction, options) = event;
       logger.d("Doc sync event: $event");
@@ -111,11 +123,20 @@ class _EditorPageState extends State<EditorPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.group),
-            onPressed: () => {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => GroupListScreen()),
-              ),
+            onPressed: () async {
+              final members = await _prepareMembers();
+
+              if (context.mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DocumentMemberListScreen(
+                      members: members,
+                      doc: widget.doc,
+                    ),
+                  ),
+                );
+              }
             },
           ),
           IconButton(
@@ -124,7 +145,7 @@ class _EditorPageState extends State<EditorPage> {
               context,
               MaterialPageRoute(
                 builder: (context) {
-                  commitAutomergeChanges();
+                  _commitAutomergeChanges();
 
                   final items = widget.doc.content
                       .getChangeList()
@@ -165,7 +186,7 @@ class _EditorPageState extends State<EditorPage> {
   void dispose() {
     _saveTicker.cancel();
     _txListener.cancel();
-    commitAutomergeChanges();
+    _commitAutomergeChanges();
     widget._docStorage.updateDocument(widget.doc);
 
     logger.d('Deinit editor screen');

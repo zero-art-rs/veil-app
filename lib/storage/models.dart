@@ -37,18 +37,32 @@ class ExternalAccount {
   }
 }
 
+class DocumentMember {
+  final ExternalAccount account;
+  final bool isOwner;
+
+  DocumentMember.fromJson(Map<String, dynamic> json)
+    : account = ExternalAccount.fromJson(json['account']),
+      isOwner = json['isOwner'];
+
+  toJson() => Map<String, dynamic>.from({
+    'account': account.toJson(),
+    'isOwner': isOwner,
+  });
+
+  DocumentMember({required this.account, required this.isOwner});
+}
+
 class Document {
   final String id;
   final String title;
-  final String owner;
   final BAutoCommit content;
-  final List<Account> members;
+  final List<DocumentMember> members;
 
   Document({
     required this.id,
     required this.title,
     required this.content,
-    required this.owner,
     required this.members,
   });
 
@@ -56,20 +70,20 @@ class Document {
     'id': id,
     'title': title,
     'content': content.save().toList(),
-    'owner': owner,
     'members': members,
   });
+
+  String ownerName() => members.firstWhere((e) => e.isOwner).account.name;
 
   factory Document.withGeneratedId({
     required String title,
     required BAutoCommit content,
-    required owner,
+    required DocumentMember owner,
   }) => Document(
     id: UuidV4().generate(),
     title: title,
     content: content,
-    owner: owner,
-    members: [],
+    members: [owner],
   );
 
   factory Document.fromJson(Map<String, dynamic> json) {
@@ -79,9 +93,8 @@ class Document {
       content: BAutoCommit.fromBytes(
         bytes: Uint8List.fromList(List<int>.from(json['content'])),
       ),
-      owner: json['owner'],
-      members: (json['members'] as List<dynamic>)
-          .map((e) => Account.fromJson(e as Map<String, dynamic>))
+      members: (json['members'])
+          .map<DocumentMember>((e) => DocumentMember.fromJson(e))
           .toList(),
     );
   }
