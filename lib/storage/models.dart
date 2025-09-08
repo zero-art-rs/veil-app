@@ -56,20 +56,20 @@ class DocumentMember {
 class Document {
   final String id;
   final String title;
-  final BAutoCommit content;
+  final BAutoCommit automergeDoc;
   final List<DocumentMember> members;
 
   Document({
     required this.id,
     required this.title,
-    required this.content,
+    required this.automergeDoc,
     required this.members,
   });
 
   toJson() => Map<String, dynamic>.from({
     'id': id,
     'title': title,
-    'content': content.save().toList(),
+    'content': automergeDoc.save().toList(),
     'members': members,
   });
 
@@ -82,7 +82,7 @@ class Document {
   }) => Document(
     id: UuidV4().generate(),
     title: title,
-    content: content,
+    automergeDoc: content,
     members: [owner],
   );
 
@@ -90,7 +90,7 @@ class Document {
     return Document(
       id: json['id'],
       title: json['title'],
-      content: BAutoCommit.fromBytes(
+      automergeDoc: BAutoCommit.fromBytes(
         bytes: Uint8List.fromList(List<int>.from(json['content'])),
       ),
       members: (json['members'])

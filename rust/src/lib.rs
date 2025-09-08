@@ -174,4 +174,49 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn test_fork_at_change_hash() -> anyhow::Result<()> { 
+        let mut automerge = api::automerge::BAutoCommit::new();
+        automerge.setup_block_label().unwrap();
+
+        automerge.insert_block(0, '1'.to_string())?;
+        automerge.commit();
+        automerge.insert_block(1, '5'.to_string())?;
+        automerge.commit();
+        automerge.insert_block(2, "10".to_string())?;
+        automerge.commit();
+
+
+        let change_list = automerge.get_change_list();
+        println!("{:?}", change_list);
+
+        let mut automerge2 = automerge.doc_at_change_hash(&change_list[1].change_hash())?;
+
+        let change_list = automerge2.get_blocks();
+        println!("{:?}", change_list);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_diff() -> anyhow::Result<()>{
+        let mut automerge = api::automerge::BAutoCommit::new();
+        automerge.setup_block_label().unwrap();
+
+        automerge.insert_block(0, '1'.to_string())?;
+        automerge.insert_block(1, "323231231".to_string())?;
+        automerge.commit();
+
+        let before = &automerge.get_change_list().last().unwrap().change_hash();
+
+        // automerge.update_block(1, "32323123155".to_string())?;
+        automerge.delete_block(1)?;
+        automerge.commit();
+
+        let after: &String = &automerge.get_change_list().last().unwrap().change_hash();
+
+        println!("{:?}", automerge.diff_between(before, after).unwrap());
+        Ok(())
+    }
 }

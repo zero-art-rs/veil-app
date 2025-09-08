@@ -13,8 +13,8 @@ import 'package:zk_notion_app/utils/appflowy.dart';
 class _EditorPageState extends State<EditorPage> {
   late EditorState _editorState = EditorState.blank();
 
-  late final StreamSubscription<(TransactionTime, Transaction, ApplyOptions)>
-  _txListener;
+  // late final StreamSubscription<(TransactionTime, Transaction, ApplyOptions)>
+  // _txListener;
 
   late final Timer _saveTicker;
 
@@ -32,37 +32,52 @@ class _EditorPageState extends State<EditorPage> {
       return;
     }
 
-    widget.doc.content.setActorId(uuid: account.actorId);
-    widget.doc.content.setupBlockLabel();
+    widget.doc.automergeDoc.setActorId(uuid: account.actorId);
+    widget.doc.automergeDoc.setupBlockLabel();
 
-    final blocks = widget.doc.content.getBlocks();
-    if (blocks.isNotEmpty) {
-      _editorState = EditorState(
-        document: Document.fromJson(
-          FlowyUtils.automerge2Flowy(widget.doc.content),
-        ),
-      );
-    } else {
-      widget.doc.content.insertBlock(index: BigInt.zero, text: '');
-      _editorState = EditorState.blank();
-    }
+    final blocks = widget.doc.automergeDoc.getBlocks();
+    final html = """<html>
+<head>
+<title>Page Title</title>
+</head>
+<body>
+<h1>This is a Heading<br /></h1>
+<p>This is a paragraph.</p>
 
-    _setupAutomergeDocSync();
+<br>
+<br>
+<br>
+
+<p>This is a rferfparagraph.</p>
+
+</body>
+</html>""";
+    // print('initial blocks: $blocks');
+
+    // if (blocks.isNotEmpty) {
+    _editorState = EditorState(
+      document: htmlToDocument(html),
+      // document: FlowyUtils.documentFromHtmlAutomerge(widget.doc.automergeDoc),
+    );
+    // } else {
+    // _editorState = EditorState.blank();
+    // }
+
     _setupCommitTicker();
-    _commitAutomergeChanges();
 
     if (mounted) setState(() {});
   }
 
   _setupCommitTicker() {
-    _saveTicker = Timer.periodic(const Duration(seconds: 6), (timer) {
-      logger.d('Commit ticker triggered');
+    _saveTicker = Timer.periodic(const Duration(seconds: 3), (timer) {
       _commitAutomergeChanges();
     });
   }
 
   _commitAutomergeChanges() {
-    widget.doc.content.commit();
+    final html = documentToHTML(_editorState.document);
+    FlowyUtils.htmlDoc2Automerge(html, widget.doc.automergeDoc);
+    widget.doc.automergeDoc.commit();
   }
 
   Future<List<MemberScreenModel>> _prepareMembers() async {
@@ -77,42 +92,63 @@ class _EditorPageState extends State<EditorPage> {
         .toList();
   }
 
-  _setupAutomergeDocSync() {
-    _txListener = _editorState.transactionStream.listen((event) {
-      final (time, transaction, options) = event;
-      logger.d("Doc sync event: $event");
+  Widget _memberListButton(BuildContext context) {
+    if (widget.isMemberListAccessible) {
+      return IconButton(
+        icon: const Icon(Icons.group),
+        onPressed: () async {
+          final members = await _prepareMembers();
 
-      if (time == TransactionTime.before) return;
-      for (final op in transaction.operations) {
-        try {
-          final opDetails = op.toJson();
-          final blockNum = int.parse(opDetails['path'][0].toString());
-
-          switch (op.runtimeType) {
-            case == InsertOperation:
-              widget.doc.content.insertBlock(
-                index: BigInt.from(blockNum),
-                text: '',
-              );
-            case == DeleteOperation:
-              widget.doc.content.deleteBlock(index: BigInt.from(blockNum));
-            case == UpdateOperation:
-              final newTextList = opDetails['attributes']['delta'];
-
-              final text = newTextList.isEmpty
-                  ? ''
-                  : newTextList[0]['insert'].toString();
-
-              widget.doc.content.updateBlock(
-                index: BigInt.from(blockNum),
-                text: text,
-              );
+          if (context.mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    DocumentMemberListScreen(members: members, doc: widget.doc),
+              ),
+            );
           }
-        } catch (err) {
-          logger.e('Doc sync error: $err');
-        }
-      }
-    });
+        },
+      );
+    } else {
+      return Container();
+    }
+  }
+
+  Widget _historyButton(BuildContext context) {
+    if (!widget.isHistoryAccessible) {
+      return Container();
+    } else {
+      return IconButton(
+        icon: const Icon(Icons.history),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) {
+              _commitAutomergeChanges();
+
+              final items = widget.doc.automergeDoc
+                  .getChangeList()
+                  .indexed
+                  .map(
+                    (e) => ChangeEvent(
+                      title: 'Change',
+                      actorIdHex: e.$2.actorIdHex(),
+                      changeHashHex: e.$2.changeHash(),
+                      date: e.$2.timestamp(),
+                      isInitial: e.$1 == 0,
+                    ),
+                  )
+                  .toList()
+                  .reversed
+                  .toList();
+
+              return HistoryPage(items: items, doc: widget.doc);
+            },
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -120,57 +156,12 @@ class _EditorPageState extends State<EditorPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.doc.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.group),
-            onPressed: () async {
-              final members = await _prepareMembers();
-
-              if (context.mounted) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DocumentMemberListScreen(
-                      members: members,
-                      doc: widget.doc,
-                    ),
-                  ),
-                );
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) {
-                  _commitAutomergeChanges();
-
-                  final items = widget.doc.content
-                      .getChangeList()
-                      .map(
-                        (e) => ChangeEvent(
-                          title: 'Change',
-                          actorIdHex: e.actorIdHex(),
-                          changeHashHex: e.changeHash(),
-                          date: e.timestamp(),
-                        ),
-                      )
-                      .toList()
-                      .reversed
-                      .toList();
-
-                  return HistoryPage(items: items);
-                },
-              ),
-            ),
-          ),
-        ],
+        actions: [_memberListButton(context), _historyButton(context)],
       ),
       body: Container(
         alignment: Alignment.topCenter,
         child: AppFlowyEditor(
+          editable: !widget.readOnly,
           editorState: _editorState,
           editorStyle: EditorStyle.mobile(),
           blockWrapper: (context, {required child, required node}) => Container(
@@ -185,7 +176,6 @@ class _EditorPageState extends State<EditorPage> {
   @override
   void dispose() {
     _saveTicker.cancel();
-    _txListener.cancel();
     _commitAutomergeChanges();
     widget._docStorage.updateDocument(widget.doc);
 
@@ -199,7 +189,17 @@ class EditorPage extends StatefulWidget {
   final models.Document doc;
   final _docStorage = DocumentStorage();
   final _accStorage = AccountStorage();
-  EditorPage({super.key, required this.doc});
+  final bool isMemberListAccessible;
+  final bool isHistoryAccessible;
+  final bool readOnly;
+
+  EditorPage({
+    super.key,
+    required this.doc,
+    this.isMemberListAccessible = true,
+    this.isHistoryAccessible = true,
+    this.readOnly = false,
+  });
 
   @override
   State<EditorPage> createState() => _EditorPageState();

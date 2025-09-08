@@ -47,11 +47,6 @@ class _MyAppState extends State<MyApp> {
     try {
       final Uri? initialUri = await getInitialUri();
       if (initialUri != null && mounted) {
-        // TopBanner.show(
-        // context: navigatorKey.currentContext!,
-        // message: initialUri.toString(),
-        // kind: TopBannerCases.success,
-        // );
         _showPopUp(navigatorKey.currentContext!);
       }
     } catch (err) {
@@ -93,11 +88,11 @@ class _MyAppState extends State<MyApp> {
               ),
 
               Spacer(),
-
+              
               Text(
                 'You have been invited to the document, do you want to join?',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black, fontSize: 16),
+                style: TextStyle(color: Colors.black, fontSize: 16, decoration: TextDecoration.none),
               ),
 
               Spacer(),

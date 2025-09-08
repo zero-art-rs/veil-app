@@ -5,12 +5,12 @@ use std::{
 
 use anyhow::bail;
 use automerge::{
-    transaction::{CommitOptions, Transactable},
-    ActorId, AutoCommit, Change, ObjType, ReadDoc,
+    transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, Change, ChangeHash, ObjType, Patch, ReadDoc
 };
 
 const BLOCKS_LABEL: &str = "blocks";
 
+#[derive(Debug)]
 pub struct BChange {
     change: Change,
 }
@@ -228,6 +228,21 @@ impl BAutoCommit {
             .map_err(|e| anyhow::anyhow!("Failed to get block list: {}", e))?;
 
         Ok(label.is_some())
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn doc_at_change_hash(&self, change_hash: &str) -> anyhow::Result<BAutoCommit> {
+        let hash = ChangeHash::from_str(change_hash)?;
+        let autocommit = self.autocommit.clone().fork_at(&[hash])?;
+
+        Ok(BAutoCommit  { autocommit: autocommit })
+    }
+
+    pub fn diff_between(&mut self, before: &str, after: &str) -> anyhow::Result<Vec<Patch>> {
+        let before = ChangeHash::from_str(before)?;
+        let after = ChangeHash::from_str(after)?;
+
+        Ok(self.autocommit.diff(&[before], &[after]))
     }
 }
 
