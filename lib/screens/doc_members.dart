@@ -1,4 +1,3 @@
-import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';

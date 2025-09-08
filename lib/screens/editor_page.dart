@@ -1,21 +1,21 @@
 import 'dart:async';
 
-import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
+import 'package:super_editor/super_editor.dart';
 import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/storage/document_storage.dart';
 import 'package:zk_notion_app/storage/models.dart' as models;
-import 'package:zk_notion_app/utils/appflowy.dart';
+import 'package:zk_notion_app/utils/editor_automerge.dart';
 
 class _EditorPageState extends State<EditorPage> {
-  late EditorState _editorState = EditorState.blank();
-
-  // late final StreamSubscription<(TransactionTime, Transaction, ApplyOptions)>
-  // _txListener;
-
+  final _composer = MutableDocumentComposer();
+  late Editor _editor = createDefaultDocumentEditor(
+    document: MutableDocument.empty(),
+    composer: _composer,
+  );
   late final Timer _saveTicker;
 
   @override
@@ -36,32 +36,12 @@ class _EditorPageState extends State<EditorPage> {
     widget.doc.automergeDoc.setupBlockLabel();
 
     final blocks = widget.doc.automergeDoc.getBlocks();
-    final html = """<html>
-<head>
-<title>Page Title</title>
-</head>
-<body>
-<h1>This is a Heading<br /></h1>
-<p>This is a paragraph.</p>
-
-<br>
-<br>
-<br>
-
-<p>This is a rferfparagraph.</p>
-
-</body>
-</html>""";
-    // print('initial blocks: $blocks');
-
-    // if (blocks.isNotEmpty) {
-    _editorState = EditorState(
-      document: htmlToDocument(html),
-      // document: FlowyUtils.documentFromHtmlAutomerge(widget.doc.automergeDoc),
-    );
-    // } else {
-    // _editorState = EditorState.blank();
-    // }
+    if (blocks.isNotEmpty) {
+      _editor = createDefaultDocumentEditor(
+        document: EditorAutomergeUtils.instance.toDoc(widget.doc.automergeDoc),
+        composer: _composer,
+      );
+    }
 
     _setupCommitTicker();
 
@@ -70,13 +50,15 @@ class _EditorPageState extends State<EditorPage> {
 
   _setupCommitTicker() {
     _saveTicker = Timer.periodic(const Duration(seconds: 3), (timer) {
-      _commitAutomergeChanges();
+      _commit();
     });
   }
 
-  _commitAutomergeChanges() {
-    final html = documentToHTML(_editorState.document);
-    FlowyUtils.htmlDoc2Automerge(html, widget.doc.automergeDoc);
+  _commit() {
+    EditorAutomergeUtils.instance.fromDoc(
+      _editor.document,
+      widget.doc.automergeDoc,
+    );
     widget.doc.automergeDoc.commit();
   }
 
@@ -125,7 +107,7 @@ class _EditorPageState extends State<EditorPage> {
           context,
           MaterialPageRoute(
             builder: (context) {
-              _commitAutomergeChanges();
+              _commit();
 
               final items = widget.doc.automergeDoc
                   .getChangeList()
@@ -160,15 +142,7 @@ class _EditorPageState extends State<EditorPage> {
       ),
       body: Container(
         alignment: Alignment.topCenter,
-        child: AppFlowyEditor(
-          editable: !widget.readOnly,
-          editorState: _editorState,
-          editorStyle: EditorStyle.mobile(),
-          blockWrapper: (context, {required child, required node}) => Container(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: child,
-          ),
-        ),
+        child: SuperEditor(focusNode: FocusNode(), editor: _editor),
       ),
     );
   }
@@ -176,9 +150,8 @@ class _EditorPageState extends State<EditorPage> {
   @override
   void dispose() {
     _saveTicker.cancel();
-    _commitAutomergeChanges();
+    _commit();
     widget._docStorage.updateDocument(widget.doc);
-
     logger.d('Deinit editor screen');
 
     super.dispose();

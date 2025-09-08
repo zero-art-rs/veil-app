@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:appflowy_editor/appflowy_editor.dart';
+// import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/assets/style.dart';
@@ -125,7 +125,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      localizationsDelegates: const [AppFlowyEditorLocalizations.delegate],
+      localizationsDelegates: const [],
       theme: AppTheme.light(),
       themeMode: ThemeMode.system,
       home: const AppBottomTabBar(),
