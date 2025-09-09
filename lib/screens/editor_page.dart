@@ -9,6 +9,7 @@ import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/storage/document_storage.dart';
 import 'package:zk_notion_app/storage/models.dart' as models;
 import 'package:zk_notion_app/utils/editor_automerge.dart';
+import 'package:zk_notion_app/utils/platform.dart';
 
 class _EditorPageState extends State<EditorPage> {
   final _composer = MutableDocumentComposer();
@@ -17,6 +18,7 @@ class _EditorPageState extends State<EditorPage> {
     composer: _composer,
   );
   late final Timer _saveTicker;
+  final _focus = FocusNode();
 
   @override
   void initState() {
@@ -135,15 +137,11 @@ class _EditorPageState extends State<EditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.doc.title),
-        actions: [_memberListButton(context), _historyButton(context)],
-      ),
-      body: Container(
-        alignment: Alignment.topCenter,
-        child: SuperEditor(focusNode: FocusNode(), editor: _editor),
-      ),
+    final cs = Theme.of(context).colorScheme;
+
+    return SuperEditor(
+      focusNode: _focus,
+      editor: _editor,
     );
   }
 

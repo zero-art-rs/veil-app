@@ -1442,6 +1442,7 @@ class BAutoCommitImpl extends RustOpaque implements BAutoCommit {
   void setupBlockLabel() => RustLib.instance.api
       .crateApiAutomergeBAutoCommitSetupBlockLabel(that: this);
 
+  /// If content is the same nothing will be changed
   void updateBlock({required BigInt index, required String text}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitUpdateBlock(
         that: this,

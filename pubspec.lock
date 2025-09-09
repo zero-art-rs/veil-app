@@ -34,13 +34,14 @@ packages:
     source: hosted
     version: "2.13.0"
   attributed_text:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: attributed_text
-      sha256: "177ea01f58a8d8df279f4066834375a2009bdd304d559c084bb06f784b258477"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.5"
+      path: attributed_text
+      ref: stable
+      resolved-ref: "53781d6d28578e8ca98c6d0aef02501044ac1bcc"
+      url: "https://github.com/superlistapp/super_editor"
+    source: git
+    version: "0.3.2"
   boolean_selector:
     dependency: transitive
     description:
@@ -567,6 +568,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.1"
+  popover:
+    dependency: "direct main"
+    description:
+      name: popover
+      sha256: "0606f3e10f92fc0459f5c52fd917738c29e7552323b28694d50c2d3312d0e1a2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.1"
   process:
     dependency: transitive
     description:
@@ -638,6 +647,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
+  sidebarx:
+    dependency: "direct main"
+    description:
+      name: sidebarx
+      sha256: "970cba4be128f217b0f714322203e6933fb3a12602fef0c39248f5800184068e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.17.2"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -702,19 +719,21 @@ packages:
   super_editor:
     dependency: "direct main"
     description:
-      name: super_editor
-      sha256: "2b64aa38ac7d88dd0eac44853a723db65c904535448d700f38b275d125572c82"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.0-dev.33"
+      path: super_editor
+      ref: stable
+      resolved-ref: "53781d6d28578e8ca98c6d0aef02501044ac1bcc"
+      url: "https://github.com/superlistapp/super_editor"
+    source: git
+    version: "0.3.0-dev.10"
   super_editor_markdown:
     dependency: "direct main"
     description:
-      name: super_editor_markdown
-      sha256: e45b13635ab10df298f943637606320fbe5c74bfa0edb50add2fa32bcf78a3a3
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.0"
+      path: super_editor_markdown
+      ref: stable
+      resolved-ref: "53781d6d28578e8ca98c6d0aef02501044ac1bcc"
+      url: "https://github.com/superlistapp/super_editor"
+    source: git
+    version: "0.1.5"
   super_keyboard:
     dependency: transitive
     description:
@@ -724,13 +743,14 @@ packages:
     source: hosted
     version: "0.2.2"
   super_text_layout:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: super_text_layout
-      sha256: "166b0eb846d186b349986619ddcbf5227f33ee216b7758dfa1e37b1a26a785ef"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.19"
+      path: super_text_layout
+      ref: stable
+      resolved-ref: "53781d6d28578e8ca98c6d0aef02501044ac1bcc"
+      url: "https://github.com/superlistapp/super_editor"
+    source: git
+    version: "0.1.15"
   sync_http:
     dependency: transitive
     description:

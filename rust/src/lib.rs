@@ -219,4 +219,20 @@ mod test {
         println!("{:?}", automerge.diff_between(before, after).unwrap());
         Ok(())
     }
+
+    #[test]
+    fn test_changes() -> anyhow::Result<()>{
+        let mut automerge = api::automerge::BAutoCommit::new();
+        automerge.setup_block_label().unwrap();
+        automerge.commit();
+
+        automerge.insert_block(0, '1'.to_string())?;
+        automerge.commit();
+        automerge.update_block(0, '1'.to_string())?;
+        automerge.commit();
+
+        let change_list_len = automerge.get_change_list().len();
+        println!("{:?}", change_list_len);
+        Ok(())
+    }
 }

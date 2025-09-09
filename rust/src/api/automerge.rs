@@ -7,6 +7,7 @@ use anyhow::bail;
 use automerge::{
     transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, Change, ChangeHash, ObjType, Patch, ReadDoc
 };
+use sha2::Digest;
 
 const BLOCKS_LABEL: &str = "blocks";
 
@@ -114,6 +115,7 @@ impl BAutoCommit {
     }
 
     #[flutter_rust_bridge::frb(sync)]
+    /// If content is the same nothing will be changed
     pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
         let obj_id = match self.autocommit.get(self.blocks_list_id(), index) {
             Ok(Some(id)) => id.1,
@@ -122,6 +124,12 @@ impl BAutoCommit {
         };
 
         let block = self.get_block(index)?;
+        let block_hash = sha2::Sha256::digest(&block);
+        
+        if block_hash == sha2::Sha256::digest(&text) {
+            return Ok(());
+        }
+
         let Err(err) = self
             .autocommit
             .splice_text(obj_id, 0, block.len() as isize, &text)
@@ -238,7 +246,7 @@ impl BAutoCommit {
         Ok(BAutoCommit  { autocommit: autocommit })
     }
 
-    pub fn diff_between(&mut self, before: &str, after: &str) -> anyhow::Result<Vec<Patch>> {
+    pub(crate) fn diff_between(&mut self, before: &str, after: &str) -> anyhow::Result<Vec<Patch>> {
         let before = ChangeHash::from_str(before)?;
         let after = ChangeHash::from_str(after)?;
 

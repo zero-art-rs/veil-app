@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `blocks_list_id`, `new`
+// These functions are ignored because they are not marked as `pub`: `blocks_list_id`, `diff_between`, `new`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`
 
 String generateActorId() =>
@@ -52,6 +52,7 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   /// If it is exist it will be skipped
   void setupBlockLabel();
 
+  /// If content is the same nothing will be changed
   void updateBlock({required BigInt index, required String text});
 }
 

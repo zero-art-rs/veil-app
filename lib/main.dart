@@ -4,12 +4,14 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/assets/style.dart';
+import 'package:zk_notion_app/screens/desktop/primary_page.dart';
 import 'package:zk_notion_app/screens/tab_bar.dart';
 import 'package:zk_notion_app/src/rust/frb_generated.dart';
 import 'package:zk_notion_app/assets/theme.dart';
 import 'package:logger/logger.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/utils/platform.dart';
 
 Future<void> main() async {
   await RustLib.init();
@@ -84,15 +86,18 @@ class _MyAppState extends State<MyApp> {
               const Icon(
                 Icons.description,
                 size: 92,
-                color: AppPalette.primaryBlue,
               ),
 
               Spacer(),
-              
+
               Text(
                 'You have been invited to the document, do you want to join?',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black, fontSize: 16, decoration: TextDecoration.none),
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  decoration: TextDecoration.none,
+                ),
               ),
 
               Spacer(),
@@ -124,11 +129,16 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final mt = MaterialTheme(ThemeData().textTheme);
+
     return MaterialApp(
       localizationsDelegates: const [],
-      theme: AppTheme.light(),
+      darkTheme: mt.dark(),
+      theme: mt.light(),
       themeMode: ThemeMode.system,
-      home: const AppBottomTabBar(),
+      home: PlatformUtils.isDesktop
+          ? const DesktopPrimaryPage()
+          : const AppBottomTabBar(),
       navigatorKey: navigatorKey,
     );
   }
