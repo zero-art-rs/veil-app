@@ -3,8 +3,11 @@ import 'dart:async';
 // import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:zk_notion_app/assets/style.dart';
+import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
+import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
 import 'package:zk_notion_app/screens/tab_bar.dart';
 import 'package:zk_notion_app/src/rust/frb_generated.dart';
 import 'package:zk_notion_app/assets/theme.dart';
@@ -46,6 +49,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _handleInitialUri() async {
+    if (PlatformUtils.isDesktop) return;
     try {
       final Uri? initialUri = await getInitialUri();
       if (initialUri != null && mounted) {
@@ -57,6 +61,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _listenUriChanges() {
+    if (PlatformUtils.isDesktop) return;
     _sub = uriLinkStream.listen(
       (Uri? uri) {
         if (uri != null && mounted) {
@@ -83,10 +88,7 @@ class _MyAppState extends State<MyApp> {
           ),
           child: Column(
             children: [
-              const Icon(
-                Icons.description,
-                size: 92,
-              ),
+              const Icon(Icons.description, size: 92),
 
               Spacer(),
 
@@ -129,15 +131,19 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    final mt = MaterialTheme(ThemeData().textTheme);
+    final brightness = View.of(context).platformDispatcher.platformBrightness;
+    TextTheme textTheme = createTextTheme(context, "Roboto", "Urbanist");
+    MaterialTheme theme = MaterialTheme(textTheme);
 
     return MaterialApp(
       localizationsDelegates: const [],
-      darkTheme: mt.dark(),
-      theme: mt.light(),
-      themeMode: ThemeMode.system,
+      theme: brightness == Brightness.light ? theme.light() : theme.dark(),
+      themeMode: ThemeMode.dark,
       home: PlatformUtils.isDesktop
-          ? const DesktopPrimaryPage()
+          ? ChangeNotifierProvider(
+              create: (_) => PrimaryPageViewModel(),
+              child: DesktopPrimaryPage(),
+            )
           : const AppBottomTabBar(),
       navigatorKey: navigatorKey,
     );

@@ -17,8 +17,9 @@ class _EditorPageState extends State<EditorPage> {
     document: MutableDocument.empty(),
     composer: _composer,
   );
+
   late final Timer _saveTicker;
-  final _focus = FocusNode();
+  final _focus = FocusNode(debugLabel: 'editor');
 
   @override
   void initState() {
@@ -138,10 +139,41 @@ class _EditorPageState extends State<EditorPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final th = Theme.of(context).textTheme;
+    final isDesktop = PlatformUtils.isDesktop;
 
-    return SuperEditor(
-      focusNode: _focus,
-      editor: _editor,
+    final style = th.titleLarge!.apply(color: cs.surface);
+
+    return Scaffold(
+      backgroundColor: cs.onSurface,
+      appBar: AppBar(
+        title: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(widget.doc.title, style: style),
+        ),
+        backgroundColor: cs.onSurface,
+        foregroundColor: Colors.black,
+        actions: isDesktop
+            ? [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  margin: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: cs.tertiaryContainer,
+                  ),
+                  child: Text(
+                    widget.readOnly ? 'Read mode' : 'Editable mode',
+                    style: th.bodyLarge,
+                  ),
+                ),
+              ]
+            : [_memberListButton(context), _historyButton(context)],
+      ),
+      body: SuperEditor(focusNode: _focus, editor: _editor),
     );
   }
 

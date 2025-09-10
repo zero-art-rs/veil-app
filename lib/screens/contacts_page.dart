@@ -41,6 +41,13 @@ class _ContactsScreenState extends State<ContactsScreen> {
     }
   }
 
+  Widget _emptyWidget(BuildContext context) {
+    final th = Theme.of(context).textTheme;
+    return Center(
+      child: Text('You don\'t have any contacts', style: th.bodyLarge),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,16 +55,18 @@ class _ContactsScreenState extends State<ContactsScreen> {
         title: const Text('Contacts'),
         automaticallyImplyLeading: widget.onPick == null,
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-        itemCount: contacts.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, i) => _ContactCell(
-          contact: contacts[i],
-          onRemove: _removeContact,
-          onPick: widget.onPick,
-        ),
-      ),
+      body: contacts.isEmpty
+          ? _emptyWidget(context)
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+              itemCount: contacts.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) => _ContactCell(
+                contact: contacts[i],
+                onRemove: _removeContact,
+                onPick: widget.onPick,
+              ),
+            ),
     );
   }
 }

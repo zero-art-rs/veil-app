@@ -85,7 +85,7 @@ class SideNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bg = backgroundColor ?? theme.colorScheme.surface;
+    final bg = backgroundColor ?? theme.colorScheme.surface.withOpacity(0.95);
     final sel = selectedColor ?? theme.colorScheme.primary.withOpacity(0.12);
     final hov = hoverColor ?? theme.colorScheme.surfaceVariant.withOpacity(0.5);
     final txt =
@@ -252,11 +252,14 @@ class _ItemTileState extends State<_ItemTile> {
           Expanded(
             child: Row(
               children: [
-                // Expanded(
-                Text(widget.item.label, style: widget.textStyle),
-
-                // ),
-                Spacer(),
+                Expanded(
+                  child: Text(
+                    widget.item.label,
+                    style: widget.textStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
 
                 if (widget.item.badge != null)
                   _Badge(text: widget.item.badge!, theme: theme),

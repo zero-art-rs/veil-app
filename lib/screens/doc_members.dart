@@ -4,6 +4,7 @@ import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/storage/document_storage.dart';
 import 'package:zk_notion_app/storage/models.dart' as m;
 import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/utils/platform.dart';
 
 class MemberScreenModel {
   final m.DocumentMember member;
@@ -32,7 +33,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   final _storage = DocumentStorage();
 
   void _onAddMember(BuildContext context) {
-    showCupertinoSheet(
+    showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
         return ContactsScreen(
@@ -87,7 +88,15 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     final dividerColor = theme.colorScheme.outlineVariant;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Document members')),
+      appBar: AppBar(
+        title: const Text('Document members'),
+        leading: PlatformUtils.isDesktop
+            ? CloseButton(
+                onPressed: () =>
+                    Navigator.of(context, rootNavigator: true).pop(),
+              )
+            : BackButton(),
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: widget.members.length,
