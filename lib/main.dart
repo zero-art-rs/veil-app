@@ -12,7 +12,7 @@ import 'package:zk_notion_app/screens/tab_bar.dart';
 import 'package:zk_notion_app/src/rust/frb_generated.dart';
 import 'package:zk_notion_app/assets/theme.dart';
 import 'package:logger/logger.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart';
 import 'package:zk_notion_app/utils/banner.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
@@ -33,6 +33,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   StreamSubscription? _sub;
+  final AppLinks _appLinks = AppLinks();
 
   @override
   void initState() {
@@ -49,10 +50,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _handleInitialUri() async {
-    if (PlatformUtils.isDesktop) return;
+    if (!PlatformUtils.isApple) return;
     try {
-      final Uri? initialUri = await getInitialUri();
+      final Uri? initialUri = await AppLinks().getInitialLink();
       if (initialUri != null && mounted) {
+        logger.d('Initial uri: $initialUri');
         _showPopUp(navigatorKey.currentContext!);
       }
     } catch (err) {
@@ -61,70 +63,62 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _listenUriChanges() {
-    if (PlatformUtils.isDesktop) return;
-    _sub = uriLinkStream.listen(
-      (Uri? uri) {
-        if (uri != null && mounted) {
-          _showPopUp(navigatorKey.currentContext!);
-        }
-      },
-      onError: (err) {
-        logger.e('Failed to get uri: $err');
-      },
-    );
+    if (!PlatformUtils.isApple) return;
+    try {
+      _sub = _appLinks.uriLinkStream.listen(
+        (Uri? uri) {
+          if (uri != null && mounted) {
+            logger.d('Uri changed: $uri');
+            _showPopUp(navigatorKey.currentContext!);
+          }
+        },
+        onDone: () => logger.d('Uri stream done'),
+        onError: (err) {
+          logger.e('Failed to get uri: $err');
+        },
+      );
+    } catch (err) {
+      logger.e('Failed to get uri: $err');
+    }
   }
 
   void _showPopUp(BuildContext context) {
-    showCupertinoModalPopup(
+    final th = Theme.of(context).textTheme;
+
+    showDialog(
       context: context,
-      builder: (context) => Center(
-        child: Container(
-          height: 300,
-          width: 300,
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.description, size: 92),
+            const SizedBox(height: 32),
+            Text(
+              'You have been invited to the document, do you want to join?',
+              style: th.bodyLarge,
+            ),
+          ],
+        ),
+        actions: [
+          const SizedBox(height: 24),
+          Row(
+            spacing: 16.0,
             children: [
-              const Icon(Icons.description, size: 92),
-
-              Spacer(),
-
-              Text(
-                'You have been invited to the document, do you want to join?',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  decoration: TextDecoration.none,
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
                 ),
               ),
-
-              Spacer(),
-
-              Row(
-                spacing: 16.0,
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: AppStyles.lightErrorButtonStyle,
-                      child: Text('Cancel'),
-                    ),
-                  ),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text('Join'),
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Join'),
+                ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

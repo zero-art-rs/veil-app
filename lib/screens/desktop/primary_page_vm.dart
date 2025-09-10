@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
-import 'package:zk_notion_app/screens/desktop/account_page.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
@@ -18,7 +17,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
   int _selectedIndex = 0;
   int get selectedIndex => _selectedIndex;
 
-  Widget _selectedPage = DesktopAccountPage();
+  Widget _selectedPage = AccountPage();
   Widget get selectedPage => _selectedPage;
 
   List<Document> _docs = [];
