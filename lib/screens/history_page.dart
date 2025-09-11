@@ -1,36 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/screens/editor_page.dart';
 import 'package:zk_notion_app/storage/models.dart';
 
 class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key, required this.items, required this.doc});
+  const HistoryPage({
+    super.key,
+    required this.items,
+    required this.doc,
+    this.onChangeTap,
+  });
   final List<ChangeEvent> items;
   final Document doc;
-
-  _onChangeTap(ChangeEvent change, BuildContext context) {
-    final forkedAutomergeDoc = doc.automergeDoc.docAtChangeHash(
-      changeHash: change.changeHashHex,
-    );
-
-    final forkedDoc = Document(
-      id: doc.id,
-      title: doc.title,
-      automergeDoc: forkedAutomergeDoc,
-      members: doc.members,
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditorPage(
-          doc: forkedDoc,
-          isHistoryAccessible: false,
-          isMemberListAccessible: false,
-          readOnly: true,
-        ),
-      ),
-    );
-  }
+  final void Function(BuildContext context, ChangeEvent change)? onChangeTap;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +28,7 @@ class HistoryPage extends StatelessWidget {
             final e = items[index];
             return _ChangeEventCard(
               event: e,
-              onTap: () => _onChangeTap(e, context),
+              onTap: () => onChangeTap?.call(context, e),
             );
           },
         ),
@@ -70,7 +50,14 @@ class _ChangeEventCard extends StatelessWidget {
           color: Theme.of(context).colorScheme.primaryContainer,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: const Text('Initial change', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+        child: const Text(
+          'Initial change',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       );
     } else {
       return Container();
@@ -107,7 +94,7 @@ class _ChangeEventCard extends StatelessWidget {
                   _initialChangeLabel(context),
                 ],
               ),
-              
+
               const SizedBox(height: 4),
 
               Text(

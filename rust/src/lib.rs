@@ -216,7 +216,7 @@ mod test {
 
         let after: &String = &automerge.get_change_list().last().unwrap().change_hash();
 
-        println!("{:?}", automerge.diff_between(before, after).unwrap());
+        // println!("{:?}", automerge.diff_between(before, after).unwrap());
         Ok(())
     }
 

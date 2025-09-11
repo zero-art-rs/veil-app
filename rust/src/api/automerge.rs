@@ -37,6 +37,7 @@ impl BChange {
     }
 }
 
+#[derive(Clone)]
 pub struct BAutoCommit {
     autocommit: AutoCommit,
 }
@@ -246,12 +247,29 @@ impl BAutoCommit {
         Ok(BAutoCommit  { autocommit: autocommit })
     }
 
-    pub(crate) fn diff_between(&mut self, before: &str, after: &str) -> anyhow::Result<Vec<Patch>> {
-        let before = ChangeHash::from_str(before)?;
-        let after = ChangeHash::from_str(after)?;
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn docs_before_after(&mut self, change_hash: &str) -> anyhow::Result<(BAutoCommit, BAutoCommit)> {
+    let changes = self.get_change_list();
 
-        Ok(self.autocommit.diff(&[before], &[after]))
-    }
+    let index = changes
+        .iter()
+        .position(|c| c.change.hash().to_string() == change_hash)
+        .ok_or_else(|| anyhow::anyhow!("No such change hash"))?;
+
+    let after_doc = self.doc_at_change_hash(change_hash)?;
+
+    let before_doc = if index == 0 {
+        let mut doc = BAutoCommit::new();
+        doc.setup_block_label()?;
+        doc
+    } else {
+        let prev_hash = changes[index - 1].change.hash().to_string();
+        self.doc_at_change_hash(&prev_hash)?
+    };
+
+    Ok((before_doc, after_doc))
+}
+
 }
 
 #[flutter_rust_bridge::frb(sync)]

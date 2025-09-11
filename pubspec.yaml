@@ -52,6 +52,7 @@ dependencies:
   super_editor: ^0.3.0-dev.33
   sidebarx: ^0.17.2
   popover: ^0.3.1
+  pretty_diff_text: ^2.1.0
 
 dev_dependencies:
   flutter_test:

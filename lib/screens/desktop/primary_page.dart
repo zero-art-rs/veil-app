@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
+import 'package:zk_notion_app/screens/difference_page.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
@@ -317,6 +318,22 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                                     doc:
                                         vm.docs[vm.selectedIndex -
                                             PrimaryPageViewModel.constantTabs],
+                                    onChangeTap: (_, change) {
+                                      var (before, after) = doc.automergeDoc
+                                          .docsBeforeAfter(
+                                            changeHash: change.changeHashHex,
+                                          );
+                                      vm.setSelectedPage(
+                                        DifferencePage(
+                                          onClose: () => vm.setSelectedPage(
+                                            EditorPage(doc: doc),
+                                          ),
+                                          oldDoc: before.getBlocks(),
+                                          newDoc: after.getBlocks(),
+                                        ),
+                                      );
+                                      Navigator.pop(ctx);
+                                    },
                                   ),
                                 );
                               },
