@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
 import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
@@ -58,6 +59,8 @@ class Document {
   final String title;
   final BAutoCommit automergeDoc;
   final List<DocumentMember> members;
+
+  Key get key => ValueKey(id + title);
 
   Document({
     required this.id,

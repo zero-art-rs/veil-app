@@ -34,11 +34,33 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
   void setSelectedIndex(int index) {
     _selectedIndex = index;
-    setSelectedPage();
+    logger.d('Selected index: $_selectedIndex');
     notifyListeners();
   }
 
-  void createDocument(BuildContext context) async {
+  Future<void> updateDocumentName(
+    BuildContext context,
+    Document document,
+  ) async {
+    try {
+      await _docStorage.updateDocument(document);
+      notifyListeners();
+      final index = _docs.indexWhere((e) => e.id == document.id);
+      _docs[index] = document;
+      textEditingController.clear();
+      setSelectedPage(EditorPage(key: _docs[index].key, doc: _docs[index]));
+    } catch (err) {
+      logger.e('Failed to update document name: $err');
+      if (!context.mounted) return;
+      TopBanner.show(
+        context: context,
+        message: 'Failed to update document name',
+        kind: TopBannerCases.error,
+      );
+    }
+  }
+
+  Future<void> createDocument(BuildContext context) async {
     try {
       final resTitle = textEditingController.text.isEmpty
           ? 'Document'
@@ -60,6 +82,10 @@ class PrimaryPageViewModel extends ChangeNotifier {
       textEditingController.clear();
       _docs.add(doc);
 
+      final index = _docs.length - 1;
+      setSelectedIndex(constantTabs + index);
+      setSelectedPage(EditorPage(key: _docs[index].key, doc: _docs[index]));
+
       notifyListeners();
     } catch (err) {
       logger.e('Failed to create document: $err');
@@ -72,30 +98,33 @@ class PrimaryPageViewModel extends ChangeNotifier {
     }
   }
 
-  void setSelectedPage() {
-    switch (_selectedIndex) {
-      case 0:
-        _selectedPage = AccountPage();
-      case 1:
-        _selectedPage = Center(
-          child: Text('Contacts', style: TextStyle(color: Colors.black)),
-        );
-      default:
-        final doc = _docs[_selectedIndex - constantTabs];
-        _selectedPage = EditorPage(key: ValueKey(doc.id), doc: doc);
-    }
-
+  void setSelectedPage(Widget page) {
+    _selectedPage = page;
     notifyListeners();
   }
 
-  removeDocument(BuildContext context, String id) async {
+  Future<void> removeDocument(BuildContext context, String id) async {
     try {
       await _docStorage.removeDocument(id);
 
-      _docs.removeWhere((element) => element.id == id);
-      _selectedIndex = 0;
+      final index = _docs.indexWhere((element) => element.id == id);
+      if (index == -1) throw FormatException('Document not found');
 
-      setSelectedPage();
+      _docs.removeWhere((element) => element.id == id);
+
+      if (_docs.isEmpty) {
+        setSelectedIndex(0);
+        setSelectedPage(AccountPage());
+      } else if (index > 0) {
+        setSelectedIndex(constantTabs + index - 1);
+        setSelectedPage(
+          EditorPage(key: _docs[index - 1].key, doc: _docs[index - 1]),
+        );
+      } else {
+        setSelectedIndex(constantTabs + 1);
+        setSelectedPage(EditorPage(key: _docs.first.key, doc: _docs.first));
+      }
+
       notifyListeners();
     } catch (err) {
       logger.e('Failed to remove document: $err');

@@ -1,11 +1,9 @@
 import 'dart:async';
 
-// import 'package:appflowy_editor/appflowy_editor.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:zk_notion_app/assets/style.dart';
 import 'package:zk_notion_app/assets/util.dart';
+import 'package:zk_notion_app/managers/deeplink_manager.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
 import 'package:zk_notion_app/screens/tab_bar.dart';
@@ -13,6 +11,8 @@ import 'package:zk_notion_app/src/rust/frb_generated.dart';
 import 'package:zk_notion_app/assets/theme.dart';
 import 'package:logger/logger.dart';
 import 'package:app_links/app_links.dart';
+import 'package:zk_notion_app/storage/contact_storage.dart';
+import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/utils/banner.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
@@ -52,10 +52,22 @@ class _MyAppState extends State<MyApp> {
   Future<void> _handleInitialUri() async {
     if (!PlatformUtils.isApple) return;
     try {
-      final Uri? initialUri = await AppLinks().getInitialLink();
-      if (initialUri != null && mounted) {
-        logger.d('Initial uri: $initialUri');
-        _showPopUp(navigatorKey.currentContext!);
+      final initialUri = await _appLinks.getInitialLink();
+
+      final (documentDeepLink, contactDeepLink) = DeeplinkManager.instance
+          .retrieveDeepLink(initialUri);
+
+      if (contactDeepLink != null && mounted) {
+        _showContactPopUp(navigatorKey.currentContext!, contactDeepLink);
+        return;
+      }
+
+      if (documentDeepLink != null && mounted) {
+        _showDocumentInvitationPopUp(
+          navigatorKey.currentContext!,
+          documentDeepLink,
+        );
+        return;
       }
     } catch (err) {
       logger.e('Failed to get initial link: $err');
@@ -67,9 +79,20 @@ class _MyAppState extends State<MyApp> {
     try {
       _sub = _appLinks.uriLinkStream.listen(
         (Uri? uri) {
-          if (uri != null && mounted) {
-            logger.d('Uri changed: $uri');
-            _showPopUp(navigatorKey.currentContext!);
+          final (documentDeepLink, contactDeepLink) = DeeplinkManager()
+              .retrieveDeepLink(uri);
+
+          if (contactDeepLink != null && mounted) {
+            _showContactPopUp(navigatorKey.currentContext!, contactDeepLink);
+            return;
+          }
+
+          if (documentDeepLink != null && mounted) {
+            _showDocumentInvitationPopUp(
+              navigatorKey.currentContext!,
+              documentDeepLink,
+            );
+            return;
           }
         },
         onDone: () => logger.d('Uri stream done'),
@@ -82,7 +105,10 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  void _showPopUp(BuildContext context) {
+  void _showDocumentInvitationPopUp(
+    BuildContext context,
+    DocumentDeepLink doc,
+  ) {
     final th = Theme.of(context).textTheme;
 
     showDialog(
@@ -114,6 +140,105 @@ class _MyAppState extends State<MyApp> {
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text('Join'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showContactPopUp(BuildContext context, ExternalAccount account) {
+    final th = Theme.of(context).textTheme;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: BoxBorder.all(color: Colors.grey, width: 0.3),
+              ),
+              child: Row(
+                spacing: 16,
+                children: [
+                  Icon(Icons.person, size: 108),
+                  Container(
+                    width: 1,
+                    height: 124,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: BoxBorder.all(color: Colors.grey, width: 0.3),
+                    ),
+                  ),
+
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Name', style: th.labelLarge),
+                        Text(account.name, style: th.bodyMedium, maxLines: 1),
+
+                        Text('Actor ID', style: th.labelLarge),
+                        Text(
+                          account.actorId,
+                          style: th.bodyMedium,
+                          maxLines: 1,
+                        ),
+
+                        Text('Public Key', style: th.labelLarge),
+                        Text(
+                          account.publicKey,
+                          style: th.bodyMedium,
+                          maxLines: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+            Text('Add this account to your contacts?', style: th.bodyLarge),
+          ],
+        ),
+        actions: [
+          const SizedBox(height: 24),
+          Row(
+            spacing: 16.0,
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+              ),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () async {
+                    final isDuplicate = await ContactStorage.shared.addContact(
+                      account: account,
+                    );
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                    TopBanner.show(
+                      context: context,
+                      message: isDuplicate
+                          ? 'Account already in your contacts'
+                          : 'Contact added',
+                      kind: isDuplicate
+                          ? TopBannerCases.info
+                          : TopBannerCases.success,
+                    );
+                  },
+                  child: Text('Add'),
                 ),
               ),
             ],

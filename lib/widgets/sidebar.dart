@@ -11,11 +11,13 @@ class SideNavItem extends SideNavEntry {
   final String label;
   final String? badge;
   final Widget Function()? trailingBuilder;
+  final void Function()? onTap;
   SideNavItem({
     required this.icon,
     required this.label,
     this.badge,
     this.trailingBuilder,
+    this.onTap,
   });
 }
 
@@ -72,7 +74,7 @@ class SideNav extends StatelessWidget {
     this.itemHeight = 44,
     this.iconSize = 22,
     this.iconLabelSpacing = 12,
-    this.itemPadding = const EdgeInsets.symmetric(horizontal: 12),
+    this.itemPadding = const EdgeInsets.only(left: 8),
     this.backgroundColor,
     this.selectedColor,
     this.hoverColor,
@@ -140,9 +142,7 @@ class SideNav extends StatelessWidget {
                   item: item,
                   index: i,
                   selected: selected,
-                  onTap: () {
-                    onSelected(i);
-                  },
+                  onTap: () => {onSelected(i), e.onTap?.call()},
                   extended: extended,
                   itemHeight: itemHeight,
                   iconSize: iconSize,
@@ -182,7 +182,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!extended) return const SizedBox(height: 8);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
           Text(label.toUpperCase(), style: style),
@@ -209,9 +209,9 @@ class _ItemTile extends StatefulWidget {
   final Color hoverColor;
   final double radius;
   final Duration duration;
-  Widget Function()? trailingBuilder;
+  final Widget Function()? trailingBuilder;
 
-  _ItemTile({
+  const _ItemTile({
     required this.item,
     required this.index,
     required this.selected,

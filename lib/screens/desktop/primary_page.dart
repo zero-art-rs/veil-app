@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
+import 'package:zk_notion_app/screens/account_page.dart';
+import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
+import 'package:zk_notion_app/screens/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
+import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/widgets/sidebar.dart';
 import 'package:zk_notion_app/widgets/square_rounded_btn.dart';
 
@@ -26,9 +30,115 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
     _vm.init();
   }
 
+  void _updateDocumentModal(
+    BuildContext context,
+    PrimaryPageViewModel vm,
+    Document doc,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Update ${doc.title}'),
+          content: SizedBox(
+            width: 320,
+            child: TextField(
+              controller: vm.textEditingController,
+              decoration: InputDecoration(label: Text('Input document title')),
+            ),
+          ),
+          actions: <Widget>[
+            Row(
+              spacing: 16,
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Cancel'),
+                  ),
+                ),
+
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      await vm.updateDocumentName(
+                        context,
+                        Document(
+                          id: doc.id,
+                          title: vm.textEditingController.text,
+                          automergeDoc: doc.automergeDoc,
+                          members: doc.members,
+                        ),
+                      );
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Update'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _areYouSureToDeleteDocumentModal(
+    BuildContext context,
+    PrimaryPageViewModel vm,
+    Document doc,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Remove alert',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          content: Text(
+            'Are you sure you want to delete ${doc.title}?',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          actions: <Widget>[
+            Row(
+              spacing: 16,
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('No'),
+                  ),
+                ),
+
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      await vm.removeDocument(context, doc.id);
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Yes'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showCreateDocumentModal(BuildContext context, PrimaryPageViewModel vm) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Create document'),
@@ -40,19 +150,28 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
             ),
           ),
           actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Close'),
-            ),
-            TextButton(
-              onPressed: () async {
-                vm.createDocument(context);
-                if (!context.mounted) return;
-                Navigator.of(context).pop();
-              },
-              child: Text('Create'),
+            Row(
+              spacing: 16,
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Cancel'),
+                  ),
+                ),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      await vm.createDocument(context);
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Create'),
+                  ),
+                ),
+              ],
             ),
           ],
         );
@@ -72,31 +191,65 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
           SideNav(
             extended: true,
             entries: [
-              SideNavItem(icon: Icons.account_box_rounded, label: 'Account'),
-              SideNavItem(icon: Icons.group, label: 'Contacts'),
+              SideNavItem(
+                icon: Icons.account_box_rounded,
+                label: 'Account',
+                onTap: () => vm.setSelectedPage(AccountPage()),
+              ),
+              SideNavItem(
+                icon: Icons.group,
+                label: 'Contacts',
+                onTap: () => vm.setSelectedPage(ContactsScreen()),
+              ),
               SideNavSpace(24),
               SideNavHeader(
                 label: 'Documents',
-                trailingBuilder: () => InkWell(
-                  child: Icon(Icons.add, size: 16),
-                  onTap: () => {_showCreateDocumentModal(context, vm)},
+                trailingBuilder: () => IconButton(
+                  icon: Icon(Icons.add, size: 16),
+                  onPressed: () => _showCreateDocumentModal(context, vm),
                 ),
               ),
               SideNavDivider(),
-              ...vm.docs.map(
+              ...vm.docs.indexed.map(
                 (doc) => SideNavItem(
                   icon: Icons.description_outlined,
-                  label: doc.title,
-                  trailingBuilder: () => IconButton(
-                    onPressed: () async =>
-                        await vm.removeDocument(context, doc.id),
-                    icon: Icon(Icons.remove, size: 14),
+                  label: doc.$2.title,
+                  onTap: () => vm.setSelectedPage(
+                    EditorPage(key: doc.$2.key, doc: doc.$2),
+                  ),
+                  trailingBuilder: () => PopupMenuButton(
+                    icon: Icon(Icons.more_vert_rounded),
+                    itemBuilder: (context) {
+                      return [
+                        PopupMenuItem(
+                          value: 0,
+                          child: Row(
+                            spacing: 16,
+                            children: [Icon(Icons.edit), Text('Edit')],
+                          ),
+                          onTap: () =>
+                              _updateDocumentModal(context, vm, doc.$2),
+                        ),
+                        PopupMenuItem(
+                          value: 1,
+                          child: Row(
+                            spacing: 16,
+                            children: [Icon(Icons.delete), Text('Delete')],
+                          ),
+                          onTap: () => _areYouSureToDeleteDocumentModal(
+                            context,
+                            vm,
+                            doc.$2,
+                          ),
+                        ),
+                      ];
+                    },
                   ),
                 ),
               ),
             ],
-            onSelected: (value) => {vm.setSelectedIndex(value)},
             selectedIndex: vm.selectedIndex,
+            onSelected: (e) => vm.setSelectedIndex(e),
           ),
           Expanded(
             child: Stack(

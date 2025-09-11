@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:zk_notion_app/managers/deeplink_manager.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
@@ -101,8 +102,6 @@ class _AccountPageState extends State<AccountPage> {
 
     showDialog(
       context: context,
-      // barrierDismissible: true, // tap outside to dismiss
-      // barrierColor: Colors.black26, // background dim
       builder: (_) => Center(
         child: Container(
           width: 400,
@@ -118,7 +117,6 @@ class _AccountPageState extends State<AccountPage> {
             mainAxisSize: MainAxisSize.min,
             spacing: 32,
             children: [
-              // Text("Share account", style: th.displaySmall),
               FutureBuilder<String>(
                 future: _futureQR,
                 builder: (context, snapshot) {
@@ -156,12 +154,10 @@ class _AccountPageState extends State<AccountPage> {
                   );
                 },
               ),
-              // const SizedBox(height: 12),
               Text(
                 "Let someone scan your CR code or copy the link",
                 style: th.bodyLarge,
               ),
-              // const SizedBox(height: 72),
               Row(
                 spacing: 8,
                 children: [
@@ -176,8 +172,24 @@ class _AccountPageState extends State<AccountPage> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
+                        if (_currentAccount == null) return;
+                        final externalAccount = ExternalAccount.fromAccount(
+                          _currentAccount!,
+                        );
+
+                        Clipboard.setData(
+                          ClipboardData(
+                            text: DeeplinkManager.instance.buildContactDeepLink(
+                              externalAccount,
+                            ),
+                          ),
+                        );
+
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Link copied to clipboard"), duration: Duration(seconds: 1),),
+                          SnackBar(
+                            content: Text("Link copied to clipboard"),
+                            duration: Duration(seconds: 1),
+                          ),
                         );
                         Navigator.of(context, rootNavigator: true).pop();
                       },
