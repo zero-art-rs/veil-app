@@ -5,12 +5,13 @@ use std::{
 
 use anyhow::bail;
 use automerge::{
-    transaction::{CommitOptions, Transactable},
-    ActorId, AutoCommit, Change, ObjType, ReadDoc,
+    transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, Change, ChangeHash, ObjType, Patch, ReadDoc
 };
+use sha2::Digest;
 
 const BLOCKS_LABEL: &str = "blocks";
 
+#[derive(Debug)]
 pub struct BChange {
     change: Change,
 }
@@ -36,6 +37,7 @@ impl BChange {
     }
 }
 
+#[derive(Clone)]
 pub struct BAutoCommit {
     autocommit: AutoCommit,
 }
@@ -114,6 +116,7 @@ impl BAutoCommit {
     }
 
     #[flutter_rust_bridge::frb(sync)]
+    /// If content is the same nothing will be changed
     pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
         let obj_id = match self.autocommit.get(self.blocks_list_id(), index) {
             Ok(Some(id)) => id.1,
@@ -122,6 +125,12 @@ impl BAutoCommit {
         };
 
         let block = self.get_block(index)?;
+        let block_hash = sha2::Sha256::digest(&block);
+        
+        if block_hash == sha2::Sha256::digest(&text) {
+            return Ok(());
+        }
+
         let Err(err) = self
             .autocommit
             .splice_text(obj_id, 0, block.len() as isize, &text)
@@ -229,6 +238,38 @@ impl BAutoCommit {
 
         Ok(label.is_some())
     }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn doc_at_change_hash(&self, change_hash: &str) -> anyhow::Result<BAutoCommit> {
+        let hash = ChangeHash::from_str(change_hash)?;
+        let autocommit = self.autocommit.clone().fork_at(&[hash])?;
+
+        Ok(BAutoCommit  { autocommit: autocommit })
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn docs_before_after(&mut self, change_hash: &str) -> anyhow::Result<(BAutoCommit, BAutoCommit)> {
+    let changes = self.get_change_list();
+
+    let index = changes
+        .iter()
+        .position(|c| c.change.hash().to_string() == change_hash)
+        .ok_or_else(|| anyhow::anyhow!("No such change hash"))?;
+
+    let after_doc = self.doc_at_change_hash(change_hash)?;
+
+    let before_doc = if index == 0 {
+        let mut doc = BAutoCommit::new();
+        doc.setup_block_label()?;
+        doc
+    } else {
+        let prev_hash = changes[index - 1].change.hash().to_string();
+        self.doc_at_change_hash(&prev_hash)?
+    };
+
+    Ok((before_doc, after_doc))
+}
+
 }
 
 #[flutter_rust_bridge::frb(sync)]

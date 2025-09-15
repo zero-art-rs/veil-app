@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/theme.dart';
+import 'package:zk_notion_app/assets/theme.dart';
 
 class AppStyles {
   static ButtonStyle lightErrorButtonStyle = ButtonStyle(
@@ -16,7 +16,7 @@ class AppStyles {
           ),
         }),
     backgroundColor: WidgetStateColor.fromMap(<WidgetStatesConstraint, Color>{
-      WidgetState.any: AppPalette.lightDanger,
+      WidgetState.any: MaterialTheme.darkScheme().error,
     }),
   );
 }

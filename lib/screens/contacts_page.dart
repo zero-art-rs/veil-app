@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/storage/contact_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 
 class Contact {
   final String name;
@@ -10,7 +10,6 @@ class Contact {
 }
 
 class _ContactsScreenState extends State<ContactsScreen> {
-  final _storage = ContactStorage();
   late List<ExternalAccount> contacts = [];
 
   @override
@@ -21,7 +20,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   _init() async {
     try {
-      final contacts = await _storage.getContacts();
+      final contacts = await DB.instance.getContactList();
       setState(() {
         this.contacts = contacts;
       });
@@ -32,13 +31,20 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   _removeContact(ExternalAccount account) async {
     try {
-      await _storage.removeContact(account);
+      await DB.instance.deleteContact(actorId: account.actorId);
       setState(() {
         contacts.removeWhere((contact) => contact.actorId == account.actorId);
       });
     } catch (err) {
       logger.e('Failed to remove contact: $err');
     }
+  }
+
+  Widget _emptyWidget(BuildContext context) {
+    final th = Theme.of(context).textTheme;
+    return Center(
+      child: Text('You don\'t have any contacts', style: th.bodyLarge),
+    );
   }
 
   @override
@@ -48,16 +54,18 @@ class _ContactsScreenState extends State<ContactsScreen> {
         title: const Text('Contacts'),
         automaticallyImplyLeading: widget.onPick == null,
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-        itemCount: contacts.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, i) => _ContactCell(
-          contact: contacts[i],
-          onRemove: _removeContact,
-          onPick: widget.onPick,
-        ),
-      ),
+      body: contacts.isEmpty
+          ? _emptyWidget(context)
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+              itemCount: contacts.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) => _ContactCell(
+                contact: contacts[i],
+                onRemove: _removeContact,
+                onPick: widget.onPick,
+              ),
+            ),
     );
   }
 }

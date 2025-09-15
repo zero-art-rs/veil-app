@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:zk_notion_app/storage/models.dart';
 
-/// UI-only demo screen that shows a list of change events.
-/// Each cell displays:
-/// - change hash (title + hex)
-/// - date
-/// - actor_id (hex)
 class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key, required this.items});
+  const HistoryPage({
+    super.key,
+    required this.items,
+    required this.doc,
+    this.onChangeTap,
+  });
   final List<ChangeEvent> items;
+  final Document doc;
+  final void Function(BuildContext context, ChangeEvent change)? onChangeTap;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +26,10 @@ class HistoryPage extends StatelessWidget {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final e = items[index];
-            return _ChangeEventCard(event: e);
+            return _ChangeEventCard(
+              event: e,
+              onTap: () => onChangeTap?.call(context, e),
+            );
           },
         ),
       ),
@@ -32,8 +38,31 @@ class HistoryPage extends StatelessWidget {
 }
 
 class _ChangeEventCard extends StatelessWidget {
-  const _ChangeEventCard({required this.event});
+  const _ChangeEventCard({required this.event, this.onTap});
   final ChangeEvent event;
+  final Function()? onTap;
+
+  Widget _initialChangeLabel(BuildContext context) {
+    if (event.isInitial) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Text(
+          'Initial change',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    } else {
+      return Container();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,41 +76,37 @@ class _ChangeEventCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () {}, // UI only; hook up navigation or details if needed
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Change',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          event.changeHashHex,
-                          style: theme.textTheme.bodyMedium?.merge(mono),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                  Text(
+                    'Change',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const Spacer(),
+                  _initialChangeLabel(context),
                 ],
               ),
+
+              const SizedBox(height: 4),
+
+              Text(
+                event.changeHashHex,
+                style: theme.textTheme.bodyMedium?.merge(mono),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+
               const SizedBox(height: 12),
+
               Wrap(
-                spacing: 8,
                 runSpacing: 8,
                 children: [
                   _InfoChip(
@@ -151,12 +176,14 @@ class ChangeEvent {
   final String changeHashHex;
   final String actorIdHex;
   final int date;
+  final bool isInitial;
 
   const ChangeEvent({
     required this.title,
     required this.changeHashHex,
     required this.actorIdHex,
     required this.date,
+    this.isInitial = false,
   });
 }
 

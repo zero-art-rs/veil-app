@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:zk_notion_app/style.dart';
-import 'package:zk_notion_app/theme.dart';
+import 'package:zk_notion_app/assets/style.dart';
 
 class MemberCellState {
   String imgUrl;
@@ -27,7 +26,7 @@ class MemberCell extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: BoxBorder.all(color: AppPalette.gray200, width: 0.3),
+        border: BoxBorder.all(color: Colors.grey, width: 0.3),
       ),
       child: Row(
         spacing: 12,
