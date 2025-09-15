@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/managers/deeplink_manager.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
@@ -11,13 +12,25 @@ import 'package:zk_notion_app/src/rust/frb_generated.dart';
 import 'package:zk_notion_app/assets/theme.dart';
 import 'package:logger/logger.dart';
 import 'package:app_links/app_links.dart';
-import 'package:zk_notion_app/storage/contact_storage.dart';
+import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/banner.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
 Future<void> main() async {
   await RustLib.init();
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await DB.instance.open();
+    final account = await AccountStorage.instance.getOrSetupAccount();
+    await DB.instance.setupAccountIfNeeded(
+      ExternalAccount.fromAccount(account),
+    );
+    logger.i('Db path: ${await getDatabasesPath()}');
+  } catch (e) {
+    logger.e('DB error: $e');
+  }
   runApp(MyApp());
 }
 
@@ -223,20 +236,39 @@ class _MyAppState extends State<MyApp> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () async {
-                    final isDuplicate = await ContactStorage.shared.addContact(
-                      account: account,
-                    );
+                    try {
+                      await DB.instance.insertContact(account);
+                    } on DatabaseException catch (e) {
+                      if (!context.mounted) return;
+
+                      if (e.isUniqueConstraintError()) {
+                        TopBanner.show(
+                          context: context,
+                          message: 'Account already in your contacts',
+                          kind: TopBannerCases.info,
+                        );
+                      } else {
+                        TopBanner.show(
+                          context: context,
+                          message: 'Unexpected error, try again',
+                          kind: TopBannerCases.error,
+                        );
+
+                        logger.e('Failed to add contact: $e');
+                      }
+                    } catch (e) {
+                      if (!context.mounted) return;
+
+                      logger.e('Failed to add contact: $e');
+                      TopBanner.show(
+                        context: context,
+                        message: 'Something went wrong, try again',
+                        kind: TopBannerCases.error,
+                      );
+                    }
+
                     if (!context.mounted) return;
                     Navigator.pop(context);
-                    TopBanner.show(
-                      context: context,
-                      message: isDuplicate
-                          ? 'Account already in your contacts'
-                          : 'Contact added',
-                      kind: isDuplicate
-                          ? TopBannerCases.info
-                          : TopBannerCases.success,
-                    );
                   },
                   child: Text('Add'),
                 ),

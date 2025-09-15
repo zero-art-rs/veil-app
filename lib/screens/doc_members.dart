@@ -1,8 +1,9 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';
-import 'package:zk_notion_app/storage/document_storage.dart';
 import 'package:zk_notion_app/storage/models.dart' as m;
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/banner.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
@@ -30,8 +31,6 @@ class DocumentMemberListScreen extends StatefulWidget {
 }
 
 class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
-  final _storage = DocumentStorage();
-
   void _onAddMember(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -44,42 +43,62 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   }
 
   Future<void> _addMember(m.ExternalAccount member) async {
-    final duplicate = await _storage.addMember(
-      widget.doc.id,
-      m.DocumentMember(account: member, isOwner: false),
-    );
+    try {
+      await DB.instance.insertDocumentMember(
+        documentId: widget.doc.id,
+        member: m.DocumentMember(account: member, isOwner: false),
+      );
 
-    if (duplicate && mounted) {
+      setState(() {
+        widget.doc.members.add(
+          m.DocumentMember(account: member, isOwner: false),
+        );
+        widget.members.add(
+          MemberScreenModel(
+            member: m.DocumentMember(account: member, isOwner: false),
+          ),
+        );
+      });
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } on DatabaseException catch (e) {
+      if (e.isUniqueConstraintError()) {
+        if (!mounted) return;
+
+        TopBanner.show(
+          context: context,
+          message: 'Member already exists',
+          kind: TopBannerCases.info,
+        );
+      } else {
+        logger.e('Failed to add member: $e');
+        if (!mounted) return;
+        TopBanner.show(
+          context: context,
+          message: 'Failed to add member, try again',
+          kind: TopBannerCases.error,
+        );
+      }
+    } catch (err) {
+      logger.e('Failed to add member: $err');
+      if (!mounted) return;
       TopBanner.show(
         context: context,
-        message: 'Duplicate member',
+        message: 'Unexpected error, try again',
         kind: TopBannerCases.error,
       );
-      return;
-    }
-
-    setState(() {
-      widget.doc.members.add(m.DocumentMember(account: member, isOwner: false));
-      widget.members.add(
-        MemberScreenModel(
-          member: m.DocumentMember(account: member, isOwner: false),
-        ),
-      );
-    });
-
-    if (mounted) {
-      Navigator.pop(context);
     }
   }
 
   void _onRemoveMember(MemberScreenModel g) async {
+    await DB.instance.deleteMember(g.member.account.actorId);
     setState(() => widget.members.remove(g));
 
     widget.doc.members.removeWhere(
       (e) => e.account.actorId == g.member.account.actorId,
     );
-
-    await _storage.removeMember(widget.doc.id, g.member.account.actorId);
   }
 
   @override

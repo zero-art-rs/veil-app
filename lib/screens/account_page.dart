@@ -8,6 +8,7 @@ import 'package:zk_notion_app/managers/deeplink_manager.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
 import '../main.dart';
@@ -72,14 +73,20 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Future<void> _onSave() async {
-    if (_nameCtrl.text.isEmpty) {
+    if (_nameCtrl.text.isEmpty || _currentAccount == null) {
       return;
     }
 
     setState(() => _saving = true);
 
-    final newAccount = Account.withName(_nameCtrl.text);
+    final newAccount = Account(
+      actorId: _currentAccount!.actorId,
+      name: _nameCtrl.text,
+      keypair: _currentAccount!.keypair,
+    );
+
     await _storage.setAccount(newAccount);
+    await DB.instance.updateAccount(ExternalAccount.fromAccount(newAccount));
     _futureQR = _qrData(newAccount);
 
     setState(() {

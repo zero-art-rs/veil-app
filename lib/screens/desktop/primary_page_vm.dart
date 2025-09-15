@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
-import 'package:zk_notion_app/screens/editor_page.dart';
+import 'package:zk_notion_app/screens/editor/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/document_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/banner.dart';
 
 import '../../main.dart';
 
 class PrimaryPageViewModel extends ChangeNotifier {
-  final _docStorage = DocumentStorage();
   final _accStorage = AccountStorage();
 
   int _selectedIndex = 0;
@@ -28,7 +27,11 @@ class PrimaryPageViewModel extends ChangeNotifier {
   static const constantTabs = 5;
 
   void init() async {
-    _docs = await _docStorage.getDocuments();
+    try {
+      _docs = await DB.instance.getDocumentList();
+    } catch (err) {
+      logger.e('Failed to get documents: $err');
+    }
     notifyListeners();
   }
 
@@ -43,9 +46,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
     Document document,
   ) async {
     try {
-      await _docStorage.updateDocument(document);
-      notifyListeners();
-      final index = _docs.indexWhere((e) => e.id == document.id);
+      final updatedDoc = await DB.instance.updateDocumentTitle(document);
+      final index = _docs.indexWhere((e) => e.id == updatedDoc.id);
       _docs[index] = document;
       textEditingController.clear();
       setSelectedPage(EditorPage(key: _docs[index].key, doc: _docs[index]));
@@ -71,12 +73,9 @@ class PrimaryPageViewModel extends ChangeNotifier {
         throw Exception('To create a document, you must have account');
       }
 
-      final doc = await _docStorage.createDocument(
+      final doc = await DB.instance.insertNewDocument(
         title: resTitle,
-        owner: DocumentMember(
-          account: ExternalAccount.fromAccount(owner),
-          isOwner: true,
-        ),
+        owner: ExternalAccount.fromAccount(owner),
       );
 
       textEditingController.clear();
@@ -105,7 +104,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
   Future<void> removeDocument(BuildContext context, String id) async {
     try {
-      await _docStorage.removeDocument(id);
+      await DB.instance.deleteDocument(id);
 
       final index = _docs.indexWhere((element) => element.id == id);
       if (index == -1) throw FormatException('Document not found');

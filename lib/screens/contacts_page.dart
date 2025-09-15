@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/storage/contact_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 
 class Contact {
   final String name;
@@ -10,7 +10,6 @@ class Contact {
 }
 
 class _ContactsScreenState extends State<ContactsScreen> {
-  final _storage = ContactStorage();
   late List<ExternalAccount> contacts = [];
 
   @override
@@ -21,7 +20,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   _init() async {
     try {
-      final contacts = await _storage.getContacts();
+      final contacts = await DB.instance.getContactList();
       setState(() {
         this.contacts = contacts;
       });
@@ -32,7 +31,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   _removeContact(ExternalAccount account) async {
     try {
-      await _storage.removeContact(account);
+      await DB.instance.deleteContact(actorId: account.actorId);
       setState(() {
         contacts.removeWhere((contact) => contact.actorId == account.actorId);
       });

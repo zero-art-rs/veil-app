@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/screens/editor_page.dart';
-import 'package:zk_notion_app/storage/document_storage.dart';
+import 'package:zk_notion_app/screens/editor/editor_page.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 
 class _StateDocsPage extends State<DocsPage> {
-  final _docStorage = DocumentStorage();
   final _accStorage = AccountStorage();
   List<Document> docs = [];
   final _textFieldController = TextEditingController();
@@ -21,13 +20,12 @@ class _StateDocsPage extends State<DocsPage> {
         throw 'To create a document, you must have account';
       }
 
-      final doc = await _docStorage.createDocument(
-        title: resTitle,
-        owner: DocumentMember(
-          account: ExternalAccount.fromAccount(owner),
-          isOwner: true,
-        ),
-      );
+      final doc = await DB.instance.transaction((db) async {
+        return await db.insertNewDocument(
+          title: resTitle,
+          owner: ExternalAccount.fromAccount(owner),
+        );
+      });
 
       setState(() {
         _textFieldController.clear();
@@ -38,20 +36,21 @@ class _StateDocsPage extends State<DocsPage> {
     }
   }
 
-  deleteDoc(String id) {
-    _docStorage
-        .removeDocument(id)
-        .then(
-          (value) =>
-              setState(() => docs.removeWhere((element) => element.id == id)),
-        );
+  Future<void> _deleteDoc(String id) async {
+    try {
+      await DB.instance.deleteDocument(id);
+    } catch (err) {
+      logger.e('Failed to delete document: $err');
+    }
+
+    setState(() => docs.removeWhere((element) => element.id == id));
   }
 
   @override
   void initState() {
     super.initState();
 
-    _docStorage.getDocuments().then((value) {
+    DB.instance.getDocumentList().then((value) {
       setState(() => docs = value);
     });
   }
@@ -109,8 +108,10 @@ class _StateDocsPage extends State<DocsPage> {
                 childAspectRatio: 1,
               ),
               itemCount: docs.length,
-              itemBuilder: (context, i) =>
-                  _DocCard(doc: docs[i], onDelete: () => deleteDoc(docs[i].id)),
+              itemBuilder: (context, i) => _DocCard(
+                doc: docs[i],
+                onDelete: () async => await _deleteDoc(docs[i].id),
+              ),
             ),
     );
   }

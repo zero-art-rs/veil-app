@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -33,18 +32,21 @@ class DifferencePage extends StatelessWidget {
         backgroundColor: cs.onSurface,
         foregroundColor: cs.surface,
       ),
-      body: Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 16,
-          children: [
-            for (var i = 0; i < maxLength; i++)
-              PrettyDiffText(
-                oldText: oldDoc.safeGet(i) ?? '',
-                newText: newDoc.safeGet(i) ?? '',
-              ),
-          ],
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.maxFinite,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 16,
+            children: [
+              for (var i = 0; i < maxLength; i++)
+                PrettyDiffText(
+                  oldText: oldDoc.safeGet(i) ?? '',
+                  newText: newDoc.safeGet(i) ?? '',
+                ),
+            ],
+          ),
         ),
       ),
     );

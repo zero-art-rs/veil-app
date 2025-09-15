@@ -59,7 +59,8 @@ class Document {
   final String title;
   final BAutoCommit automergeDoc;
   final List<DocumentMember> members;
-
+  DateTime createdAt;
+  DateTime updatedAt;
   Key get key => ValueKey(id + title);
 
   Document({
@@ -67,6 +68,8 @@ class Document {
     required this.title,
     required this.automergeDoc,
     required this.members,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
   toJson() => Map<String, dynamic>.from({
@@ -87,6 +90,8 @@ class Document {
     title: title,
     automergeDoc: content,
     members: [owner],
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   );
 
   factory Document.fromJson(Map<String, dynamic> json) {
@@ -99,6 +104,8 @@ class Document {
       members: (json['members'])
           .map<DocumentMember>((e) => DocumentMember.fromJson(e))
           .toList(),
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
   }
 }

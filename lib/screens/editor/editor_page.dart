@@ -3,17 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:zk_notion_app/main.dart';
+import 'package:zk_notion_app/screens/editor/overrides/helpers.dart';
+import 'package:zk_notion_app/screens/editor/overrides/keyboard_actions.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
-import 'package:zk_notion_app/storage/document_storage.dart';
 import 'package:zk_notion_app/storage/models.dart' as models;
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/editor_automerge.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
 class _EditorPageState extends State<EditorPage> {
   final _composer = MutableDocumentComposer();
-  late Editor _editor = createDefaultDocumentEditor(
+  late Editor _editor = createDefaultDocumentEditorOverriden(
     document: MutableDocument.empty(),
     composer: _composer,
   );
@@ -40,7 +42,7 @@ class _EditorPageState extends State<EditorPage> {
 
     final blocks = widget.doc.automergeDoc.getBlocks();
     if (blocks.isNotEmpty) {
-      _editor = createDefaultDocumentEditor(
+      _editor = createDefaultDocumentEditorOverriden(
         document: EditorAutomergeUtils.instance.toDoc(widget.doc.automergeDoc),
         composer: _composer,
       );
@@ -173,7 +175,11 @@ class _EditorPageState extends State<EditorPage> {
               ]
             : [_memberListButton(context), _historyButton(context)],
       ),
-      body: SuperEditor(focusNode: _focus, editor: _editor),
+      body: SuperEditor(
+        focusNode: _focus,
+        editor: _editor,
+        keyboardActions: actions,
+      ),
     );
   }
 
@@ -181,16 +187,14 @@ class _EditorPageState extends State<EditorPage> {
   void dispose() {
     _saveTicker.cancel();
     _commit();
-    widget._docStorage.updateDocument(widget.doc);
+    DB.instance.updateDocumentContent(widget.doc);
     logger.d('Deinit editor screen');
-
     super.dispose();
   }
 }
 
 class EditorPage extends StatefulWidget {
   final models.Document doc;
-  final _docStorage = DocumentStorage();
   final _accStorage = AccountStorage();
   final bool isMemberListAccessible;
   final bool isHistoryAccessible;

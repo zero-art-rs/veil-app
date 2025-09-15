@@ -6,11 +6,14 @@ import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
 import 'package:zk_notion_app/screens/difference_page.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
-import 'package:zk_notion_app/screens/editor_page.dart';
+import 'package:zk_notion_app/screens/editor/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/utils/banner.dart';
 import 'package:zk_notion_app/widgets/sidebar.dart';
 import 'package:zk_notion_app/widgets/square_rounded_btn.dart';
+
+import '../../main.dart';
 
 class DesktopPrimaryPage extends StatefulWidget {
   const DesktopPrimaryPage({super.key});
@@ -72,6 +75,8 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                           title: vm.textEditingController.text,
                           automergeDoc: doc.automergeDoc,
                           members: doc.members,
+                          createdAt: doc.createdAt,
+                          updatedAt: doc.updatedAt,
                         ),
                       );
                       if (!context.mounted) return;
@@ -121,7 +126,16 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () async {
-                      await vm.removeDocument(context, doc.id);
+                      try {
+                        vm.removeDocument(context, doc.id);
+                      } catch (err) {
+                        logger.e('Failed to remove document: $err');
+                        TopBanner.show(
+                          context: context,
+                          message: 'Failed to remove document',
+                          kind: TopBannerCases.error,
+                        );
+                      }
                       if (!context.mounted) return;
                       Navigator.of(context).pop();
                     },
