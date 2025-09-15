@@ -723,6 +723,7 @@ dependencies = [
  "anyhow",
  "automerge",
  "flutter_rust_bridge",
+ "sha2",
 ]
 
 [[package]]

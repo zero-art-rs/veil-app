@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
 import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
@@ -56,20 +57,25 @@ class DocumentMember {
 class Document {
   final String id;
   final String title;
-  final BAutoCommit content;
+  final BAutoCommit automergeDoc;
   final List<DocumentMember> members;
+  DateTime createdAt;
+  DateTime updatedAt;
+  Key get key => ValueKey(id + title);
 
   Document({
     required this.id,
     required this.title,
-    required this.content,
+    required this.automergeDoc,
     required this.members,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
   toJson() => Map<String, dynamic>.from({
     'id': id,
     'title': title,
-    'content': content.save().toList(),
+    'content': automergeDoc.save().toList(),
     'members': members,
   });
 
@@ -82,20 +88,24 @@ class Document {
   }) => Document(
     id: UuidV4().generate(),
     title: title,
-    content: content,
+    automergeDoc: content,
     members: [owner],
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
   );
 
   factory Document.fromJson(Map<String, dynamic> json) {
     return Document(
       id: json['id'],
       title: json['title'],
-      content: BAutoCommit.fromBytes(
+      automergeDoc: BAutoCommit.fromBytes(
         bytes: Uint8List.fromList(List<int>.from(json['content'])),
       ),
       members: (json['members'])
           .map<DocumentMember>((e) => DocumentMember.fromJson(e))
           .toList(),
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
   }
 }

@@ -10,6 +10,7 @@ crate-type = ["cdylib", "staticlib"]
 flutter_rust_bridge = "=2.11.1"
 automerge = { version = "0.6.1" }
 anyhow = "1.0.99"
+sha2 = "0.10.9"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

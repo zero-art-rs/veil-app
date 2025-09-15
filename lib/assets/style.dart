@@ -16,7 +16,7 @@ class AppStyles {
           ),
         }),
     backgroundColor: WidgetStateColor.fromMap(<WidgetStatesConstraint, Color>{
-      WidgetState.any: AppPalette.lightDanger,
+      WidgetState.any: MaterialTheme.darkScheme().error,
     }),
   );
 }

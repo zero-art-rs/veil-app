@@ -4,9 +4,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/storage/contact_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/banner.dart';
 import 'package:zk_notion_app/widgets/user_widget.dart';
 
@@ -24,7 +25,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
     facing: CameraFacing.back,
   );
 
-  final _storage = ContactStorage.shared;
   bool _processing = false;
 
   Future<void> _showErrorDialog(
@@ -78,18 +78,11 @@ class _QRScannerPageState extends State<QRScannerPage> {
 
   _addContact(ExternalAccount account, BuildContext context) async {
     final navigator = Navigator.of(context);
+
     try {
-      final duplicate = await _storage.addContact(account: account);
+      await DB.instance.insertContact(account);
 
-      if (duplicate && context.mounted) {
-        TopBanner.show(
-          context: context,
-          message: 'Contact already exists',
-          kind: TopBannerCases.info,
-        );
-      }
-
-      if (!duplicate && context.mounted) {
+      if (context.mounted) {
         TopBanner.show(
           context: context,
           message: 'Contact added',
@@ -97,22 +90,28 @@ class _QRScannerPageState extends State<QRScannerPage> {
         );
       }
 
-      Timer(const Duration(seconds: 1), () {
-        _processing = false;
-      });
-
+      _processing = false;
       navigator.pop();
+    } on DatabaseException catch (err) {
+      logger.e('Failed to add contact: $err');
+
+      if (context.mounted) {
+        if (err.isUniqueConstraintError()) {
+          _showErrorDialog(context, 'Contact already exists', () {});
+        } else {
+          _showErrorDialog(context, 'Unexpected error, try again', () {});
+        }
+      }
+
+      _processing = false;
     } catch (err) {
       logger.e('Failed to add contact: $err');
 
       if (context.mounted) {
-        _showErrorDialog(context, 'Failed to add contact', () {
-          Future.delayed(const Duration(seconds: 1), () {
-            _processing = false;
-          });
-        });
+        _showErrorDialog(context, 'Unexpected error, try again', () {});
       }
     }
+    _processing = false;
   }
 
   void _onDetect(BarcodeCapture capture) {

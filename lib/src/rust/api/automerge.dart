@@ -7,6 +7,7 @@ import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `blocks_list_id`, `new`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
 
 String generateActorId() =>
     RustLib.instance.api.crateApiAutomergeGenerateActorId();
@@ -20,6 +21,10 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   void commit();
 
   void deleteBlock({required BigInt index});
+
+  BAutoCommit docAtChangeHash({required String changeHash});
+
+  (BAutoCommit, BAutoCommit) docsBeforeAfter({required String changeHash});
 
   static BAutoCommit fromBytes({required List<int> bytes}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitFromBytes(bytes: bytes);
@@ -49,6 +54,7 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   /// If it is exist it will be skipped
   void setupBlockLabel();
 
+  /// If content is the same nothing will be changed
   void updateBlock({required BigInt index, required String text});
 }
 
