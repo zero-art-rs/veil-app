@@ -178,50 +178,50 @@ class _MyAppState extends State<MyApp> {
                 borderRadius: BorderRadius.circular(12),
                 border: BoxBorder.all(color: Colors.grey, width: 0.3),
               ),
-              child: Row(
-                spacing: 16,
-                children: [
-                  Icon(Icons.person, size: 108),
-                  Container(
-                    width: 1,
-                    height: 124,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: BoxBorder.all(color: Colors.grey, width: 0.3),
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Name', style: th.labelLarge),
+                    Text(
+                      account.name,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
 
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Name', style: th.labelLarge),
-                        Text(account.name, style: th.bodyMedium, maxLines: 1),
+                    SizedBox(height: 12),
 
-                        Text('Actor ID', style: th.labelLarge),
-                        Text(
-                          account.actorId,
-                          style: th.bodyMedium,
-                          maxLines: 1,
-                        ),
-
-                        Text('Public Key', style: th.labelLarge),
-                        Text(
-                          account.publicKey,
-                          style: th.bodyMedium,
-                          maxLines: 1,
-                        ),
-                      ],
+                    Text('Actor ID', style: th.labelLarge),
+                    Text(
+                      account.actorId,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+
+                    SizedBox(height: 12),
+
+                    Text('Public Key', style: th.labelLarge),
+                    Text(
+                      account.publicKey,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ),
 
             const SizedBox(height: 32),
-            Text('Add this account to your contacts?', style: th.bodyLarge),
+            Text(
+              'Add this account to your contacts?',
+              style: th.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
         actions: [

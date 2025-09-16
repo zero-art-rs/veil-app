@@ -54,6 +54,6 @@ class DeeplinkManager {
   }
 
   String buildContactDeepLink(ExternalAccount contact) {
-    return 'https://zk-notion.distributedlab.com/aid/${contact.actorId}/pk/${contact.publicKey}/name/${contact.name}';
+    return 'https://veil.distributedlab.com/aid/${contact.actorId}/pk/${contact.publicKey}/name/${contact.name}';
   }
 }

@@ -176,7 +176,6 @@ class _InfoChip extends StatelessWidget {
           Icon(icon, size: 16),
           const SizedBox(width: 6),
           Flexible(
-            // 👈 this allows the text to shrink and ellipsize
             child: Text(
               label,
               maxLines: 1,

@@ -127,9 +127,11 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   child: FilledButton(
                     onPressed: () async {
                       try {
-                        vm.removeDocument(context, doc.id);
+                        await vm.removeDocument(context, doc.id);
                       } catch (err) {
                         logger.e('Failed to remove document: $err');
+
+                        if (!context.mounted) return;
                         TopBanner.show(
                           context: context,
                           message: 'Failed to remove document',
@@ -270,7 +272,6 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
             child: Stack(
               children: [
                 vm.selectedPage,
-
                 if (vm.selectedIndex > 4)
                   Column(
                     mainAxisAlignment: MainAxisAlignment.end,
