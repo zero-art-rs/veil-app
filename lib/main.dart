@@ -7,6 +7,8 @@ import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/managers/deeplink_manager.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
+import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
+import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
 import 'package:zk_notion_app/screens/tab_bar.dart';
 import 'package:zk_notion_app/src/rust/frb_generated.dart';
 import 'package:zk_notion_app/assets/theme.dart';
@@ -282,20 +284,28 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = View.of(context).platformDispatcher.platformBrightness;
     TextTheme textTheme = createTextTheme(context, "Roboto", "Urbanist");
     MaterialTheme theme = MaterialTheme(textTheme);
 
     return MaterialApp(
       localizationsDelegates: const [],
-      theme: brightness == Brightness.light ? theme.light() : theme.dark(),
+      theme: theme.dark(),
       themeMode: ThemeMode.dark,
-      home: PlatformUtils.isDesktop
-          ? ChangeNotifierProvider(
-              create: (_) => PrimaryPageViewModel(),
-              child: DesktopPrimaryPage(),
-            )
-          : const AppBottomTabBar(),
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => PrimaryPageViewModel(),
+            child: DesktopPrimaryPage(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => DocsPageViewModel()..loadDocuments(),
+            child: DocsPage(),
+          ),
+        ],
+        child: PlatformUtils.isDesktop
+            ? DesktopPrimaryPage()
+            : AppBottomTabBar(),
+      ),
       navigatorKey: navigatorKey,
     );
   }

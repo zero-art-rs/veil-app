@@ -5,9 +5,9 @@ import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/models/account.dart';
-import 'package:zk_notion_app/storage/sqlite/models/consts.dart';
+import 'package:zk_notion_app/storage/sqlite/consts.dart';
 import 'package:zk_notion_app/storage/sqlite/models/document.dart';
-import 'package:zk_notion_app/storage/sqlite/schemes/schemes.dart';
+import 'package:zk_notion_app/storage/sqlite/schemes.dart';
 
 const _dbName = 'veil.db';
 
@@ -18,18 +18,26 @@ class DB {
   late Database _connection;
   Transaction? _tx;
 
-  Future<void> open() async {
+  Future<void> open({String? inMemoryPath}) async {
     _connection = await openDatabase(
-      _dbName,
+      inMemoryPath ?? _dbName,
       version: 1,
+      readOnly: false,
       onConfigure: (db) {
         db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: (db, version) async {
+        // Tables
         await db.execute(createAccountTable);
+        await db.execute(createContactsSpksTable);
         await db.execute(createDocumentsTable);
         await db.execute(createDocumentMembersTable);
+        await db.execute(createEpochsTable);
+        await db.execute(createGroupsTable);
+
+        // Triggers
         await db.execute(accountCleanupTrigger);
+        await db.execute(removeSpksOnFamiliarTrigger);
       },
     );
   }

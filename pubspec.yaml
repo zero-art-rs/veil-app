@@ -55,6 +55,9 @@ dependencies:
   pretty_diff_text: ^2.1.0
   sqflite: ^2.4.2
   path: ^1.9.1
+  sqflite_common_ffi: ^2.3.0
+  sqlite3_flutter_libs: ^0.5.3
+
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zk_notion_app/screens/difference_page.dart';
 import 'package:zk_notion_app/storage/models.dart';
 
 class HistoryPage extends StatelessWidget {
@@ -25,10 +26,32 @@ class HistoryPage extends StatelessWidget {
           itemCount: items.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final e = items[index];
+            final change = items[index];
             return _ChangeEventCard(
-              event: e,
-              onTap: () => onChangeTap?.call(context, e),
+              event: change,
+              onTap: () {
+                if (onChangeTap != null) {
+                  onChangeTap?.call(context, change);
+                } else {
+                  var (before, after) = doc.automergeDoc.docsBeforeAfter(
+                    changeHash: change.changeHashHex,
+                  );
+
+                  final oldDoc = before.getBlocks();
+                  final newDoc = after.getBlocks();
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DifferencePage(
+                        oldDoc: oldDoc,
+                        newDoc: newDoc,
+                        onClose: () => Navigator.pop(context),
+                      ),
+                    ),
+                  );
+                }
+              },
             );
           },
         ),
@@ -70,7 +93,7 @@ class _ChangeEventCard extends StatelessWidget {
     final mono = const TextStyle(fontFamily: 'RobotoMono');
 
     return Material(
-      color: theme.colorScheme.surface,
+      color: theme.colorScheme.surface.withAlpha(80),
       elevation: 1.5,
       shadowColor: Colors.black,
       borderRadius: BorderRadius.circular(14),

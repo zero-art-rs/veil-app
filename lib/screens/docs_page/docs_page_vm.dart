@@ -1,0 +1,63 @@
+import 'package:flutter/foundation.dart';
+import 'package:zk_notion_app/storage/account_storage.dart';
+import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/storage/sqlite/db.dart';
+
+class DocsPageViewModel extends ChangeNotifier {
+  final _accStorage = AccountStorage();
+  final List<Document> _docs = [];
+
+  List<Document> get docs => List.unmodifiable(_docs);
+
+  Future<void> loadDocuments() async {
+    final loaded = await DB.instance.getDocumentList();
+    _docs
+      ..clear()
+      ..addAll(loaded);
+    notifyListeners();
+  }
+
+  Future<void> createDoc(String title) async {
+    final resTitle = title.isEmpty ? 'Document' : title;
+    final owner = await _accStorage.getAccount();
+
+    if (owner == null) {
+      throw Exception('To create a document, you must have an account');
+    }
+
+    final doc = await DB.instance.transaction((db) async {
+      return await db.insertNewDocument(
+        title: resTitle,
+        owner: ExternalAccount.fromAccount(owner),
+      );
+    });
+
+    _docs.add(doc);
+    notifyListeners();
+  }
+
+  Future<void> updateDoc(Document doc, {required String title}) async {
+    final updated = Document(
+      id: doc.id,
+      title: title,
+      automergeDoc: doc.automergeDoc,
+      members: doc.members,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+    );
+
+    await DB.instance.updateDocumentTitle(updated);
+
+    final index = _docs.indexWhere((d) => d.id == doc.id);
+    if (index != -1) {
+      _docs[index] = updated;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteDoc(Document doc) async {
+    await DB.instance.deleteDocument(doc.id);
+    _docs.removeWhere((d) => d.id == doc.id);
+    notifyListeners();
+  }
+}
