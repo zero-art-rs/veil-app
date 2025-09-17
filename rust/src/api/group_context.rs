@@ -199,3 +199,96 @@ impl BGroupContextBuilder {
 pub struct BGroupContext {
     group_context: GroupContext,
 }
+
+impl BGroupContext {
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn process_frame(&mut self, sp_frame: Vec<u8>) -> anyhow::Result<Vec<Vec<u8>>> {
+        let sp_frame = zero_art_proto::SpFrame::decode(&sp_frame[..])
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let payloads = self
+            .group_context
+            .process_frame(sp_frame)
+            .map_err(|e| anyhow!("failed to process_frame: {}", e.to_string()))?;
+        let payloads = payloads.into_iter().map(|v| v.encode_to_vec()).collect();
+        Ok(payloads)
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn add_member(
+        &mut self,
+        identity_public_key: Vec<u8>,
+        spk_public_key: Option<Vec<u8>>,
+        payloads: Vec<Vec<u8>>,
+    ) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
+        let identity_public_key = CortadoAffine::deserialize_uncompressed(&identity_public_key[..])
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+        let spk_public_key = if let Some(spk_public_key) = spk_public_key {
+            let spk_public_key = CortadoAffine::deserialize_uncompressed(&spk_public_key[..])
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+            Some(spk_public_key)
+        } else {
+            None
+        };
+
+        let payloads = payloads
+            .into_iter()
+            .map(|v| {
+                zero_art_proto::Payload::decode(&v[..])
+                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
+            })
+            .collect::<anyhow::Result<Vec<zero_art_proto::Payload>>>()?;
+
+        let (frame, invite) = self
+            .group_context
+            .add_member(
+                awesome_client_sdk::group_context::InvitationKeys::Identified {
+                    identity_public_key,
+                    spk_public_key,
+                },
+                payloads,
+            )
+            .map_err(|e| anyhow!("failed to add member: {}", e.to_string()))?;
+
+        Ok((frame.encode_to_vec(), invite.encode_to_vec()))
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn remove_member(
+        &mut self,
+        leaf_public_key: Vec<u8>,
+        payload: Vec<u8>,
+    ) -> anyhow::Result<Vec<u8>> {
+        let leaf_public_key = CortadoAffine::deserialize_uncompressed(&leaf_public_key[..])
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+        let frame = self
+            .group_context
+            .remove_member(leaf_public_key, &payload)
+            .map_err(|e| anyhow!("failed to remove member: {}", e.to_string()))?;
+
+        Ok(frame)
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn create_frame(
+        &mut self,
+        payloads: Vec<Vec<u8>>,
+    ) -> anyhow::Result<Vec<u8>> {
+        let payloads = payloads
+            .into_iter()
+            .map(|v| {
+                zero_art_proto::Payload::decode(&v[..])
+                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
+            })
+            .collect::<anyhow::Result<Vec<zero_art_proto::Payload>>>()?;
+
+
+        let frame = self
+            .group_context
+            .create_frame(payloads)
+            .map_err(|e| anyhow!("failed to create frame: {}", e.to_string()))?;
+
+        Ok(frame.encode_to_vec())
+    }    
+}
