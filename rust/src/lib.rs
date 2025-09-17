@@ -2,7 +2,10 @@ pub mod api;
 mod frb_generated;
 
 mod test {
-    use std::{any, time::{SystemTime, UNIX_EPOCH}};
+    use std::{
+        any,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     use anyhow::Ok;
     use automerge::{
@@ -155,7 +158,7 @@ mod test {
     }
 
     #[test]
-    fn block_list_test() -> anyhow::Result<()> { 
+    fn block_list_test() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
         assert!(automerge.block_list_exist().unwrap() == false);
 
@@ -176,7 +179,7 @@ mod test {
     }
 
     #[test]
-    fn test_fork_at_change_hash() -> anyhow::Result<()> { 
+    fn test_fork_at_change_hash() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
         automerge.setup_block_label().unwrap();
 
@@ -186,7 +189,6 @@ mod test {
         automerge.commit();
         automerge.insert_block(2, "10".to_string())?;
         automerge.commit();
-
 
         let change_list = automerge.get_change_list();
         println!("{:?}", change_list);
@@ -200,7 +202,7 @@ mod test {
     }
 
     #[test]
-    fn test_diff() -> anyhow::Result<()>{
+    fn test_diff() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
         automerge.setup_block_label().unwrap();
 
@@ -221,7 +223,7 @@ mod test {
     }
 
     #[test]
-    fn test_changes() -> anyhow::Result<()>{
+    fn test_changes() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
         automerge.setup_block_label().unwrap();
         automerge.commit();
