@@ -1971,6 +1971,7 @@ name = "rust_lib_zk_notion_app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ark-ec",
  "ark-serialize",
  "art",
  "automerge",

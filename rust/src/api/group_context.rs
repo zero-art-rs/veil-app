@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, bail};
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_serialize::{
     serialize_to_vec, CanonicalDeserialize, CanonicalSerialize, SerializationError,
 };
@@ -12,7 +13,7 @@ use awesome_client_sdk::{
         },
         GroupContext,
     },
-    metadata, zero_art_proto,
+    metadata, secrets_factory, zero_art_proto,
 };
 use cortado::{self, CortadoAffine, Fr as ScalarField};
 use prost::Message;
@@ -271,10 +272,7 @@ impl BGroupContext {
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    pub fn create_frame(
-        &mut self,
-        payloads: Vec<Vec<u8>>,
-    ) -> anyhow::Result<Vec<u8>> {
+    pub fn create_frame(&mut self, payloads: Vec<Vec<u8>>) -> anyhow::Result<Vec<u8>> {
         let payloads = payloads
             .into_iter()
             .map(|v| {
@@ -283,12 +281,64 @@ impl BGroupContext {
             })
             .collect::<anyhow::Result<Vec<zero_art_proto::Payload>>>()?;
 
-
         let frame = self
             .group_context
             .create_frame(payloads)
             .map_err(|e| anyhow!("failed to create frame: {}", e.to_string()))?;
 
         Ok(frame.encode_to_vec())
-    }    
+    }
+}
+
+pub struct BSecretsFactory {
+    secrets_factory: secrets_factory::SecretsFactory,
+}
+
+impl BSecretsFactory {
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn new(seed: [u8; 32]) -> Self {
+        Self {
+            secrets_factory: secrets_factory::SecretsFactory::new(seed),
+        }
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn generate_secret(&mut self) -> anyhow::Result<Vec<u8>> {
+        let secret_key = self.secrets_factory.generate_secret();
+        let mut secret_key_bytes = Vec::new();
+        secret_key
+            .serialize_uncompressed(&mut secret_key_bytes)
+            .map_err(|e| anyhow!("failed to serialize: {}", e.to_string()))?;
+        Ok(secret_key_bytes)
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn generate_secret_with_public_key(&mut self) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
+        let (public_key, secret_key) = self.secrets_factory.generate_secret_with_public_key();
+
+        let mut public_key_bytes = Vec::new();
+        public_key
+            .serialize_uncompressed(&mut public_key_bytes)
+            .map_err(|e| anyhow!("failed to serialize: {}", e.to_string()))?;
+
+        let mut secret_key_bytes = Vec::new();
+        secret_key
+            .serialize_uncompressed(&mut secret_key_bytes)
+            .map_err(|e| anyhow!("failed to serialize: {}", e.to_string()))?;
+
+        Ok((public_key_bytes, secret_key_bytes))
+    }
+}
+
+pub fn public_key_from_secret_key(secret_key: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+    let secret_key = ScalarField::deserialize_uncompressed(&secret_key[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let public_key = (CortadoAffine::generator() * secret_key).into_affine();
+    let mut public_key_bytes = Vec::new();
+    public_key
+        .serialize_uncompressed(&mut public_key_bytes)
+        .map_err(|e| anyhow!("failed to serialize: {}", e.to_string()))?;
+
+    Ok(public_key_bytes)
 }
