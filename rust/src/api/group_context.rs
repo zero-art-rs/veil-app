@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::anyhow;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -8,7 +6,8 @@ use awesome_client_sdk::{
     metadata, secrets_factory, zero_art_proto,
 };
 use cortado::{self, CortadoAffine, Fr as ScalarField};
-use prost::Message;
+use prost::{DecodeError, Message};
+use std::collections::HashMap;
 
 pub struct BUser {
     user: metadata::user::User,
@@ -18,7 +17,13 @@ impl BUser {
     #[flutter_rust_bridge::frb(sync)]
     pub fn new(id: String, name: String) -> Self {
         Self {
-            user: metadata::user::User::new(id, name, vec![], CortadoAffine::default()),
+            user: metadata::user::User {
+                id,
+                name,
+                public_key: CortadoAffine::default(),
+                metadata: vec![],
+                role: zero_art_proto::Role::Ownership,
+            },
         }
     }
 }
@@ -32,10 +37,13 @@ impl BGroupInfo {
     #[flutter_rust_bridge::frb(sync)]
     pub fn new(id: String, name: String) -> Self {
         Self {
-            group_info: metadata::group::GroupInfoBuilder::new()
-                .id(id)
-                .name(name)
-                .build(),
+            group_info: metadata::group::GroupInfo {
+                id,
+                name,
+                metadata: vec![],
+                created: chrono::Utc::now(),
+                members: metadata::group::GroupMembers::default(),
+            },
         }
     }
 }
@@ -46,22 +54,45 @@ pub struct BGroupContext {
 
 impl BGroupContext {
     #[flutter_rust_bridge::frb(sync)]
-    pub fn from_parts(identity_secret_key: Vec<u8>, leaf_secret: Vec<u8>, art: Vec<u8>, stk: Vec<u8>, epoch: u64, group_info: Vec<u8>) -> anyhow::Result<Self> {
-        let identity_secret_key = ScalarField::deserialize_uncompressed(&identity_secret_key[..])
-            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    pub fn from_parts(
+        identity_secret_key: Vec<u8>,
+        leaf_secret: Vec<u8>,
+        art: Vec<u8>,
+        stk: Vec<u8>,
+        epoch: u64,
+        group_info: Vec<u8>,
+    ) -> anyhow::Result<Self> {
+        let identity_secret_key =
+            ScalarField::deserialize_uncompressed(&identity_secret_key[..])
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
         let leaf_secret = ScalarField::deserialize_uncompressed(&leaf_secret[..])
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
         let stk: [u8; 32] = stk.try_into().map_err(|_| anyhow!("failed to parse stk"))?;
-        let group_info = metadata::group::GroupInfo::from_proto_bytes(&group_info);
+        let group_info: metadata::group::GroupInfo =
+            zero_art_proto::GroupInfo::decode(&group_info[..])
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
+                .try_into()
+                .map_err(|_| anyhow!("failed to parse stk"))?;
 
-        Ok(Self{ group_context: GroupContext::from_parts(identity_secret_key, leaf_secret, &art, stk, epoch, group_info).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))? })
+        Ok(Self {
+            group_context: GroupContext::from_parts(
+                identity_secret_key,
+                leaf_secret,
+                &art,
+                stk,
+                epoch,
+                group_info,
+            )
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
+        })
     }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn into_parts(self) -> anyhow::Result<(Vec<u8>, Vec<u8>, Vec<u8>, u64, Vec<u8>)> {
-        self.group_context.into_parts().map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))   
+        self.group_context
+            .into_parts()
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
     }
-
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn process_frame(&mut self, sp_frame: Vec<u8>) -> anyhow::Result<Vec<Vec<u8>>> {
