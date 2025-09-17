@@ -6,7 +6,7 @@ use std::{
 use anyhow::bail;
 use automerge::{
     transaction::{CommitOptions, Transactable},
-    ActorId, AutoCommit, Change, ChangeHash, ObjType, Patch, ReadDoc,
+    ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc,
 };
 use sha2::Digest;
 
