@@ -25,7 +25,7 @@ Future<Document> insertNewDocument(DB db) async {
     owner: ExternalAccount(
       actorId: Random().nextDouble().toString(),
       name: Random().nextDouble().toString(),
-      publicKey: Random().nextDouble().toString(),
+      rawPublicKey: [],
     ),
   );
 }

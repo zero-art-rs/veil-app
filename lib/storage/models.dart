@@ -5,35 +5,38 @@ import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
 import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
+import 'package:zk_notion_app/src/rust/api/group_context.dart';
 
 class ExternalAccount {
   final String actorId;
   final String name;
-  final String publicKey;
+  final List<int> rawPublicKey;
+
+  String get publicKey => HEX.encode(rawPublicKey);
 
   ExternalAccount({
     required this.actorId,
     required this.name,
-    required this.publicKey,
+    required this.rawPublicKey,
   });
 
   toJson() => Map<String, dynamic>.from({
     'actorId': actorId,
     'name': name,
-    'publicKey': publicKey,
+    'publicKey': rawPublicKey,
   });
 
   factory ExternalAccount.fromAccount(Account account) => ExternalAccount(
     actorId: account.actorId,
     name: account.name,
-    publicKey: account.keypair.publicKey,
+    rawPublicKey: account.keypair.rawPublicKey,
   );
 
   factory ExternalAccount.fromJson(Map<String, dynamic> json) {
     return ExternalAccount(
       actorId: json['actorId'],
       name: json['name'],
-      publicKey: json['publicKey'],
+      rawPublicKey: json['publicKey'],
     );
   }
 }
@@ -111,31 +114,37 @@ class Document {
 }
 
 class Keypair {
-  final String publicKey;
-  final String privateKey;
+  final List<int> rawPublicKey;
+  final List<int> rawPrivateKey;
 
-  Keypair({required this.publicKey, required this.privateKey});
+  String get publicKeyHex => HEX.encode(rawPublicKey);
+  String get privateKeyHex => HEX.encode(rawPrivateKey);
+
+  Keypair({required this.rawPublicKey, required this.rawPrivateKey});
 
   factory Keypair.fromJson(Map<String, dynamic> json) {
     return Keypair(
-      publicKey: json['publicKey'],
-      privateKey: json['privateKey'],
+      rawPublicKey: List<int>.from(json['rawPublicKey']),
+      rawPrivateKey: List<int>.from(json['rawPrivateKey']),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'publicKey': publicKey, 'privateKey': privateKey};
+    return {'rawPublicKey': rawPublicKey, 'rawPrivateKey': rawPrivateKey};
   }
 
   static Keypair generate() {
     final random = Random.secure();
-    final publicKey = List<int>.generate(32, (_) => random.nextInt(256));
-    final privateKey = List<int>.generate(32, (_) => random.nextInt(256));
 
-    return Keypair(
-      publicKey: HEX.encode(publicKey),
-      privateKey: HEX.encode(privateKey),
+    final seed = Uint8List.fromList(
+      List<int>.generate(32, (_) => random.nextInt(256)),
     );
+
+    final (publicKey, secretKey) = BSecretsFactory(
+      seed: U8Array32(seed),
+    ).generateSecretWithPublicKey();
+
+    return Keypair(rawPublicKey: publicKey, rawPrivateKey: secretKey);
   }
 }
 

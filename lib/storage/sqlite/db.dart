@@ -133,7 +133,7 @@ class DB {
   }) async {
     final sqlAccount = SQLAccount(
       actorId: account.actorId,
-      publicKey: account.publicKey,
+      publicKey: Uint8List.fromList(account.rawPublicKey),
       name: account.name,
       kind: AccountKind.contact.name,
     );
@@ -177,7 +177,7 @@ class DB {
         .map(
           (e) => ExternalAccount(
             actorId: e.actorId,
-            publicKey: e.publicKey,
+            rawPublicKey: e.publicKey,
             name: e.name,
           ),
         )
@@ -231,7 +231,7 @@ class DB {
         final account = ExternalAccount(
           actorId: row['member_actor_id'] as String,
           name: row['account_name'] as String,
-          publicKey: row['account_public_key'] as String,
+          rawPublicKey: row['account_public_key'] as List<int>,
         );
 
         docs[docId]!.members.add(
@@ -331,7 +331,7 @@ class DB {
   }) async {
     final sqlAccount = SQLAccount(
       actorId: account.actorId,
-      publicKey: account.publicKey,
+      publicKey: Uint8List.fromList(account.rawPublicKey),
       name: account.name,
       kind: kind.name,
     );

@@ -4,7 +4,7 @@ import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
-import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/widgets/banner.dart';
 import 'package:zk_notion_app/widgets/ays_modal.dart';
 
 enum _DocAction { edit, delete, share }

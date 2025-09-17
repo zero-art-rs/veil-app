@@ -1,3 +1,4 @@
+import 'package:hex/hex.dart';
 import 'package:zk_notion_app/storage/models.dart';
 
 class DocumentDeepLink {
@@ -28,7 +29,7 @@ class DeeplinkManager {
 
     final contact = ExternalAccount(
       name: deepLink.pathSegments[5],
-      publicKey: deepLink.pathSegments[3],
+      rawPublicKey: HEX.decode(deepLink.pathSegments[3]),
       actorId: deepLink.pathSegments[1],
     );
 
@@ -54,6 +55,6 @@ class DeeplinkManager {
   }
 
   String buildContactDeepLink(ExternalAccount contact) {
-    return 'https://veil.distributedlab.com/aid/${contact.actorId}/pk/${contact.publicKey}/name/${contact.name}';
+    return 'https://veil.distributedlab.com/aid/${contact.actorId}/pk/${contact.rawPublicKey}/name/${contact.name}';
   }
 }

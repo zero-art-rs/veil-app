@@ -5,7 +5,7 @@ final createAccountTable =
 CREATE TABLE $accountsTable (
   actor_id TEXT PRIMARY KEY, 
   name TEXT NOT NULL, 
-  public_key TEXT NOT NULL, 
+  public_key BLOB NOT NULL, 
   image BLOB,
   kind TEXT NOT NULL
 )""";

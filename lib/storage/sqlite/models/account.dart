@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 
 class SQLAccount {
   final String actorId;
-  final String publicKey;
+  final Uint8List publicKey;
   final String name;
   final Uint8List? image;
   final String kind;
@@ -28,7 +28,7 @@ class SQLAccount {
   static SQLAccount fromJson(Map<String, Object?> json) {
     return SQLAccount(
       actorId: json['actor_id'] as String,
-      publicKey: json['public_key'] as String,
+      publicKey: json['public_key'] as Uint8List,
       name: json['name'] as String,
       image: json['image'] as Uint8List?,
       kind: json['kind'] as String,

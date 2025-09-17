@@ -4,7 +4,7 @@ import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/storage/models.dart' as m;
 import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/widgets/banner.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
 class MemberScreenModel {

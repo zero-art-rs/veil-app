@@ -9,7 +9,7 @@ import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/widgets/banner.dart';
 import 'package:zk_notion_app/widgets/sidebar.dart';
 import 'package:zk_notion_app/widgets/square_rounded_btn.dart';
 

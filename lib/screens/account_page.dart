@@ -59,7 +59,7 @@ class _AccountPageState extends State<AccountPage> {
         _nameCtrl = TextEditingController(text: _currentAccount!.name);
         _actorCtrl = TextEditingController(text: _currentAccount!.actorId);
         _pubkeyCtrl = TextEditingController(
-          text: _currentAccount!.keypair.publicKey,
+          text: _currentAccount!.keypair.publicKeyHex,
         );
       });
     } catch (err) {
@@ -89,7 +89,7 @@ class _AccountPageState extends State<AccountPage> {
     _futureQR = _qrData(newAccount);
 
     setState(() {
-      _pubkeyCtrl.text = newAccount.keypair.publicKey;
+      _pubkeyCtrl.text = newAccount.keypair.publicKeyHex;
       _actorCtrl.text = newAccount.actorId;
       _currentAccount = newAccount;
       _saving = false;

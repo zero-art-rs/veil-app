@@ -17,7 +17,7 @@ import 'package:app_links/app_links.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/widgets/banner.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
 Future<void> main() async {
@@ -26,6 +26,7 @@ Future<void> main() async {
   try {
     await DB.instance.open();
     final account = await AccountStorage.instance.getOrSetupAccount();
+    // await AccountStorage.instance.setAccount(Account.withName('Test account'));
     await DB.instance.setupAccountIfNeeded(
       ExternalAccount.fromAccount(account),
     );
