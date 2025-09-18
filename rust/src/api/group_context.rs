@@ -8,6 +8,7 @@ use awesome_client_sdk::{
 use cortado::{self, CortadoAffine, Fr as ScalarField};
 use crypto::schnorr;
 use prost::{DecodeError, Message};
+use sha3::{Digest, Sha3_256};
 use std::collections::HashMap;
 
 pub struct BUser {
@@ -466,6 +467,6 @@ pub fn sign_challenge(
 
     let leaf_public_key = (CortadoAffine::generator() * leaf_secret).into_affine();
 
-    schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &msg)
+    schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &Sha3_256::digest(msg))
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
 }

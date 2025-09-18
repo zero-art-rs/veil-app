@@ -1984,6 +1984,7 @@ dependencies = [
  "prost",
  "prost-types",
  "sha2",
+ "sha3",
  "zk",
 ]
 
