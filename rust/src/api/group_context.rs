@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use awesome_client_sdk::{
@@ -6,6 +6,7 @@ use awesome_client_sdk::{
     metadata, secrets_factory, zero_art_proto,
 };
 use cortado::{self, CortadoAffine, Fr as ScalarField};
+use crypto::schnorr;
 use prost::{DecodeError, Message};
 use std::collections::HashMap;
 
@@ -135,7 +136,7 @@ impl BGroupContext {
         let (frame, invite) = self
             .group_context
             .add_member(
-                awesome_client_sdk::group_context::InvitationKeys::Identified {
+                awesome_client_sdk::invite::Invitee::Identified {
                     identity_public_key,
                     spk_public_key,
                 },
@@ -155,7 +156,7 @@ impl BGroupContext {
         let secret_key = ScalarField::deserialize_uncompressed(&secret_key[..])
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
-            let payloads = payloads
+        let payloads = payloads
             .into_iter()
             .map(|v| {
                 zero_art_proto::Payload::decode(&v[..])
@@ -166,7 +167,7 @@ impl BGroupContext {
         let (frame, invite) = self
             .group_context
             .add_member(
-                awesome_client_sdk::group_context::InvitationKeys::Unidentified { invitation_secret_key: secret_key },
+                awesome_client_sdk::invite::Invitee::Unidentified(secret_key),
                 payloads,
             )
             .map_err(|e| anyhow!("failed to add member: {}", e.to_string()))?;
@@ -331,4 +332,91 @@ pub fn create_group(
         identified_invites,
         unidentified_invites,
     ))
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn destruct_identified_invite(
+    invite: Vec<u8>,
+    identity_secret_key: Vec<u8>,
+    spk_secret_key: Vec<u8>,
+) -> anyhow::Result<(Vec<u8>, Vec<u8>, u64, Vec<u8>)> {
+    let identity_secret_key = ScalarField::deserialize_uncompressed(&identity_secret_key[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    let spk_secret_key = if spk_secret_key.len() == 0 {
+        None
+    } else {
+        Some(
+            ScalarField::deserialize_uncompressed(&spk_secret_key[..])
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
+        )
+    };
+
+    let invite = zero_art_proto::Invite::decode(&invite[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    let (invite, leaf_secret) = awesome_client_sdk::invite::Invite::try_from(
+        invite,
+        Some((identity_secret_key, spk_secret_key)),
+    )
+    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let mut leaf_secret_bytes = Vec::new();
+    leaf_secret
+        .serialize_uncompressed(&mut leaf_secret_bytes)
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let group_info: zero_art_proto::GroupInfo = invite.group_info.into();
+
+    Ok((
+        leaf_secret_bytes,
+        invite.stage_key.to_vec(),
+        invite.epoch,
+        group_info.encode_to_vec(),
+    ))
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn destruct_unidentified_invite(
+    invite: Vec<u8>,
+) -> anyhow::Result<(Vec<u8>, Vec<u8>, u64, Vec<u8>)> {
+    let invite = zero_art_proto::Invite::decode(&invite[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    let (invite, leaf_secret) = awesome_client_sdk::invite::Invite::try_from(invite, None)
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let mut leaf_secret_bytes = Vec::new();
+    leaf_secret
+        .serialize_uncompressed(&mut leaf_secret_bytes)
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let group_info: zero_art_proto::GroupInfo = invite.group_info.into();
+
+    Ok((
+        leaf_secret_bytes,
+        invite.stage_key.to_vec(),
+        invite.epoch,
+        group_info.encode_to_vec(),
+    ))
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn sign_challenge(
+    leaf_secret: Vec<u8>,
+    chat_id: String,
+    nonce: String,
+    challenge: String,
+    epoch: u64,
+) -> anyhow::Result<Vec<u8>> {
+    let leaf_secret = ScalarField::deserialize_uncompressed(&leaf_secret[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let mut msg = Vec::new();
+    msg.extend_from_slice(chat_id.as_bytes());
+    msg.extend_from_slice(nonce.as_bytes());
+    msg.extend_from_slice(challenge.as_bytes());
+    msg.extend(epoch.to_be_bytes());
+
+    let leaf_public_key = (CortadoAffine::generator() * leaf_secret).into_affine();
+
+    schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &msg)
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
 }
