@@ -107,7 +107,7 @@ impl BGroupContext {
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    pub fn add_member(
+    pub fn add_identified_member(
         &mut self,
         identity_public_key: Vec<u8>,
         spk_public_key: Option<Vec<u8>>,
@@ -139,6 +139,34 @@ impl BGroupContext {
                     identity_public_key,
                     spk_public_key,
                 },
+                payloads,
+            )
+            .map_err(|e| anyhow!("failed to add member: {}", e.to_string()))?;
+
+        Ok((frame.encode_to_vec(), invite.encode_to_vec()))
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn add_unidentified_member(
+        &mut self,
+        secret_key: Vec<u8>,
+        payloads: Vec<Vec<u8>>,
+    ) -> anyhow::Result<(Vec<u8>, Vec<u8>)> {
+        let secret_key = ScalarField::deserialize_uncompressed(&secret_key[..])
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+            let payloads = payloads
+            .into_iter()
+            .map(|v| {
+                zero_art_proto::Payload::decode(&v[..])
+                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
+            })
+            .collect::<anyhow::Result<Vec<zero_art_proto::Payload>>>()?;
+
+        let (frame, invite) = self
+            .group_context
+            .add_member(
+                awesome_client_sdk::group_context::InvitationKeys::Unidentified { invitation_secret_key: secret_key },
                 payloads,
             )
             .map_err(|e| anyhow!("failed to add member: {}", e.to_string()))?;
