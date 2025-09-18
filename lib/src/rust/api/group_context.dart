@@ -37,7 +37,7 @@ abstract class BGroupContext implements RustOpaqueInterface {
     required List<Uint8List> payloads,
   });
 
-  (Uint8List, Uint8List) addUnidentifiedMember({
+  Future<(Uint8List, Uint8List)> addUnidentifiedMember({
     required List<int> secretKey,
     required List<Uint8List> payloads,
   });

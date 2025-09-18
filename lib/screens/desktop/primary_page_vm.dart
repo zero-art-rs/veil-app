@@ -41,18 +41,26 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
   void setSelectedIndex(int index) {
     _selectedIndex = index;
-    logger.d('Selected index: $_selectedIndex');
     notifyListeners();
   }
 
-  Future<void> updateDocumentName(
-    BuildContext context,
-    Document document,
-  ) async {
+  Future<void> updateDocumentName({
+    required BuildContext context,
+    required String title,
+    required String id,
+  }) async {
     try {
-      final updatedDoc = await DB.instance.updateDocumentTitle(document);
-      final index = _docs.indexWhere((e) => e.id == updatedDoc.id);
-      _docs[index] = document;
+      await DB.instance.updateDocumentTitle(id: id, title: title);
+      final index = _docs.indexWhere((e) => e.id == id);
+      _docs[index] = Document(
+        id: _docs[index].id,
+        title: title,
+        automergeDoc: _docs[index].automergeDoc,
+        members: _docs[index].members,
+        createdAt: _docs[index].createdAt,
+        updatedAt: _docs[index].updatedAt,
+        groupContextParts: _docs[index].groupContextParts,
+      );
       textEditingController.clear();
       setSelectedPage(EditorPage(key: _docs[index].key, doc: _docs[index]));
     } catch (err) {
@@ -93,10 +101,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
           title: resTitle,
           owner: ExternalAccount.fromAccount(owner),
           content: content,
+          groupContextParts: groupContext.toParts(),
         );
-
-        final parts = GroupContextUtils.instance.intoParts(groupContext);
-        await db.insertEpoch(groupId: docID, groupContext: parts);
 
         await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 

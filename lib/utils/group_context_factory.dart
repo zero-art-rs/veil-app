@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
@@ -30,7 +32,7 @@ class GroupContextFactory {
       // empty since we are not going to invite members in create group stage yet.
       identifiedMembersKeys: [],
       // empty since we are not going to invite members in create group stage yet.
-      unidentifiedMembersCount: BigInt.from(0),
+      unidentifiedMembersCount: BigInt.from(1),
       payloads: [payload],
     );
 
@@ -52,14 +54,45 @@ class GroupContextParts {
     required this.epoch,
     required this.groupInfoProto,
   });
+
+  String toJsonString() {
+    final map = {
+      'leafSecret': leafSecret,
+      'art': art,
+      'stageKey': stageKey,
+      'epoch': epoch.toInt(),
+      'groupInfoProto': groupInfoProto,
+    };
+    return jsonEncode(map);
+  }
+
+  factory GroupContextParts.fromJsonString(String blob) {
+    // print(blob);
+    final map = jsonDecode(blob) as Map<String, dynamic>;
+    return GroupContextParts(
+      leafSecret: Uint8List.fromList(List<int>.from(map['leafSecret'])),
+      art: Uint8List.fromList(List<int>.from(map['art'])),
+      stageKey: Uint8List.fromList(List<int>.from(map['stageKey'])),
+      epoch: BigInt.from(map['epoch'] as int),
+      groupInfoProto: Uint8List.fromList(List<int>.from(map['groupInfoProto'])),
+    );
+  }
+
+  bridge.BGroupContext toGroupContext({required Uint8List identitySecretKey}) {
+    return bridge.BGroupContext.fromParts(
+      identitySecretKey: identitySecretKey,
+      leafSecret: leafSecret,
+      art: art,
+      stk: stageKey,
+      epoch: epoch,
+      groupInfo: groupInfoProto,
+    );
+  }
 }
 
-class GroupContextUtils {
-  static final instance = GroupContextUtils();
-
-  /// Return leaf secret, art, stage_key, epoch, group_info protobuf
-  GroupContextParts intoParts(bridge.BGroupContext context) {
-    final (leafSecret, art, stageKey, epoch, groupInfo) = context.intoParts();
+extension BGroupContextExt on bridge.BGroupContext {
+  GroupContextParts toParts() {
+    final (leafSecret, art, stageKey, epoch, groupInfo) = intoParts();
 
     return GroupContextParts(
       leafSecret: leafSecret,
@@ -69,18 +102,21 @@ class GroupContextUtils {
       groupInfoProto: groupInfo,
     );
   }
-
-  bridge.BGroupContext fromParts({
-    required GroupContextParts parts,
-    required Uint8List identitySecretKey,
-  }) {
-    return bridge.BGroupContext.fromParts(
-      identitySecretKey: identitySecretKey,
-      leafSecret: parts.leafSecret,
-      art: parts.art,
-      stk: parts.stageKey,
-      epoch: parts.epoch,
-      groupInfo: parts.groupInfoProto,
-    );
-  }
 }
+
+// class GroupContextUtils {
+//   static final instance = GroupContextUtils();
+
+//   /// Return leaf secret, art, stage_key, epoch, group_info protobuf
+//   // GroupContextParts intoParts(bridge.BGroupContext context) {
+//   //   final (leafSecret, art, stageKey, epoch, groupInfo) = context.intoParts();
+
+//   //   return GroupContextParts(
+//   //     leafSecret: leafSecret,
+//   //     art: art,
+//   //     stageKey: stageKey,
+//   //     epoch: epoch,
+//   //     groupInfoProto: groupInfo,
+//   //   );
+//   // }
+// }

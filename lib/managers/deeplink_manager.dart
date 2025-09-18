@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:hex/hex.dart';
 import 'package:zk_notion_app/storage/models.dart';
 
@@ -8,6 +11,7 @@ class DocumentDeepLink {
 }
 
 class DeeplinkManager {
+  final baseUrl = 'https://veil.distributedlab.com';
   final _actorIDKey = 'aid';
   final _nameKey = 'name';
   final _publicKeyKey = 'pk';
@@ -55,6 +59,11 @@ class DeeplinkManager {
   }
 
   String buildContactDeepLink(ExternalAccount contact) {
-    return 'https://veil.distributedlab.com/aid/${contact.actorId}/pk/${contact.rawPublicKey}/name/${contact.name}';
+    return '$baseUrl/aid/${contact.actorId}/pk/${contact.rawPublicKey}/name/${contact.name}';
+  }
+
+  String buildUnidentifiedGroupInvite(Uint8List invite) {
+    final base64Inivte = base64Encode(invite);
+    return '$baseUrl/unidentified-invite/$base64Inivte';
   }
 }

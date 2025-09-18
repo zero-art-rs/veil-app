@@ -28,7 +28,8 @@ CREATE TABLE $documentsTable (
   title TEXT NOT NULL,
   content BLOB NOT NULL,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  group_context_parts TEXT NOT NULL
 )""";
 
 final createDocumentMembersTable =
@@ -42,21 +43,6 @@ CREATE TABLE $documentMembersTable (
   PRIMARY KEY (actor_id, document_id),
   FOREIGN KEY (document_id) REFERENCES $documentsTable(id) ON DELETE CASCADE
 )""";
-
-final createEpochsTable =
-    """
-CREATE TABLE $epochsTable (
-  document_id TEXT NOT NULL,
-  epoch INTEGER NOT NULL,
-  stage_key BLOB NOT NULL,
-  leaf_secret BLOB NOT NULL,
-  art BLOB NOT NULL,
-  group_info BLOB NOT NULL,
-
-  PRIMARY KEY (document_id, epoch),
-  FOREIGN KEY (document_id) REFERENCES $documentsTable(id) ON DELETE CASCADE
-)
-""";
 
 final accountCleanupTrigger =
     """CREATE TRIGGER delete_account_if_not_contact

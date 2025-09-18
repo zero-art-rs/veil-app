@@ -6,6 +6,7 @@ class SQLDocument {
   Uint8List content;
   DateTime createdAt;
   DateTime updatedAt;
+  String groupContextParts;
 
   SQLDocument({
     required this.id,
@@ -13,6 +14,7 @@ class SQLDocument {
     required this.content,
     required this.createdAt,
     required this.updatedAt,
+    required this.groupContextParts,
   });
 
   Map<String, Object?> toJson() {
@@ -22,6 +24,7 @@ class SQLDocument {
       'content': content,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'group_context_parts': groupContextParts,
     };
   }
 }

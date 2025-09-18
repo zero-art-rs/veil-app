@@ -1,12 +1,13 @@
+import 'dart:ffi';
 import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
+import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/models/account.dart';
 import 'package:zk_notion_app/storage/sqlite/consts.dart';
 import 'package:zk_notion_app/storage/sqlite/models/document.dart';
-import 'package:zk_notion_app/storage/sqlite/models/group_context.dart';
 import 'package:zk_notion_app/storage/sqlite/schemes.dart';
 import 'package:zk_notion_app/utils/group_context_factory.dart';
 
@@ -33,7 +34,6 @@ class DB {
         await db.execute(createContactsSpksTable);
         await db.execute(createDocumentsTable);
         await db.execute(createDocumentMembersTable);
-        await db.execute(createEpochsTable);
 
         // Triggers
         await db.execute(accountCleanupTrigger);
@@ -192,6 +192,7 @@ class DB {
       d.content         AS document_content,
       d.created_at      AS document_created_at,
       d.updated_at      AS document_updated_at,
+      d.group_context_parts AS document_group_context_parts,
 
       m.actor_id        AS member_actor_id,
       m.role            AS member_role,
@@ -224,6 +225,9 @@ class DB {
           members: [],
           createdAt: DateTime.parse(row['document_created_at'] as String),
           updatedAt: DateTime.parse(row['document_updated_at'] as String),
+          groupContextParts: GroupContextParts.fromJsonString(
+            row['document_group_context_parts'].toString(),
+          ),
         ),
       );
 
@@ -246,13 +250,83 @@ class DB {
     return docs.values.toList();
   }
 
-  Future<void> insertDocument({required Document document}) async {
+  Future<Document?> getDocumentById(String id) async {
+    final rows = await _connection.rawQuery(
+      '''
+    SELECT 
+      d.id              AS document_id,
+      d.title           AS document_title,
+      d.content         AS document_content,
+      d.created_at      AS document_created_at,
+      d.updated_at      AS document_updated_at,
+      d.group_context_parts AS document_group_context_parts,
+
+      m.actor_id        AS member_actor_id,
+      m.role            AS member_role,
+      m.created_at      AS member_created_at,
+      m.updated_at      AS member_updated_at,
+
+      a.name            AS account_name,
+      a.public_key      AS account_public_key,
+      a.image           AS account_image,
+      a.kind            AS account_kind
+    FROM $documentsTable d
+    LEFT JOIN $documentMembersTable m ON d.id = m.document_id
+    LEFT JOIN $accountsTable a ON m.actor_id = a.actor_id
+    WHERE d.id = ?
+    ORDER BY d.created_at DESC
+  ''',
+      [id],
+    );
+
+    if (rows.isEmpty) return null;
+
+    Document? doc;
+    for (final row in rows) {
+      doc ??= Document(
+        id: row['document_id'] as String,
+        title: row['document_title'] as String,
+        automergeDoc: BAutoCommit.fromBytes(
+          bytes: row['document_content'] as Uint8List,
+        ),
+        members: [],
+        createdAt: DateTime.parse(row['document_created_at'] as String),
+        updatedAt: DateTime.parse(row['document_updated_at'] as String),
+        groupContextParts: GroupContextParts.fromJsonString(
+          row['document_group_context_parts'].toString(),
+        ),
+      );
+
+      if (row['member_actor_id'] != null) {
+        final account = ExternalAccount(
+          actorId: row['member_actor_id'] as String,
+          name: row['account_name'] as String,
+          rawPublicKey: row['account_public_key'] as List<int>,
+        );
+
+        doc.members.add(
+          DocumentMember(
+            account: account,
+            isOwner: (row['member_role'] as int) == ownerRole,
+          ),
+        );
+      }
+    }
+
+    return doc;
+  }
+
+  Future<void> insertDocument({
+    required Document document,
+    required GroupContextParts groupContextParts,
+  }) async {
     final sqlDoc = SQLDocument(
       id: document.id,
       title: document.title,
       content: document.automergeDoc.save(),
       createdAt: document.createdAt,
       updatedAt: document.updatedAt,
+      groupContextParts: groupContextParts.toJsonString(),
     );
 
     await _insert(documentsTable, sqlDoc.toJson());
@@ -275,6 +349,7 @@ class DB {
     required String title,
     required ExternalAccount owner,
     required BAutoCommit content,
+    required GroupContextParts groupContextParts,
   }) async {
     final now = DateTime.now();
 
@@ -284,6 +359,7 @@ class DB {
       content: content.save(),
       createdAt: now,
       updatedAt: now,
+      groupContextParts: groupContextParts.toJsonString(),
     );
 
     await _insert(documentsTable, sqlDoc.toJson());
@@ -299,6 +375,7 @@ class DB {
       members: [DocumentMember(account: owner, isOwner: true)],
       createdAt: now,
       updatedAt: now,
+      groupContextParts: groupContextParts,
     );
   }
 
@@ -324,28 +401,6 @@ class DB {
     );
   }
 
-  Future<GroupContextParts> getLatestEpoch({required String documentId}) async {
-    final rawEpoch = await _query(
-      epochsTable,
-      where: 'document_id = ?',
-      whereArgs: [documentId],
-    );
-
-    if (rawEpoch.isEmpty) {
-      throw FormatException('no epoch found for provided document id');
-    }
-
-    final sqlGroupContext = SQLGroupContext.fromJson(rawEpoch.first);
-
-    return GroupContextParts(
-      leafSecret: sqlGroupContext.leafSecret,
-      art: sqlGroupContext.art,
-      stageKey: sqlGroupContext.stageKey,
-      epoch: BigInt.from(sqlGroupContext.epoch),
-      groupInfoProto: sqlGroupContext.groupInfo,
-    );
-  }
-
   Future<void> insertAccount({
     required ExternalAccount account,
     required AccountKind kind,
@@ -363,22 +418,6 @@ class DB {
       sqlAccount.toJson(),
       conflictAlgorithm: conflictAlgorithm,
     );
-  }
-
-  Future<void> insertEpoch({
-    required String groupId,
-    required GroupContextParts groupContext,
-  }) async {
-    final groupContextSql = SQLGroupContext(
-      groupId: groupId,
-      leafSecret: groupContext.leafSecret,
-      art: groupContext.art,
-      stageKey: groupContext.stageKey,
-      epoch: groupContext.epoch.toInt(),
-      groupInfo: groupContext.groupInfoProto,
-    );
-
-    await _insert(epochsTable, groupContextSql.toJson());
   }
 
   Future<void> setupAccountIfNeeded(ExternalAccount account) async {
@@ -402,23 +441,28 @@ class DB {
     await _delete(documentMembersTable, where: "actor_id = ?", whereArgs: [id]);
   }
 
-  Future<Document> updateDocumentTitle(Document doc) async {
+  Future<void> updateDocumentTitle({
+    required String id,
+    required String title,
+  }) async {
     await _update(
       documentsTable,
-      {'title': doc.title, 'updated_at': doc.updatedAt.toIso8601String()},
+      {'title': title, 'updated_at': DateTime.now().toIso8601String()},
       where: 'id = ?',
-      whereArgs: [doc.id],
+      whereArgs: [id],
     );
-
-    return doc;
   }
 
-  Future<void> updateDocumentContent(Document doc) async {
+  Future<void> updateDocumentContent({
+    required Document doc,
+    required GroupContextParts parts,
+  }) async {
     await _update(
       documentsTable,
       {
         'content': doc.automergeDoc.save(),
         'updated_at': doc.updatedAt.toIso8601String(),
+        'group_context_parts': parts.toJsonString(),
       },
       where: 'id = ?',
       whereArgs: [doc.id],

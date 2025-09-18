@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/main.dart';
+import 'package:zk_notion_app/managers/deeplink_manager.dart';
+import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';
+import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/storage/models.dart' as m;
 import 'package:zk_notion_app/storage/sqlite/db.dart';
+import 'package:zk_notion_app/utils/secret_factory.dart';
 import 'package:zk_notion_app/widgets/banner.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
@@ -19,9 +26,11 @@ class DocumentMemberListScreen extends StatefulWidget {
     super.key,
     required this.members,
     required this.doc,
+    required this.groupContext,
   });
 
   final List<MemberScreenModel> members;
+  final BGroupContext groupContext;
 
   final m.Document doc;
 
@@ -36,18 +45,118 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       context: context,
       builder: (BuildContext context) {
         return ContactsScreen(
-          onPick: (account) async => await _addMember(account),
+          onPick: (account) async => _inviteContactMember(account),
         );
       },
     );
   }
 
-  Future<void> _addMember(m.ExternalAccount member) async {
-    try {
-      await DB.instance.insertDocumentMember(
-        documentId: widget.doc.id,
-        member: m.DocumentMember(account: member, isOwner: false),
+  void showInviteDialog(Future<String> linkFuture) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return FutureBuilder<String>(
+          future: linkFuture,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return AlertDialog(
+                title: const Text("Error"),
+                content: Text("Failed to create invite link"),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Close"),
+                  ),
+                ],
+              );
+            }
+
+            return AlertDialog(
+              title: !snapshot.hasData
+                  ? Text("Constructing invite link...")
+                  : Text('Copy untrusted link'),
+              content: SizedBox(
+                width: 480,
+                child: !snapshot.hasData
+                    ? Container(
+                        alignment: Alignment.center,
+                        width: 48,
+                        height: 48,
+                        child: CircularProgressIndicator(),
+                      )
+                    : TextField(
+                        controller: TextEditingController(text: snapshot.data),
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+              ),
+              actions: !snapshot.hasData
+                  ? [Container()]
+                  : [
+                      Row(
+                        spacing: 16,
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Close'),
+                            ),
+                          ),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: snapshot.data ?? ''),
+                                );
+                                Navigator.pop(ctx);
+                              },
+                              child: const Text('Copy'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _inviteUndentifiedMember(BuildContext context) async {
+    final inviteLink = Future(() async {
+      final secretKey = SecretManager.intance.generateSecretKey();
+
+      final payload = Payload(
+        crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+      ).writeToBuffer();
+
+      final (frame, invite) = await widget.groupContext.addUnidentifiedMember(
+        secretKey: secretKey,
+        payloads: [payload],
       );
+
+      await GroupApiClient.instance.sendFrame(
+        groupId: widget.doc.id,
+        frame: frame,
+      );
+
+      final inviteLink = DeeplinkManager.instance.buildUnidentifiedGroupInvite(
+        invite,
+      );
+
+      return inviteLink;
+    });
+
+    showInviteDialog(inviteLink);
+  }
+
+  Future<void> _inviteContactMember(m.ExternalAccount member) async {
+    try {
+      // LOGIC
 
       setState(() {
         widget.doc.members.add(
@@ -60,9 +169,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         );
       });
 
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      if (!mounted) return;
+      Navigator.pop(context);
     } on DatabaseException catch (e) {
       if (e.isUniqueConstraintError()) {
         if (!mounted) return;
@@ -169,10 +277,24 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _onAddMember(context),
-        tooltip: 'Add member',
-        child: const Icon(Icons.person_add_alt_1_outlined),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        spacing: 8,
+        children: [
+          FloatingActionButton(
+            onPressed: () => _onAddMember(context),
+            tooltip: 'Invite member',
+            child: const Icon(Icons.person_add_alt_1_outlined),
+          ),
+
+          FloatingActionButton(
+            onPressed: () => _inviteUndentifiedMember(context),
+            tooltip: 'Invite undentified member',
+            child: const Icon(Symbols.domino_mask),
+          ),
+        ],
       ),
     );
   }
