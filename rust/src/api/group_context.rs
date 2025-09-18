@@ -5,6 +5,7 @@ use awesome_client_sdk::{
     group_context::{builder::GroupContextBuilder, GroupContext},
     metadata, secrets_factory, zero_art_proto,
 };
+use base64::{prelude::BASE64_STANDARD, Engine};
 use cortado::{self, CortadoAffine, Fr as ScalarField};
 use crypto::schnorr;
 use prost::{DecodeError, Message};
@@ -459,10 +460,13 @@ pub fn sign_challenge(
     let leaf_secret = ScalarField::deserialize_uncompressed(&leaf_secret[..])
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
+    let nonce = BASE64_STANDARD.decode(nonce).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    let challenge = BASE64_STANDARD.decode(challenge).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
     let mut msg = Vec::new();
     msg.extend_from_slice(chat_id.as_bytes());
-    msg.extend_from_slice(nonce.as_bytes());
-    msg.extend_from_slice(challenge.as_bytes());
+    msg.extend(nonce);
+    msg.extend(challenge);
     msg.extend(epoch.to_be_bytes());
 
     let leaf_public_key = (CortadoAffine::generator() * leaf_secret).into_affine();
