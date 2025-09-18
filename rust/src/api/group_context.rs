@@ -453,15 +453,12 @@ pub fn destruct_unidentified_invite(
 pub fn sign_challenge(
     leaf_secret: Vec<u8>,
     chat_id: String,
-    nonce: String,
-    challenge: String,
+    nonce: Vec<u8>,
+    challenge: Vec<u8>,
     epoch: u64,
 ) -> anyhow::Result<Vec<u8>> {
     let leaf_secret = ScalarField::deserialize_uncompressed(&leaf_secret[..])
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
-
-    let nonce = BASE64_STANDARD.decode(nonce).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
-    let challenge = BASE64_STANDARD.decode(challenge).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
     let mut msg = Vec::new();
     msg.extend_from_slice(chat_id.as_bytes());
