@@ -12,14 +12,16 @@ class GroupContextFactory {
     required Account owner,
     required BAutoCommit autoCommit,
   }) {
-    final groupInfo = bridge.BGroupInfo(id: groupName, name: groupID);
+    final groupInfo = bridge.BGroupInfo(id: groupID, name: groupName);
     final user = bridge.BUser(name: owner.name, id: owner.actorId);
 
-    final crdtPayload = CRDTPayload(
+    final crdt = CRDTPayload(
       incrementalChange: null,
       fullDocument: autoCommit.save(),
       mediaAttachment: null,
-    ).writeToBuffer();
+    );
+
+    final payload = Payload(crdt: crdt).writeToBuffer();
 
     final (groupContext, frame, _, _) = bridge.createGroup(
       identitySecretKey: owner.keypair.rawPrivateKey,
@@ -29,7 +31,7 @@ class GroupContextFactory {
       identifiedMembersKeys: [],
       // empty since we are not going to invite members in create group stage yet.
       unidentifiedMembersCount: BigInt.from(0),
-      payloads: [crdtPayload],
+      payloads: [payload],
     );
 
     return (groupContext, frame);
@@ -52,8 +54,8 @@ class GroupContextParts {
   });
 }
 
-class GroupContextManager {
-  static final instance = GroupContextManager();
+class GroupContextUtils {
+  static final instance = GroupContextUtils();
 
   /// Return leaf secret, art, stage_key, epoch, group_info protobuf
   GroupContextParts intoParts(bridge.BGroupContext context) {

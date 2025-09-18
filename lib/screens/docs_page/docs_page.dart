@@ -48,6 +48,9 @@ class DocsPage extends StatelessWidget {
                 if (!context.mounted) return;
                 Navigator.pop(context);
               } catch (err) {
+                logger.e(
+                  'Failed to ${isCreateFlow ? "create" : "update"} document: $err',
+                );
                 TopBanner.show(
                   context: context,
                   message:

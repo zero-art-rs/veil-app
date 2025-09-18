@@ -1,13 +1,14 @@
 import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
-import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/models/account.dart';
 import 'package:zk_notion_app/storage/sqlite/consts.dart';
 import 'package:zk_notion_app/storage/sqlite/models/document.dart';
+import 'package:zk_notion_app/storage/sqlite/models/group_context.dart';
 import 'package:zk_notion_app/storage/sqlite/schemes.dart';
+import 'package:zk_notion_app/utils/group_context_factory.dart';
 
 const _dbName = 'veil.db';
 
@@ -33,7 +34,6 @@ class DB {
         await db.execute(createDocumentsTable);
         await db.execute(createDocumentMembersTable);
         await db.execute(createEpochsTable);
-        await db.execute(createGroupsTable);
 
         // Triggers
         await db.execute(accountCleanupTrigger);
@@ -271,15 +271,15 @@ class DB {
   }
 
   Future<Document> insertNewDocument({
+    required String id,
     required String title,
     required ExternalAccount owner,
+    required BAutoCommit content,
   }) async {
     final now = DateTime.now();
-    final docId = const UuidV4().generate();
-    final content = BAutoCommit();
 
     final sqlDoc = SQLDocument(
-      id: docId,
+      id: id,
       title: title,
       content: content.save(),
       createdAt: now,
@@ -288,12 +288,12 @@ class DB {
 
     await _insert(documentsTable, sqlDoc.toJson());
     await insertDocumentMember(
-      documentId: docId,
+      documentId: id,
       member: DocumentMember(account: owner, isOwner: true),
     );
 
     return Document(
-      id: docId,
+      id: id,
       title: title,
       automergeDoc: content,
       members: [DocumentMember(account: owner, isOwner: true)],
@@ -324,6 +324,28 @@ class DB {
     );
   }
 
+  Future<GroupContextParts> getLatestEpoch({required String documentId}) async {
+    final rawEpoch = await _query(
+      epochsTable,
+      where: 'document_id = ?',
+      whereArgs: [documentId],
+    );
+
+    if (rawEpoch.isEmpty) {
+      throw FormatException('no epoch found for provided document id');
+    }
+
+    final sqlGroupContext = SQLGroupContext.fromJson(rawEpoch.first);
+
+    return GroupContextParts(
+      leafSecret: sqlGroupContext.leafSecret,
+      art: sqlGroupContext.art,
+      stageKey: sqlGroupContext.stageKey,
+      epoch: BigInt.from(sqlGroupContext.epoch),
+      groupInfoProto: sqlGroupContext.groupInfo,
+    );
+  }
+
   Future<void> insertAccount({
     required ExternalAccount account,
     required AccountKind kind,
@@ -341,6 +363,22 @@ class DB {
       sqlAccount.toJson(),
       conflictAlgorithm: conflictAlgorithm,
     );
+  }
+
+  Future<void> insertEpoch({
+    required String groupId,
+    required GroupContextParts groupContext,
+  }) async {
+    final groupContextSql = SQLGroupContext(
+      groupId: groupId,
+      leafSecret: groupContext.leafSecret,
+      art: groupContext.art,
+      stageKey: groupContext.stageKey,
+      epoch: groupContext.epoch.toInt(),
+      groupInfo: groupContext.groupInfoProto,
+    );
+
+    await _insert(epochsTable, groupContextSql.toJson());
   }
 
   Future<void> setupAccountIfNeeded(ExternalAccount account) async {

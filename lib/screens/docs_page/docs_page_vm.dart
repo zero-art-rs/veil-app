@@ -1,7 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'package:uuid/v4.dart';
+import 'package:zk_notion_app/api/client.dart';
+import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/db.dart';
+import 'package:zk_notion_app/utils/group_context_factory.dart';
 
 class DocsPageViewModel extends ChangeNotifier {
   final _accStorage = AccountStorage();
@@ -25,11 +29,29 @@ class DocsPageViewModel extends ChangeNotifier {
       throw Exception('To create a document, you must have an account');
     }
 
+    final docID = UuidV4().generate();
+    final content = BAutoCommit();
+    final (groupContext, frame) = GroupContextFactory.createGroupContext(
+      groupName: resTitle,
+      groupID: docID,
+      owner: owner,
+      autoCommit: content,
+    );
+
     final doc = await DB.instance.transaction((db) async {
-      return await db.insertNewDocument(
+      final doc = await db.insertNewDocument(
+        id: docID,
         title: resTitle,
         owner: ExternalAccount.fromAccount(owner),
+        content: content,
       );
+
+      final parts = GroupContextUtils.instance.intoParts(groupContext);
+      await db.insertEpoch(groupId: docID, groupContext: parts);
+
+      await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+
+      return doc;
     });
 
     _docs.add(doc);

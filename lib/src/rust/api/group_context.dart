@@ -31,9 +31,14 @@ createGroup({
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupContext>>
 abstract class BGroupContext implements RustOpaqueInterface {
-  (Uint8List, Uint8List) addMember({
+  (Uint8List, Uint8List) addIdentifiedMember({
     required List<int> identityPublicKey,
     Uint8List? spkPublicKey,
+    required List<Uint8List> payloads,
+  });
+
+  (Uint8List, Uint8List) addUnidentifiedMember({
+    required List<int> secretKey,
     required List<Uint8List> payloads,
   });
 

@@ -46,23 +46,15 @@ CREATE TABLE $documentMembersTable (
 final createEpochsTable =
     """
 CREATE TABLE $epochsTable (
-  group_id TEXT NOT NULL,
+  document_id TEXT NOT NULL,
   epoch INTEGER NOT NULL,
   stage_key BLOB NOT NULL,
   leaf_secret BLOB NOT NULL,
   art BLOB NOT NULL,
+  group_info BLOB NOT NULL,
 
-  PRIMARY KEY (group_id, epoch),
-  FOREIGN KEY (group_id) REFERENCES $groupsTable(id) ON DELETE CASCADE
-)
-""";
-
-final createGroupsTable =
-    """
-CREATE TABLE $groupsTable (
-  id TEXT PRIMARY KEY,
-  identity_id TEXT NOT NULL,
-  metadata BLOB NOT NULL
+  PRIMARY KEY (document_id, epoch),
+  FOREIGN KEY (document_id) REFERENCES $documentsTable(id) ON DELETE CASCADE
 )
 """;
 

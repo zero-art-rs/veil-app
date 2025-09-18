@@ -1,16 +1,21 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
+import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/main.dart';
+import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/editor/overrides/helpers.dart';
 import 'package:zk_notion_app/screens/editor/overrides/keyboard_actions.dart';
+import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/storage/models.dart' as models;
 import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/editor_automerge.dart';
+import 'package:zk_notion_app/utils/group_context_factory.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
 class _EditorPageState extends State<EditorPage> {
@@ -20,6 +25,7 @@ class _EditorPageState extends State<EditorPage> {
     composer: _composer,
   );
 
+  late final BGroupContext? groupContext;
   late final Timer _saveTicker;
   final _focus = FocusNode(debugLabel: 'editor');
 
@@ -36,6 +42,16 @@ class _EditorPageState extends State<EditorPage> {
       logger.f('Account is null, unreachable flow!');
       return;
     }
+
+    final groupContextParts = await DB.instance.getLatestEpoch(
+      documentId: widget.doc.id,
+    );
+    groupContext = GroupContextUtils.instance.fromParts(
+      parts: groupContextParts,
+      identitySecretKey: Uint8List.fromList(account.keypair.rawPrivateKey),
+    );
+
+    // final payload = GroupContextUtils.instance.createFrame(groupContext!, []);
 
     widget.doc.automergeDoc.setActorId(uuid: account.actorId);
     widget.doc.automergeDoc.setupBlockLabel();
@@ -54,16 +70,38 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   _setupCommitTicker() {
-    _saveTicker = Timer.periodic(const Duration(seconds: 3), (timer) {
-      _commit();
+    _saveTicker = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      await _commit();
     });
   }
 
-  _commit() {
+  _commit() async {
+    if (groupContext == null) return;
+
     EditorAutomergeUtils.instance.fromDoc(
       _editor.document,
       widget.doc.automergeDoc,
     );
+
+    final incrementalChange = widget.doc.automergeDoc.saveIncremental();
+
+    if (incrementalChange.isEmpty) return;
+
+    final crdt = CRDTPayload(
+      incrementalChange: null,
+      fullDocument: incrementalChange,
+      mediaAttachment: null,
+    );
+
+    final payload = Payload(crdt: crdt);
+    final payloadBytes = payload.writeToBuffer();
+
+    final frame = groupContext!.createFrame(payloads: [payloadBytes]);
+    await GroupApiClient.instance.sendFrame(
+      groupId: widget.doc.id,
+      frame: frame,
+    );
+
     widget.doc.automergeDoc.commit();
   }
 

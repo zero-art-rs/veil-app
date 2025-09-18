@@ -68,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -460749691;
+  int get rustContentHash => -157224489;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -152,10 +152,17 @@ abstract class RustLibApi extends BaseApi {
 
   PlatformInt64 crateApiAutomergeBChangeTimestamp({required BChange that});
 
-  (Uint8List, Uint8List) crateApiGroupContextBGroupContextAddMember({
+  (Uint8List, Uint8List) crateApiGroupContextBGroupContextAddIdentifiedMember({
     required BGroupContext that,
     required List<int> identityPublicKey,
     Uint8List? spkPublicKey,
+    required List<Uint8List> payloads,
+  });
+
+  (Uint8List, Uint8List)
+  crateApiGroupContextBGroupContextAddUnidentifiedMember({
+    required BGroupContext that,
+    required List<int> secretKey,
     required List<Uint8List> payloads,
   });
 
@@ -924,7 +931,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "BChange_timestamp", argNames: ["that"]);
 
   @override
-  (Uint8List, Uint8List) crateApiGroupContextBGroupContextAddMember({
+  (Uint8List, Uint8List) crateApiGroupContextBGroupContextAddIdentifiedMember({
     required BGroupContext that,
     required List<int> identityPublicKey,
     Uint8List? spkPublicKey,
@@ -948,17 +955,58 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
               sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiGroupContextBGroupContextAddMemberConstMeta,
+        constMeta:
+            kCrateApiGroupContextBGroupContextAddIdentifiedMemberConstMeta,
         argValues: [that, identityPublicKey, spkPublicKey, payloads],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiGroupContextBGroupContextAddMemberConstMeta =>
+  TaskConstMeta
+  get kCrateApiGroupContextBGroupContextAddIdentifiedMemberConstMeta =>
       const TaskConstMeta(
-        debugName: "BGroupContext_add_member",
+        debugName: "BGroupContext_add_identified_member",
         argNames: ["that", "identityPublicKey", "spkPublicKey", "payloads"],
+      );
+
+  @override
+  (Uint8List, Uint8List)
+  crateApiGroupContextBGroupContextAddUnidentifiedMember({
+    required BGroupContext that,
+    required List<int> secretKey,
+    required List<Uint8List> payloads,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(secretKey, serializer);
+          sse_encode_list_list_prim_u_8_strict(payloads, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBGroupContextAddUnidentifiedMemberConstMeta,
+        argValues: [that, secretKey, payloads],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBGroupContextAddUnidentifiedMemberConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_add_unidentified_member",
+        argNames: ["that", "secretKey", "payloads"],
       );
 
   @override
@@ -975,7 +1023,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_list_list_prim_u_8_strict(payloads, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1013,7 +1061,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_prim_u_8_loose(stk, serializer);
           sse_encode_u_64(epoch, serializer);
           sse_encode_list_prim_u_8_loose(groupInfo, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1051,7 +1099,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1085,7 +1133,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_list_prim_u_8_loose(spFrame, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_list_prim_u_8_strict,
@@ -1120,7 +1168,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_list_prim_u_8_loose(leafPublicKey, serializer);
           sse_encode_list_prim_u_8_loose(payload, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1150,7 +1198,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1182,7 +1230,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1215,7 +1263,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1246,7 +1294,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_u_8_array_32(seed, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1274,7 +1322,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1320,7 +1368,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_usize(unidentifiedMembersCount, serializer);
           sse_encode_list_list_prim_u_8_strict(payloads, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1360,7 +1408,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -1383,7 +1431,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -1408,7 +1456,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 36,
+            funcId: 37,
             port: port_,
           );
         },
@@ -1435,7 +1483,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(secretKey, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 37)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -2934,16 +2982,27 @@ class BGroupContextImpl extends RustOpaque implements BGroupContext {
         RustLib.instance.api.rust_arc_decrement_strong_count_BGroupContextPtr,
   );
 
-  (Uint8List, Uint8List) addMember({
+  (Uint8List, Uint8List) addIdentifiedMember({
     required List<int> identityPublicKey,
     Uint8List? spkPublicKey,
     required List<Uint8List> payloads,
-  }) => RustLib.instance.api.crateApiGroupContextBGroupContextAddMember(
-    that: this,
-    identityPublicKey: identityPublicKey,
-    spkPublicKey: spkPublicKey,
-    payloads: payloads,
-  );
+  }) =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextAddIdentifiedMember(
+        that: this,
+        identityPublicKey: identityPublicKey,
+        spkPublicKey: spkPublicKey,
+        payloads: payloads,
+      );
+
+  (Uint8List, Uint8List) addUnidentifiedMember({
+    required List<int> secretKey,
+    required List<Uint8List> payloads,
+  }) => RustLib.instance.api
+      .crateApiGroupContextBGroupContextAddUnidentifiedMember(
+        that: this,
+        secretKey: secretKey,
+        payloads: payloads,
+      );
 
   Uint8List createFrame({required List<Uint8List> payloads}) =>
       RustLib.instance.api.crateApiGroupContextBGroupContextCreateFrame(

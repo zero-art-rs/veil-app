@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/v4.dart';
+import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
+import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/db.dart';
+import 'package:zk_notion_app/utils/group_context_factory.dart';
 import 'package:zk_notion_app/widgets/banner.dart';
 
 import '../../main.dart';
@@ -73,13 +77,34 @@ class PrimaryPageViewModel extends ChangeNotifier {
         throw Exception('To create a document, you must have account');
       }
 
-      final doc = await DB.instance.insertNewDocument(
-        title: resTitle,
-        owner: ExternalAccount.fromAccount(owner),
+      final docID = UuidV4().generate();
+      final content = BAutoCommit();
+
+      final (groupContext, frame) = GroupContextFactory.createGroupContext(
+        groupName: resTitle,
+        groupID: docID,
+        owner: owner,
+        autoCommit: content,
       );
 
-      textEditingController.clear();
+      final doc = await DB.instance.transaction((db) async {
+        final doc = await db.insertNewDocument(
+          id: docID,
+          title: resTitle,
+          owner: ExternalAccount.fromAccount(owner),
+          content: content,
+        );
+
+        final parts = GroupContextUtils.instance.intoParts(groupContext);
+        await db.insertEpoch(groupId: docID, groupContext: parts);
+
+        await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+
+        return doc;
+      });
+
       _docs.add(doc);
+      textEditingController.clear();
 
       final index = _docs.length - 1;
       setSelectedIndex(constantTabs + index);

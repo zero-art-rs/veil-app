@@ -19,16 +19,16 @@ void insertFamiliarDocumentMember(DB db, String docId) async {
   });
 }
 
-Future<Document> insertNewDocument(DB db) async {
-  return await db.insertNewDocument(
-    title: Random().nextDouble().toString(),
-    owner: ExternalAccount(
-      actorId: Random().nextDouble().toString(),
-      name: Random().nextDouble().toString(),
-      rawPublicKey: [],
-    ),
-  );
-}
+// Future<Document> insertNewDocument(DB db) async {
+//   return await db.insertNewDocument(
+//     title: Random().nextDouble().toString(),
+//     owner: ExternalAccount(
+//       actorId: Random().nextDouble().toString(),
+//       name: Random().nextDouble().toString(),
+//       rawPublicKey: [],
+//     ),
+//   );
+// }
 
 Future<List<ExternalAccount>> getContactList(DB db) async {
   return await db.getContactList();
