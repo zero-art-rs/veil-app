@@ -335,6 +335,55 @@ pub fn create_group(
 }
 
 #[flutter_rust_bridge::frb(sync)]
+pub fn create_group_from_identified_invite(
+    identity_secret_key: Vec<u8>,
+    spk_secret_key: Vec<u8>,
+    art: Vec<u8>,
+    invite: Vec<u8>,
+    user: BUser,
+) -> anyhow::Result<(BGroupContext, Vec<u8>)> {
+    let identity_secret_key = ScalarField::deserialize_uncompressed(&identity_secret_key[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    let spk_secret_key = if spk_secret_key.len() == 0 {
+        None
+    } else {
+        Some(
+            ScalarField::deserialize_uncompressed(&spk_secret_key[..])
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
+        )
+    };
+
+    let invite = zero_art_proto::Invite::decode(&invite[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let (group_context, frame) =
+        GroupContext::from_invite(identity_secret_key, spk_secret_key, art, invite, user.user)
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    Ok((BGroupContext { group_context }, frame.encode_to_vec()))
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn create_group_from_unidentified_invite(
+    identity_secret_key: Vec<u8>,
+    art: Vec<u8>,
+    invite: Vec<u8>,
+    user: BUser,
+) -> anyhow::Result<(BGroupContext, Vec<u8>)> {
+    let identity_secret_key = ScalarField::deserialize_uncompressed(&identity_secret_key[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let invite = zero_art_proto::Invite::decode(&invite[..])
+        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    let (group_context, frame) =
+        GroupContext::from_invite(identity_secret_key, None, art, invite, user.user)
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+    Ok((BGroupContext { group_context }, frame.encode_to_vec()))
+}
+
+#[flutter_rust_bridge::frb(sync)]
 pub fn destruct_identified_invite(
     invite: Vec<u8>,
     identity_secret_key: Vec<u8>,
