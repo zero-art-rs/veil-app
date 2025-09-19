@@ -84,6 +84,7 @@ impl BGroupContext {
                 &art,
                 stk,
                 epoch,
+                0,
                 group_info,
             )
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,

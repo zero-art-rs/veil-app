@@ -108,7 +108,7 @@ class _EditorPageView extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.history),
                     onPressed: () {
-                      vm.commit();
+                      // vm.commit();
                       final changes = vm.prepareChanges();
                       Navigator.push(
                         context,

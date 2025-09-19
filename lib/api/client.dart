@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:zk_notion_app/protos/zero_art.pb.dart';
 
 enum ProofMode { useRootKey, useLeafKey }
 
@@ -85,5 +86,41 @@ class GroupApiClient {
 
     final data = jsonDecode(response.body);
     return data['art'] as String;
+  }
+
+  Future<SPFrames> getFrames({
+    required String groupId,
+    required String signature,
+    required String nonce,
+    int? messageSequenceNumber,
+    int limit = 10,
+    int skip = 0,
+    int epoch = 0,
+  }) async {
+    final query = {
+      if (messageSequenceNumber != null)
+        'messageSequenceNumber': messageSequenceNumber.toString(),
+      'limit': limit.toString(),
+      'skip': skip.toString(),
+      'signature': signature,
+      'nonce': nonce,
+      'epoch': epoch.toString(),
+    };
+
+    final uri = Uri.https(
+      'veil.distributedlab.com',
+      '/v1/group/$groupId/frames',
+      query,
+    );
+
+    final response = await _http.get(uri);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Failed to get frames: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    return SPFrames.fromBuffer(response.bodyBytes);
   }
 }

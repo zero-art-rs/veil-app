@@ -117,6 +117,8 @@ abstract class BGroupContext implements RustOpaqueInterface {
     groupInfo: groupInfo,
   );
 
+  BigInt getEpoch();
+
   (Uint8List, Uint8List, Uint8List, BigInt, Uint8List) intoParts();
 
   List<Uint8List> processFrame({required List<int> spFrame});
@@ -125,6 +127,8 @@ abstract class BGroupContext implements RustOpaqueInterface {
     required List<int> leafPublicKey,
     required List<int> payload,
   });
+
+  Uint8List signWithTk({required String groupId, required List<int> nonce});
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupInfo>>

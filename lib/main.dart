@@ -131,9 +131,7 @@ class _MyAppState extends State<MyApp> {
                 child: OutlinedButton(
                   onPressed: () async {
                     final groupContext = await InviteManager.instance
-                        .processJoin(doc.inviteData);
-
-                                        
+                        .processJoin(doc.inviteData);                                        
 
                     Navigator.pop(context);
                   },

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:zk_notion_app/api/client.dart';
+import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor/overrides/helpers.dart';
@@ -25,6 +27,7 @@ class EditorPageVm extends ChangeNotifier {
   models.Document? doc;
   BGroupContext? groupContext;
   Timer? _saveTicker;
+  Timer? _listenFramesTicker;
 
   EditorPageVm(this.docId) {
     editor = createDefaultDocumentEditorOverriden(
@@ -59,11 +62,15 @@ class EditorPageVm extends ChangeNotifier {
       );
     }
 
-    _saveTicker = Timer.periodic(const Duration(seconds: 3), (_) => commit());
+    // _saveTicker = Timer.periodic(const Duration(seconds: 3), (_) => commit());
+    _listenFramesTicker = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => listenFrames(),
+    );
     notifyListeners();
   }
 
-  Future<void> commit() async {
+  Future<void> _commit() async {
     if (groupContext == null) {
       throw Exception('Group context is null');
     }
@@ -84,6 +91,70 @@ class EditorPageVm extends ChangeNotifier {
     await GroupApiClient.instance.sendFrame(groupId: doc!.id, frame: frame);
 
     doc!.automergeDoc.commit();
+  }
+
+  Future<void> listenFrames() async {
+    try {
+      if (groupContext == null) {
+        throw Exception('Group context is null');
+      }
+
+      if (doc == null) {
+        throw Exception('Document is null');
+      }
+
+      final signatureTk = groupContext!.signWithTk(
+        groupId: doc!.id,
+        nonce: [0],
+      );
+      final groupContextEpoch = groupContext!.getEpoch();
+
+      final result = await GroupApiClient.instance.getFrames(
+        groupId: doc!.id,
+        signature: base64UrlEncode(signatureTk),
+        nonce: base64UrlEncode([0]),
+        epoch: groupContextEpoch.toInt(),
+        messageSequenceNumber: 0,
+      );
+
+      logger.i('Context epoch: $groupContextEpoch');
+
+      for (final spFrame in result.spFrames) {
+        logger.i("Frame epoch ${spFrame.frame.frame.epoch}");
+
+        switch (spFrame.frame.frame.groupOperation.whichOperation()) {
+          case GroupOperation_Operation.init:
+            logger.d('init');
+            break;
+          case GroupOperation_Operation.addMember:
+            logger.d('addmember');
+            break;
+          case GroupOperation_Operation.removeMember:
+            logger.d('removeMember');
+            break;
+          case GroupOperation_Operation.keyUpdate:
+            logger.d('keyupdate');
+            break;
+          case GroupOperation_Operation.leaveGroup:
+            logger.d('leaveGroup');
+            break;
+          case GroupOperation_Operation.dropGroup:
+            logger.d('dropGroup');
+            break;
+          case GroupOperation_Operation.notSet:
+            logger.d('notSet, skipping');
+            return;
+        }
+
+        final payload = groupContext!.processFrame(
+          spFrame: spFrame.writeToBuffer(),
+        );
+
+
+      }
+    } catch (e) {
+      logger.e(e);
+    }
   }
 
   Future<List<MemberScreenModel>> prepareMembers() async {
@@ -119,7 +190,8 @@ class EditorPageVm extends ChangeNotifier {
   @override
   void dispose() {
     _saveTicker?.cancel();
-    commit();
+    _listenFramesTicker?.cancel();
+    // commit();
     DB.instance.updateDocumentContent(
       doc: doc!,
       parts: groupContext!.toParts(),
