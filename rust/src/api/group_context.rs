@@ -482,6 +482,9 @@ pub fn sign_challenge(
     println!("LeafPublicKeyBytes: {:?}", leaf_public_key_bytes);    
 
 
-    schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &Sha3_256::digest(msg))
-        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
+    let signature = schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &Sha3_256::digest(msg.clone()))
+        .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))?;
+
+    schnorr::verify(&signature, &vec![leaf_public_key], &Sha3_256::digest(msg)).map_err(|e| anyhow!("failed to verify signature: {}", e.to_string()))?;
+    Ok(signature)
 }
