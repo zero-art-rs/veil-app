@@ -466,7 +466,21 @@ pub fn sign_challenge(
     msg.extend(challenge);
     msg.extend(epoch.to_be_bytes());
 
+    println!("Msg: {:?}", msg);
+    println!("MsgDigest: {:?}", Sha3_256::digest(msg.clone()));
+    
+    println!("LeafSecret: {:?}", leaf_secret);
+    let mut leaf_secret_bytes = Vec::new();
+    leaf_secret.serialize_uncompressed(&mut leaf_secret_bytes).unwrap();
+    println!("LeafSecretBytes: {:?}", leaf_secret_bytes);    
+    
+
     let leaf_public_key = (CortadoAffine::generator() * leaf_secret).into_affine();
+    println!("LeafPublicKey: {:?}", leaf_public_key);
+    let mut leaf_public_key_bytes = Vec::new();
+    leaf_public_key.serialize_uncompressed(&mut leaf_public_key_bytes).unwrap();
+    println!("LeafPublicKeyBytes: {:?}", leaf_public_key_bytes);    
+
 
     schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &Sha3_256::digest(msg))
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
