@@ -199,6 +199,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  (BGroupContext, Uint8List)
+  dco_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
+    dynamic raw,
+  );
+
+  @protected
   (BGroupContext, Uint8List, Map<Uint8List, Uint8List>, List<Uint8List>)
   dco_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict_map_list_prim_u_8_strict_list_prim_u_8_strict_none_list_list_prim_u_8_strict(
     dynamic raw,
@@ -211,6 +217,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   (Uint8List, Uint8List, Uint8List, BigInt, Uint8List)
   dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
+    dynamic raw,
+  );
+
+  @protected
+  (Uint8List, Uint8List, BigInt, Uint8List)
+  dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
     dynamic raw,
   );
 
@@ -395,6 +407,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  (BGroupContext, Uint8List)
+  sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   (BGroupContext, Uint8List, Map<Uint8List, Uint8List>, List<Uint8List>)
   sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict_map_list_prim_u_8_strict_list_prim_u_8_strict_none_list_list_prim_u_8_strict(
     SseDeserializer deserializer,
@@ -409,6 +427,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   (Uint8List, Uint8List, Uint8List, BigInt, Uint8List)
   sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  (Uint8List, Uint8List, BigInt, Uint8List)
+  sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
     SseDeserializer deserializer,
   );
 
@@ -628,6 +652,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+  sse_encode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
+    (BGroupContext, Uint8List) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict_map_list_prim_u_8_strict_list_prim_u_8_strict_none_list_list_prim_u_8_strict(
     (BGroupContext, Uint8List, Map<Uint8List, Uint8List>, List<Uint8List>) self,
     SseSerializer serializer,
@@ -643,6 +674,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
   sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
     (Uint8List, Uint8List, Uint8List, BigInt, Uint8List) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
+    (Uint8List, Uint8List, BigInt, Uint8List) self,
     SseSerializer serializer,
   );
 

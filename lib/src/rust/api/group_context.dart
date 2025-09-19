@@ -29,6 +29,63 @@ createGroup({
   payloads: payloads,
 );
 
+(BGroupContext, Uint8List) createGroupFromIdentifiedInvite({
+  required List<int> identitySecretKey,
+  required List<int> spkSecretKey,
+  required List<int> art,
+  required List<int> invite,
+  required BUser user,
+}) => RustLib.instance.api.crateApiGroupContextCreateGroupFromIdentifiedInvite(
+  identitySecretKey: identitySecretKey,
+  spkSecretKey: spkSecretKey,
+  art: art,
+  invite: invite,
+  user: user,
+);
+
+(BGroupContext, Uint8List) createGroupFromUnidentifiedInvite({
+  required List<int> identitySecretKey,
+  required List<int> art,
+  required List<int> invite,
+  required BUser user,
+}) =>
+    RustLib.instance.api.crateApiGroupContextCreateGroupFromUnidentifiedInvite(
+      identitySecretKey: identitySecretKey,
+      art: art,
+      invite: invite,
+      user: user,
+    );
+
+(Uint8List, Uint8List, BigInt, Uint8List) destructIdentifiedInvite({
+  required List<int> invite,
+  required List<int> identitySecretKey,
+  required List<int> spkSecretKey,
+}) => RustLib.instance.api.crateApiGroupContextDestructIdentifiedInvite(
+  invite: invite,
+  identitySecretKey: identitySecretKey,
+  spkSecretKey: spkSecretKey,
+);
+
+(Uint8List, Uint8List, BigInt, Uint8List) destructUnidentifiedInvite({
+  required List<int> invite,
+}) => RustLib.instance.api.crateApiGroupContextDestructUnidentifiedInvite(
+  invite: invite,
+);
+
+Uint8List signChallenge({
+  required List<int> leafSecret,
+  required String chatId,
+  required List<int> nonce,
+  required List<int> challenge,
+  required BigInt epoch,
+}) => RustLib.instance.api.crateApiGroupContextSignChallenge(
+  leafSecret: leafSecret,
+  chatId: chatId,
+  nonce: nonce,
+  challenge: challenge,
+  epoch: epoch,
+);
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupContext>>
 abstract class BGroupContext implements RustOpaqueInterface {
   (Uint8List, Uint8List) addIdentifiedMember({
@@ -37,7 +94,7 @@ abstract class BGroupContext implements RustOpaqueInterface {
     required List<Uint8List> payloads,
   });
 
-  Future<(Uint8List, Uint8List)> addUnidentifiedMember({
+  (Uint8List, Uint8List) addUnidentifiedMember({
     required List<int> secretKey,
     required List<Uint8List> payloads,
   });

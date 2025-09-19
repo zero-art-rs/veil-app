@@ -311,16 +311,17 @@ final $typed_data.Uint8List protectedPayloadDescriptor = $convert.base64Decode(
 const ProtectedInviteData$json = {
   '1': 'ProtectedInviteData',
   '2': [
-    {'1': 'group_id', '3': 1, '4': 1, '5': 9, '10': 'groupId'},
     {'1': 'epoch', '3': 2, '4': 1, '5': 4, '10': 'epoch'},
     {'1': 'stage_key', '3': 3, '4': 1, '5': 12, '10': 'stageKey'},
+    {'1': 'group_info', '3': 4, '4': 1, '5': 11, '6': '.zero_art_proto.GroupInfo', '10': 'groupInfo'},
   ],
 };
 
 /// Descriptor for `ProtectedInviteData`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List protectedInviteDataDescriptor = $convert.base64Decode(
-    'ChNQcm90ZWN0ZWRJbnZpdGVEYXRhEhkKCGdyb3VwX2lkGAEgASgJUgdncm91cElkEhQKBWVwb2'
-    'NoGAIgASgEUgVlcG9jaBIbCglzdGFnZV9rZXkYAyABKAxSCHN0YWdlS2V5');
+    'ChNQcm90ZWN0ZWRJbnZpdGVEYXRhEhQKBWVwb2NoGAIgASgEUgVlcG9jaBIbCglzdGFnZV9rZX'
+    'kYAyABKAxSCHN0YWdlS2V5EjgKCmdyb3VwX2luZm8YBCABKAsyGS56ZXJvX2FydF9wcm90by5H'
+    'cm91cEluZm9SCWdyb3VwSW5mbw==');
 
 @$core.Deprecated('Use identifiedInviteDescriptor instead')
 const IdentifiedInvite$json = {

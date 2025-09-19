@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/managers/deeplink_manager.dart';
+import 'package:zk_notion_app/managers/invite_manager.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
@@ -54,7 +55,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _handleInitialUri();
     _listenUriChanges();
   }
 
@@ -63,31 +63,6 @@ class _MyAppState extends State<MyApp> {
     logger.d('My app dispose called');
     _sub?.cancel();
     super.dispose();
-  }
-
-  Future<void> _handleInitialUri() async {
-    if (!PlatformUtils.isApple) return;
-    try {
-      final initialUri = await _appLinks.getInitialLink();
-
-      final (documentDeepLink, contactDeepLink) = DeeplinkManager.instance
-          .retrieveDeepLink(initialUri);
-
-      if (contactDeepLink != null && mounted) {
-        _showContactPopUp(navigatorKey.currentContext!, contactDeepLink);
-        return;
-      }
-
-      if (documentDeepLink != null && mounted) {
-        _showDocumentInvitationPopUp(
-          navigatorKey.currentContext!,
-          documentDeepLink,
-        );
-        return;
-      }
-    } catch (err) {
-      logger.e('Failed to get initial link: $err');
-    }
   }
 
   void _listenUriChanges() {
@@ -154,7 +129,14 @@ class _MyAppState extends State<MyApp> {
               ),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    final groupContext = await InviteManager.instance
+                        .processJoin(doc.inviteData);
+
+                                        
+
+                    Navigator.pop(context);
+                  },
                   child: Text('Join'),
                 ),
               ),

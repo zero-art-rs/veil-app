@@ -1,16 +1,16 @@
-use anyhow::{anyhow, bail};
+use anyhow::anyhow;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use awesome_client_sdk::{
     group_context::{builder::GroupContextBuilder, GroupContext},
     metadata, secrets_factory, zero_art_proto,
 };
-use base64::{prelude::BASE64_STANDARD, Engine};
 use cortado::{self, CortadoAffine, Fr as ScalarField};
 use crypto::schnorr;
-use prost::{DecodeError, Message};
+use prost::Message;
 use sha3::{Digest, Sha3_256};
-use std::collections::HashMap;
+use uuid::Uuid;
+use std::{collections::HashMap, str::FromStr};
 
 pub struct BUser {
     user: metadata::user::User,
@@ -460,31 +460,17 @@ pub fn sign_challenge(
     let leaf_secret = ScalarField::deserialize_uncompressed(&leaf_secret[..])
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
+    let chat_uuid = Uuid::from_str(&chat_id)?;
     let mut msg = Vec::new();
-    msg.extend_from_slice(chat_id.as_bytes());
-    msg.extend(nonce);
-    msg.extend(challenge);
+    msg.extend_from_slice(chat_uuid.as_bytes());
+    msg.extend(&nonce);
+    msg.extend(&challenge);
     msg.extend(epoch.to_be_bytes());
 
-    println!("Msg: {:?}", msg);
-    println!("MsgDigest: {:?}", Sha3_256::digest(msg.clone()));
-    
-    println!("LeafSecret: {:?}", leaf_secret);
-    let mut leaf_secret_bytes = Vec::new();
-    leaf_secret.serialize_uncompressed(&mut leaf_secret_bytes).unwrap();
-    println!("LeafSecretBytes: {:?}", leaf_secret_bytes);    
-    
-
     let leaf_public_key = (CortadoAffine::generator() * leaf_secret).into_affine();
-    println!("LeafPublicKey: {:?}", leaf_public_key);
-    let mut leaf_public_key_bytes = Vec::new();
-    leaf_public_key.serialize_uncompressed(&mut leaf_public_key_bytes).unwrap();
-    println!("LeafPublicKeyBytes: {:?}", leaf_public_key_bytes);    
 
-
-    let signature = schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &Sha3_256::digest(msg.clone()))
+    let signature = schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &Sha3_256::digest(msg))
         .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))?;
 
-    schnorr::verify(&signature, &vec![leaf_public_key], &Sha3_256::digest(msg)).map_err(|e| anyhow!("failed to verify signature: {}", e.to_string()))?;
     Ok(signature)
 }

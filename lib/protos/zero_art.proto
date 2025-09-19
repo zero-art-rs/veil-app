@@ -145,9 +145,10 @@ message ProtectedPayload {
 
 // auxiliary protected invite data
 message ProtectedInviteData {
-	string group_id = 1;
+	// string group_id = 1;
 	uint64 epoch = 2;
 	bytes stage_key = 3;
+	GroupInfo group_info = 4;
 }
 
 // Invite for some identified user (Q_id, Q_spk)

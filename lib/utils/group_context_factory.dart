@@ -67,7 +67,6 @@ class GroupContextParts {
   }
 
   factory GroupContextParts.fromJsonString(String blob) {
-    // print(blob);
     final map = jsonDecode(blob) as Map<String, dynamic>;
     return GroupContextParts(
       leafSecret: Uint8List.fromList(List<int>.from(map['leafSecret'])),
@@ -103,20 +102,3 @@ extension BGroupContextExt on bridge.BGroupContext {
     );
   }
 }
-
-// class GroupContextUtils {
-//   static final instance = GroupContextUtils();
-
-//   /// Return leaf secret, art, stage_key, epoch, group_info protobuf
-//   // GroupContextParts intoParts(bridge.BGroupContext context) {
-//   //   final (leafSecret, art, stageKey, epoch, groupInfo) = context.intoParts();
-
-//   //   return GroupContextParts(
-//   //     leafSecret: leafSecret,
-//   //     art: art,
-//   //     stageKey: stageKey,
-//   //     epoch: epoch,
-//   //     groupInfoProto: groupInfo,
-//   //   );
-//   // }
-// }

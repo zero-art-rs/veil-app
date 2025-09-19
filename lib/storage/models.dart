@@ -1,11 +1,6 @@
-import 'dart:math';
-import 'dart:typed_data';
-
 import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
-import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/utils/group_context_factory.dart';
 import 'package:zk_notion_app/utils/secret_factory.dart';
 
@@ -79,52 +74,7 @@ class Document {
     required this.groupContextParts,
   });
 
-  // toJson() => Map<String, dynamic>.from({
-  //   'id': id,
-  //   'title': title,
-  //   'content': automergeDoc.save().toList(),
-  //   'created_at': createdAt.toIso8601String(),
-  //   'updated_at': updatedAt.toIso8601String(),
-  //   'group_context': GroupContextUtils.instance
-  //       .intoParts(groupContext)
-  //       .toJson(),
-  //   'members': members,
-  // });
-
   String ownerName() => members.firstWhere((e) => e.isOwner).account.name;
-
-  // factory Document.withGeneratedId({
-  //   required String title,
-  //   required BAutoCommit content,
-  //   required DocumentMember owner,
-  //   required BGroupContext groupContext,
-  // }) => Document(
-  //   id: UuidV4().generate(),
-  //   title: title,
-  //   automergeDoc: content,
-  //   members: [owner],
-  //   createdAt: DateTime.now(),
-  //   updatedAt: DateTime.now(),
-  //   groupContext: groupContext,
-  // );
-
-  // factory Document.fromJson(Map<String, dynamic> json) {
-  //   return Document(
-  //     id: json['id'],
-  //     title: json['title'],
-  //     automergeDoc: BAutoCommit.fromBytes(
-  //       bytes: Uint8List.fromList(List<int>.from(json['content'])),
-  //     ),
-  //     members: (json['members'])
-  //         .map<DocumentMember>((e) => DocumentMember.fromJson(e))
-  //         .toList(),
-  //     createdAt: DateTime.now(),
-  //     updatedAt: DateTime.now(),
-  //     groupContext: GroupContextParts.fromJson(
-  //       json['group_context'],
-  //     ).toGroupContext(identitySecretKey: identitySecretKey),
-  //   );
-  // }
 }
 
 class Keypair {
