@@ -213,7 +213,7 @@ impl BGroupContext {
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    pub fn sign_with_tk(&mut self, group_id: String, nonce: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+    pub fn sign_with_tk(&self, group_id: String, nonce: Vec<u8>) -> anyhow::Result<Vec<u8>> {
         let chat_uuid = Uuid::from_str(&group_id)?;
         let mut msg = Vec::new();
         msg.extend_from_slice(chat_uuid.as_bytes());
@@ -222,6 +222,11 @@ impl BGroupContext {
         self.group_context
             .sign_with_tk(&Sha3_256::digest(msg))
             .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn get_epoch(&self) -> u64 {
+        self.group_context.get_epoch()
     }
 }
 
