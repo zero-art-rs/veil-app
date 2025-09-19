@@ -41,7 +41,7 @@ impl BGroupInfo {
     pub fn new(id: String, name: String) -> Self {
         Self {
             group_info: metadata::group::GroupInfo {
-                id,
+                id: Uuid::parse_str(&id).unwrap(),
                 name,
                 metadata: vec![],
                 created: chrono::Utc::now(),
@@ -380,7 +380,12 @@ pub fn create_group_from_identified_invite(
         GroupContext::from_invite(identity_secret_key, spk_secret_key, art, invite, user.user)
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
-    Ok((BGroupContext { group_context }, frame.encode_to_vec()))
+    Ok((
+        BGroupContext { group_context },
+        frame
+            .encode_to_vec()
+            .map_err(|e| anyhow!("failed to serialize: {}", e.to_string()))?,
+    ))
 }
 
 #[flutter_rust_bridge::frb(sync)]
@@ -400,7 +405,12 @@ pub fn create_group_from_unidentified_invite(
         GroupContext::from_invite(identity_secret_key, None, art, invite, user.user)
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
-    Ok((BGroupContext { group_context }, frame.encode_to_vec()))
+    Ok((
+        BGroupContext { group_context },
+        frame
+            .encode_to_vec()
+            .map_err(|e| anyhow!("failed to serialize: {}", e.to_string()))?,
+    ))
 }
 
 #[flutter_rust_bridge::frb(sync)]

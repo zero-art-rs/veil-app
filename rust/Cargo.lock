@@ -403,7 +403,7 @@ dependencies = [
 [[package]]
 name = "awesome-client-sdk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zk-messenger/awesome-client-sdk.git?branch=dev#955062a3f3497019797e10793ec4b671d9686ee0"
+source = "git+ssh://git@github.com/zk-messenger/awesome-client-sdk.git?branch=dev#608a831e29eb2908c3e4e39d41e7c393a59b0155"
 dependencies = [
  "aes-gcm",
  "ark-ec",
