@@ -9,8 +9,8 @@ use cortado::{self, CortadoAffine, Fr as ScalarField};
 use crypto::schnorr;
 use prost::Message;
 use sha3::{Digest, Sha3_256};
-use uuid::Uuid;
 use std::{collections::HashMap, str::FromStr};
+use uuid::Uuid;
 
 pub struct BUser {
     user: metadata::user::User,
@@ -210,6 +210,18 @@ impl BGroupContext {
             .map_err(|e| anyhow!("failed to create frame: {}", e.to_string()))?;
 
         Ok(frame.encode_to_vec())
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn sign_with_tk(&mut self, group_id: String, nonce: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+        let chat_uuid = Uuid::from_str(&group_id)?;
+        let mut msg = Vec::new();
+        msg.extend_from_slice(chat_uuid.as_bytes());
+        msg.extend(&nonce);
+
+        self.group_context
+            .sign_with_tk(&Sha3_256::digest(msg))
+            .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))
     }
 }
 
@@ -469,8 +481,12 @@ pub fn sign_challenge(
 
     let leaf_public_key = (CortadoAffine::generator() * leaf_secret).into_affine();
 
-    let signature = schnorr::sign(&vec![leaf_secret], &vec![leaf_public_key], &Sha3_256::digest(msg))
-        .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))?;
+    let signature = schnorr::sign(
+        &vec![leaf_secret],
+        &vec![leaf_public_key],
+        &Sha3_256::digest(msg),
+    )
+    .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))?;
 
     Ok(signature)
 }
