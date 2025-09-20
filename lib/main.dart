@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -38,7 +40,14 @@ Future<void> main() async {
   runApp(MyApp());
 }
 
-var logger = Logger(printer: PrettyPrinter());
+var logger = Logger(
+  filter: kDebugMode ? DevelopmentFilter() : ProductionFilter(),
+  printer: PrettyPrinter(
+    noBoxingByDefault: true,
+    dateTimeFormat: DateTimeFormat.dateAndTime,
+  ),
+  level: Level.all,
+);
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatefulWidget {
@@ -131,7 +140,7 @@ class _MyAppState extends State<MyApp> {
                 child: OutlinedButton(
                   onPressed: () async {
                     final groupContext = await InviteManager.instance
-                        .processJoin(doc.inviteData);                                        
+                        .processJoin(doc.inviteData);
 
                     Navigator.pop(context);
                   },

@@ -134,15 +134,19 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
       ).writeToBuffer();
 
+      logger.i('Creating unidentified member invite...');
       final (frame, invite) = await widget.groupContext.addUnidentifiedMember(
         secretKey: secretKey,
         payloads: [payload],
       );
+      logger.i('Finished creating unidentified member invite...');
 
+      logger.i('Sending unidentified member invite frame...');
       await GroupApiClient.instance.sendFrame(
         groupId: widget.doc.id,
         frame: frame,
       );
+      logger.i('Finished sending unidentified member invite frame...');
 
       final inviteLink = DeeplinkManager.instance.buildUnidentifiedGroupInvite(
         invite,

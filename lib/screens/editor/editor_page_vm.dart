@@ -103,6 +103,8 @@ class EditorPageVm extends ChangeNotifier {
       throw Exception('Document is null');
     }
 
+    logger.i('------ FRAME TICK ------');
+
     final signatureTk = groupContext!.signWithTk(groupId: doc!.id, nonce: [0]);
     final groupContextEpoch = groupContext!.getEpoch();
 
@@ -144,6 +146,8 @@ class EditorPageVm extends ChangeNotifier {
       }
 
       try {
+        // logger.i("sPframe ${spFrame.writeToBuffer()}");
+
         final payload = groupContext!.processFrame(
           spFrame: spFrame.writeToBuffer(),
         );

@@ -157,7 +157,6 @@ impl BGroupContext {
         ))
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn add_unidentified_member(
         &mut self,
         secret_key: Vec<u8>,

@@ -159,7 +159,7 @@ abstract class RustLibApi extends BaseApi {
     required List<Uint8List> payloads,
   });
 
-  (Uint8List, Uint8List)
+  Future<(Uint8List, Uint8List)>
   crateApiGroupContextBGroupContextAddUnidentifiedMember({
     required BGroupContext that,
     required List<int> secretKey,
@@ -1016,15 +1016,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  (Uint8List, Uint8List)
+  Future<(Uint8List, Uint8List)>
   crateApiGroupContextBGroupContextAddUnidentifiedMember({
     required BGroupContext that,
     required List<int> secretKey,
     required List<Uint8List> payloads,
   }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
             that,
@@ -1032,7 +1032,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_list_prim_u_8_loose(secretKey, serializer);
           sse_encode_list_list_prim_u_8_strict(payloads, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -3417,7 +3422,7 @@ class BGroupContextImpl extends RustOpaque implements BGroupContext {
         payloads: payloads,
       );
 
-  (Uint8List, Uint8List) addUnidentifiedMember({
+  Future<(Uint8List, Uint8List)> addUnidentifiedMember({
     required List<int> secretKey,
     required List<Uint8List> payloads,
   }) => RustLib.instance.api

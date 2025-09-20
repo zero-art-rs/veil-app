@@ -26,6 +26,18 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+	<key>NSExceptionDomains</key>
+	<dict>
+		<key>veil.distributedlab.com</key>
+		<dict>
+		<key>NSIncludesSubdomains</key><true/>
+		<key>NSExceptionAllowsInsecureHTTPLoads</key><true/>
+		<key>NSExceptionRequiresForwardSecrecy</key><false/>
+		</dict>
+	</dict>
+	</dict>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
