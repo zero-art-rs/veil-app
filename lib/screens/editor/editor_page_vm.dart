@@ -94,66 +94,62 @@ class EditorPageVm extends ChangeNotifier {
   }
 
   Future<void> listenFrames() async {
-    try {
-      if (groupContext == null) {
-        throw Exception('Group context is null');
+    // try
+    if (groupContext == null) {
+      throw Exception('Group context is null');
+    }
+
+    if (doc == null) {
+      throw Exception('Document is null');
+    }
+
+    final signatureTk = groupContext!.signWithTk(groupId: doc!.id, nonce: [0]);
+    final groupContextEpoch = groupContext!.getEpoch();
+
+    final result = await GroupApiClient.instance.getFrames(
+      groupId: doc!.id,
+      signature: base64UrlEncode(signatureTk),
+      nonce: base64UrlEncode([0]),
+      epoch: groupContextEpoch.toInt(),
+      messageSequenceNumber: 0,
+    );
+
+    logger.i('Context epoch: $groupContextEpoch');
+
+    for (final spFrame in result.spFrames) {
+      logger.i("Frame epoch ${spFrame.frame.frame.epoch}");
+
+      switch (spFrame.frame.frame.groupOperation.whichOperation()) {
+        case GroupOperation_Operation.init:
+          logger.d('init');
+          break;
+        case GroupOperation_Operation.addMember:
+          logger.d('addmember');
+          break;
+        case GroupOperation_Operation.removeMember:
+          logger.d('removeMember');
+          break;
+        case GroupOperation_Operation.keyUpdate:
+          logger.d('keyupdate');
+          break;
+        case GroupOperation_Operation.leaveGroup:
+          logger.d('leaveGroup');
+          break;
+        case GroupOperation_Operation.dropGroup:
+          logger.d('dropGroup');
+          break;
+        case GroupOperation_Operation.notSet:
+          logger.d('notSet, skipping');
+          return;
       }
 
-      if (doc == null) {
-        throw Exception('Document is null');
-      }
-
-      final signatureTk = groupContext!.signWithTk(
-        groupId: doc!.id,
-        nonce: [0],
-      );
-      final groupContextEpoch = groupContext!.getEpoch();
-
-      final result = await GroupApiClient.instance.getFrames(
-        groupId: doc!.id,
-        signature: base64UrlEncode(signatureTk),
-        nonce: base64UrlEncode([0]),
-        epoch: groupContextEpoch.toInt(),
-        messageSequenceNumber: 0,
-      );
-
-      logger.i('Context epoch: $groupContextEpoch');
-
-      for (final spFrame in result.spFrames) {
-        logger.i("Frame epoch ${spFrame.frame.frame.epoch}");
-
-        switch (spFrame.frame.frame.groupOperation.whichOperation()) {
-          case GroupOperation_Operation.init:
-            logger.d('init');
-            break;
-          case GroupOperation_Operation.addMember:
-            logger.d('addmember');
-            break;
-          case GroupOperation_Operation.removeMember:
-            logger.d('removeMember');
-            break;
-          case GroupOperation_Operation.keyUpdate:
-            logger.d('keyupdate');
-            break;
-          case GroupOperation_Operation.leaveGroup:
-            logger.d('leaveGroup');
-            break;
-          case GroupOperation_Operation.dropGroup:
-            logger.d('dropGroup');
-            break;
-          case GroupOperation_Operation.notSet:
-            logger.d('notSet, skipping');
-            return;
-        }
-
+      try {
         final payload = groupContext!.processFrame(
           spFrame: spFrame.writeToBuffer(),
         );
-
-
+      } catch (e) {
+        logger.e('Failed to process frame: $e');
       }
-    } catch (e) {
-      logger.e(e);
     }
   }
 
