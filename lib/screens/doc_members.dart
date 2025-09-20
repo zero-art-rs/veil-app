@@ -162,16 +162,16 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     try {
       // LOGIC
 
-      setState(() {
-        widget.doc.members.add(
-          m.DocumentMember(account: member, isOwner: false),
-        );
-        widget.members.add(
-          MemberScreenModel(
-            member: m.DocumentMember(account: member, isOwner: false),
-          ),
-        );
-      });
+      // setState(() {
+      //   widget.doc.members.add(
+      //     m.DocumentMember(account: member, isOwner: false),
+      //   );
+      //   widget.members.add(
+      //     MemberScreenModel(
+      //       member: m.DocumentMember(account: member, isOwner: false),
+      //     ),
+      //   );
+      // });
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -205,7 +205,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   }
 
   void _onRemoveMember(MemberScreenModel g) async {
-    await DB.instance.deleteMember(g.member.account.actorId);
+    // await DB.instance.deleteMember(g.member.account.actorId);
     setState(() => widget.members.remove(g));
 
     widget.doc.members.removeWhere(

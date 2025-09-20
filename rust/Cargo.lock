@@ -331,7 +331,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "art"
 version = "0.1.1"
-source = "git+ssh://git@github.com/zk-messenger/project-m.git?branch=art-dev#a7d80609ecfe29201303a773f84e0b717cda323e"
+source = "git+ssh://git@github.com/zk-messenger/project-m.git?branch=art-dev#47e2db1e6df05a5bac5da239b9afb27691c1259a"
 dependencies = [
  "ark-ec",
  "ark-ed25519",
@@ -403,7 +403,7 @@ dependencies = [
 [[package]]
 name = "awesome-client-sdk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zk-messenger/awesome-client-sdk.git?branch=dev#7d075c0e32f8335aeabddf17dc678cad3d9529ba"
+source = "git+ssh://git@github.com/zk-messenger/awesome-client-sdk.git?branch=dev#653d36253c056eaf262e8f63b4f168decdb3c8b0"
 dependencies = [
  "aes-gcm",
  "ark-ec",
@@ -681,7 +681,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "cortado"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zk-messenger/project-m.git?branch=art-dev#a7d80609ecfe29201303a773f84e0b717cda323e"
+source = "git+ssh://git@github.com/zk-messenger/project-m.git?branch=art-dev#47e2db1e6df05a5bac5da239b9afb27691c1259a"
 dependencies = [
  "ark-algebra-test-templates",
  "ark-ec",
@@ -782,7 +782,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 [[package]]
 name = "crypto"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zk-messenger/project-m.git?branch=art-dev#a7d80609ecfe29201303a773f84e0b717cda323e"
+source = "git+ssh://git@github.com/zk-messenger/project-m.git?branch=art-dev#47e2db1e6df05a5bac5da239b9afb27691c1259a"
 dependencies = [
  "ark-serialize",
  "cortado",
@@ -2779,7 +2779,7 @@ dependencies = [
 [[package]]
 name = "zk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zk-messenger/project-m.git?branch=art-dev#a7d80609ecfe29201303a773f84e0b717cda323e"
+source = "git+ssh://git@github.com/zk-messenger/project-m.git?branch=art-dev#47e2db1e6df05a5bac5da239b9afb27691c1259a"
 dependencies = [
  "ark-ec",
  "ark-ed25519",

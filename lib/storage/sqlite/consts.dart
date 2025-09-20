@@ -1,7 +1,7 @@
 const ownerRole = 2;
 const editorRole = 1;
 
-const accountsTable = 'accounts';
+const contactsTable = 'accounts';
 const documentsTable = 'documents';
 const documentMembersTable = 'document_members';
 const contactsSpksTable = 'contacts_spks';

@@ -58,7 +58,6 @@ class PrimaryPageViewModel extends ChangeNotifier {
         automergeDoc: _docs[index].automergeDoc,
         members: _docs[index].members,
         createdAt: _docs[index].createdAt,
-        updatedAt: _docs[index].updatedAt,
         groupContextParts: _docs[index].groupContextParts,
       );
       textEditingController.clear();
@@ -95,21 +94,19 @@ class PrimaryPageViewModel extends ChangeNotifier {
         autoCommit: content,
       );
 
-      final doc = await DB.instance.transaction((db) async {
-        final doc = await db.insertNewDocument(
-          id: docID,
-          title: resTitle,
-          owner: ExternalAccount.fromAccount(owner),
-          content: content,
-          groupContextParts: groupContext.toParts(),
-        );
+      final document = Document(
+        id: docID,
+        title: resTitle,
+        automergeDoc: content,
+        groupContextParts: groupContext.toParts(),
+        createdAt: DateTime.now(),
+      );
 
-        await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+      final doc = await DB.instance.insertDocument(document: document);
 
-        return doc;
-      });
+      await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 
-      _docs.add(doc);
+      _docs.add(document);
       textEditingController.clear();
 
       final index = _docs.length - 1;

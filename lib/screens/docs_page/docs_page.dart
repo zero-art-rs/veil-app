@@ -43,7 +43,10 @@ class DocsPage extends StatelessWidget {
                 if (isCreateFlow) {
                   await vm.createDoc(controller.text);
                 } else {
-                  await vm.updateDoc(document!, title: controller.text);
+                  await vm.updateDocumentName(
+                    document!,
+                    title: controller.text,
+                  );
                 }
                 if (!context.mounted) return;
                 Navigator.pop(context);
@@ -150,6 +153,8 @@ class _DocCard extends StatelessWidget {
   final VoidCallback? onDelete;
   @override
   Widget build(BuildContext context) {
+    print(doc);
+
     final theme = Theme.of(context);
     return Material(
       shadowColor: Colors.black,
@@ -265,7 +270,7 @@ class _DocCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      doc.ownerName(),
+                      'test',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall,

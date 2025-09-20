@@ -27,15 +27,9 @@ class DB {
         db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: (db, version) async {
-        // Tables
-        await db.execute(createAccountTable);
+        await db.execute(createContactsTable);
         await db.execute(createContactsSpksTable);
         await db.execute(createDocumentsTable);
-        await db.execute(createDocumentMembersTable);
-
-        // Triggers
-        await db.execute(accountCleanupTrigger);
-        await db.execute(removeSpksOnFamiliarTrigger);
       },
     );
   }
@@ -137,35 +131,19 @@ class DB {
     );
 
     await _insert(
-      accountsTable,
+      contactsTable,
       sqlAccount.toJson(),
       conflictAlgorithm: conflictAlgorithm,
     );
   }
 
   Future<void> deleteContact({required String actorId}) async {
-    final members = await _query(
-      documentMembersTable,
-      where: 'actor_id = ?',
-      whereArgs: [actorId],
-    );
-
-    if (members.isEmpty) {
-      await _delete(accountsTable, where: 'actor_id = ?', whereArgs: [actorId]);
-    } else {
-      await _update(
-        accountsTable,
-        {'kind': AccountKind.familiar.name},
-        where: 'actor_id = ?',
-        whereArgs: [actorId],
-      );
-    }
+    await _delete(contactsTable, where: 'actor_id = ?', whereArgs: [actorId]);
   }
 
   Future<List<ExternalAccount>> getContactList() async {
     final rawAccounts = await _query(
-      accountsTable,
-      where: 'kind = ?',
+      contactsTable,
       whereArgs: [AccountKind.contact.name],
     );
 
@@ -183,260 +161,64 @@ class DB {
   }
 
   Future<List<Document>> getDocumentList() async {
-    final rows = await _connection.rawQuery('''
-    SELECT 
-      d.id              AS document_id,
-      d.title           AS document_title,
-      d.content         AS document_content,
-      d.created_at      AS document_created_at,
-      d.updated_at      AS document_updated_at,
-      d.group_context_parts AS document_group_context_parts,
+    final rawDocuments = await _connection.rawQuery(
+      "SELECT * FROM documents ORDER BY created_at ASC",
+    );
 
-      m.actor_id        AS member_actor_id,
-      m.role            AS member_role,
-      m.created_at      AS member_created_at,
-      m.updated_at      AS member_updated_at,
+    final sqlDocuments = rawDocuments
+        .map((e) => SQLDocument.fromJson(e))
+        .toList();
 
-      a.name            AS account_name,
-      a.public_key      AS account_public_key,
-      a.image           AS account_image,
-      a.kind            AS account_kind
-    FROM $documentsTable d
-    LEFT JOIN $documentMembersTable m ON d.id = m.document_id
-    LEFT JOIN $accountsTable a ON m.actor_id = a.actor_id
-    ORDER BY d.created_at DESC
-  ''');
-
-    final Map<String, Document> docs = {};
-
-    for (final row in rows) {
-      final docId = row['document_id'] as String;
-
-      docs.putIfAbsent(
-        docId,
-        () => Document(
-          id: docId,
-          title: row['document_title'] as String,
-          automergeDoc: BAutoCommit.fromBytes(
-            bytes: row['document_content'] as Uint8List,
+    final documents = sqlDocuments
+        .map(
+          (doc) => Document(
+            id: doc.id,
+            title: doc.title,
+            automergeDoc: BAutoCommit.fromBytes(bytes: doc.content),
+            createdAt: doc.createdAt,
+            groupContextParts: GroupContextParts.fromJsonString(
+              doc.groupContextParts,
+            ),
           ),
-          members: [],
-          createdAt: DateTime.parse(row['document_created_at'] as String),
-          updatedAt: DateTime.parse(row['document_updated_at'] as String),
-          groupContextParts: GroupContextParts.fromJsonString(
-            row['document_group_context_parts'].toString(),
-          ),
-        ),
-      );
+        )
+        .toList();
 
-      if (row['member_actor_id'] != null) {
-        final account = ExternalAccount(
-          actorId: row['member_actor_id'] as String,
-          name: row['account_name'] as String,
-          rawPublicKey: row['account_public_key'] as List<int>,
-        );
-
-        docs[docId]!.members.add(
-          DocumentMember(
-            account: account,
-            isOwner: (row['member_role'] as int) == ownerRole,
-          ),
-        );
-      }
-    }
-
-    return docs.values.toList();
+    return documents;
   }
 
   Future<Document?> getDocumentById(String id) async {
-    final rows = await _connection.rawQuery(
-      '''
-    SELECT 
-      d.id              AS document_id,
-      d.title           AS document_title,
-      d.content         AS document_content,
-      d.created_at      AS document_created_at,
-      d.updated_at      AS document_updated_at,
-      d.group_context_parts AS document_group_context_parts,
-
-      m.actor_id        AS member_actor_id,
-      m.role            AS member_role,
-      m.created_at      AS member_created_at,
-      m.updated_at      AS member_updated_at,
-
-      a.name            AS account_name,
-      a.public_key      AS account_public_key,
-      a.image           AS account_image,
-      a.kind            AS account_kind
-    FROM $documentsTable d
-    LEFT JOIN $documentMembersTable m ON d.id = m.document_id
-    LEFT JOIN $accountsTable a ON m.actor_id = a.actor_id
-    WHERE d.id = ?
-    ORDER BY d.created_at DESC
-  ''',
-      [id],
+    final rawDocument = await _connection.query(
+      documentsTable,
+      where: 'id = ?',
+      whereArgs: [id],
+      orderBy: 'created_at ASC',
     );
 
-    if (rows.isEmpty) return null;
+    if (rawDocument.isEmpty) return null;
 
-    Document? doc;
-    for (final row in rows) {
-      doc ??= Document(
-        id: row['document_id'] as String,
-        title: row['document_title'] as String,
-        automergeDoc: BAutoCommit.fromBytes(
-          bytes: row['document_content'] as Uint8List,
-        ),
-        members: [],
-        createdAt: DateTime.parse(row['document_created_at'] as String),
-        updatedAt: DateTime.parse(row['document_updated_at'] as String),
-        groupContextParts: GroupContextParts.fromJsonString(
-          row['document_group_context_parts'].toString(),
-        ),
-      );
+    final doc = SQLDocument.fromJson(rawDocument.first);
 
-      if (row['member_actor_id'] != null) {
-        final account = ExternalAccount(
-          actorId: row['member_actor_id'] as String,
-          name: row['account_name'] as String,
-          rawPublicKey: row['account_public_key'] as List<int>,
-        );
-
-        doc.members.add(
-          DocumentMember(
-            account: account,
-            isOwner: (row['member_role'] as int) == ownerRole,
-          ),
-        );
-      }
-    }
-
-    return doc;
+    return Document(
+      id: doc.id,
+      title: doc.title,
+      automergeDoc: BAutoCommit.fromBytes(bytes: doc.content),
+      createdAt: doc.createdAt,
+      groupContextParts: GroupContextParts.fromJsonString(
+        doc.groupContextParts,
+      ),
+    );
   }
 
-  Future<void> insertDocument({
-    required Document document,
-    required GroupContextParts groupContextParts,
-  }) async {
+  Future<void> insertDocument({required Document document}) async {
     final sqlDoc = SQLDocument(
       id: document.id,
       title: document.title,
       content: document.automergeDoc.save(),
       createdAt: document.createdAt,
-      updatedAt: document.updatedAt,
-      groupContextParts: groupContextParts.toJsonString(),
+      groupContextParts: document.groupContextParts.toJsonString(),
     );
 
     await _insert(documentsTable, sqlDoc.toJson());
-
-    for (final member in document.members) {
-      await insertDocumentMember(documentId: document.id, member: member);
-    }
-
-    for (final member in document.members) {
-      await insertAccount(
-        account: member.account,
-        kind: AccountKind.familiar,
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
-    }
-  }
-
-  Future<Document> insertNewDocument({
-    required String id,
-    required String title,
-    required ExternalAccount owner,
-    required BAutoCommit content,
-    required GroupContextParts groupContextParts,
-  }) async {
-    final now = DateTime.now();
-
-    final sqlDoc = SQLDocument(
-      id: id,
-      title: title,
-      content: content.save(),
-      createdAt: now,
-      updatedAt: now,
-      groupContextParts: groupContextParts.toJsonString(),
-    );
-
-    await _insert(documentsTable, sqlDoc.toJson());
-    await insertDocumentMember(
-      documentId: id,
-      member: DocumentMember(account: owner, isOwner: true),
-    );
-
-    return Document(
-      id: id,
-      title: title,
-      automergeDoc: content,
-      members: [DocumentMember(account: owner, isOwner: true)],
-      createdAt: now,
-      updatedAt: now,
-      groupContextParts: groupContextParts,
-    );
-  }
-
-  Future<void> insertDocumentMember({
-    required String documentId,
-    required DocumentMember member,
-    ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort,
-  }) async {
-    final now = DateTime.now();
-
-    final sqlDocMember = SQLDocumentMember(
-      actorId: member.account.actorId,
-      documentId: documentId,
-      role: member.isOwner ? ownerRole : editorRole,
-      createdAt: now,
-      updatedAt: now,
-    );
-
-    await _insert(
-      documentMembersTable,
-      sqlDocMember.toJson(),
-      conflictAlgorithm: conflictAlgorithm,
-    );
-  }
-
-  Future<void> insertAccount({
-    required ExternalAccount account,
-    required AccountKind kind,
-    ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.abort,
-  }) async {
-    final sqlAccount = SQLAccount(
-      actorId: account.actorId,
-      publicKey: Uint8List.fromList(account.rawPublicKey),
-      name: account.name,
-      kind: kind.name,
-    );
-
-    await _insert(
-      accountsTable,
-      sqlAccount.toJson(),
-      conflictAlgorithm: conflictAlgorithm,
-    );
-  }
-
-  Future<void> setupAccountIfNeeded(ExternalAccount account) async {
-    await insertAccount(
-      account: account,
-      kind: AccountKind.user,
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
-  }
-
-  Future<void> updateAccount(ExternalAccount account) async {
-    await _update(
-      accountsTable,
-      {'name': account.name},
-      where: 'actor_id = ? AND kind = ?',
-      whereArgs: [account.actorId, AccountKind.user.name],
-    );
-  }
-
-  Future<void> deleteMember(String id) async {
-    await _delete(documentMembersTable, where: "actor_id = ?", whereArgs: [id]);
   }
 
   Future<void> updateDocumentTitle({
@@ -445,13 +227,13 @@ class DB {
   }) async {
     await _update(
       documentsTable,
-      {'title': title, 'updated_at': DateTime.now().toIso8601String()},
+      {'title': title},
       where: 'id = ?',
       whereArgs: [id],
     );
   }
 
-  Future<void> updateDocumentContent({
+  Future<void> updateDocument({
     required Document doc,
     required GroupContextParts parts,
   }) async {
@@ -459,11 +241,19 @@ class DB {
       documentsTable,
       {
         'content': doc.automergeDoc.save(),
-        'updated_at': doc.updatedAt.toIso8601String(),
         'group_context_parts': parts.toJsonString(),
       },
       where: 'id = ?',
       whereArgs: [doc.id],
+    );
+  }
+
+  Future<void> updateAccount(ExternalAccount account) async {
+    await _update(
+      contactsTable,
+      {'name': account.name},
+      where: 'actor_id = ?',
+      whereArgs: [account.actorId, AccountKind.user.name],
     );
   }
 

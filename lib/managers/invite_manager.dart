@@ -3,15 +3,18 @@ import 'dart:typed_data';
 
 import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
+import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
+import 'package:zk_notion_app/storage/models.dart';
+import 'package:zk_notion_app/utils/group_context_factory.dart';
 
 class InviteManager {
   final accountStorage = AccountStorage.instance;
 
   static final InviteManager instance = InviteManager();
 
-  Future<BGroupContext> processJoin(String base64Invite) async {
+  Future<Document> processJoin(String base64Invite) async {
     final account = await accountStorage.getAccount();
 
     if (account == null) {
@@ -43,7 +46,7 @@ class InviteManager {
     }
   }
 
-  Future<BGroupContext> _processUnidentifiedInvite(
+  Future<Document> _processUnidentifiedInvite(
     Uint8List inviteBytes,
     Uint8List secretKey,
     BUser user,
@@ -88,6 +91,28 @@ class InviteManager {
       frame: frame,
     );
 
-    return groupContext;
+    final groupInfoProto = GroupInfo.fromBuffer(groupContext.getGroupInf());
+    final members = groupInfo.members
+        .map(
+          (m) => DocumentMember(
+            account: ExternalAccount(
+              actorId: m.id,
+              name: m.name,
+              rawPublicKey: m.publicKey,
+            ),
+            role: m.role.value,
+            roleName: m.role.name,
+          ),
+        )
+        .toList();
+
+    return Document(
+      id: groupInfoProto.id,
+      title: groupInfoProto.name,
+      automergeDoc: BAutoCommit(),
+      members: members,
+      createdAt: groupInfoProto.created.toDateTime(),
+      groupContextParts: groupContext.toParts(),
+    );
   }
 }

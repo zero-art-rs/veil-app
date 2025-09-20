@@ -18,6 +18,7 @@ class DocsPageViewModel extends ChangeNotifier {
     _docs
       ..clear()
       ..addAll(loaded);
+
     notifyListeners();
   }
 
@@ -38,25 +39,22 @@ class DocsPageViewModel extends ChangeNotifier {
       autoCommit: content,
     );
 
-    final doc = await DB.instance.transaction((db) async {
-      final doc = await db.insertNewDocument(
-        id: docID,
-        title: resTitle,
-        owner: ExternalAccount.fromAccount(owner),
-        content: content,
-        groupContextParts: groupContext.toParts(),
-      );
+    final document = Document(
+      id: docID,
+      title: resTitle,
+      automergeDoc: content,
+      groupContextParts: groupContext.toParts(),
+      createdAt: DateTime.now(),
+    );
 
-      await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+    DB.instance.insertDocument(document: document);
+    await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 
-      return doc;
-    });
-
-    _docs.add(doc);
+    _docs.add(document);
     notifyListeners();
   }
 
-  Future<void> updateDoc(Document doc, {required String title}) async {
+  Future<void> updateDocumentName(Document doc, {required String title}) async {
     await DB.instance.updateDocumentTitle(id: doc.id, title: title);
 
     final index = _docs.indexWhere((d) => d.id == doc.id);
@@ -67,7 +65,6 @@ class DocsPageViewModel extends ChangeNotifier {
         automergeDoc: doc.automergeDoc,
         members: doc.members,
         createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
         groupContextParts: doc.groupContextParts,
       );
       notifyListeners();

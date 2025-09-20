@@ -140,11 +140,32 @@ class EditorPageVm extends ChangeNotifier {
       }
 
       try {
-        // logger.i("sPframe ${spFrame.writeToBuffer()}");
-
-        final payload = groupContext!.processFrame(
+        final rawFrame = groupContext!.processFrame(
           spFrame: spFrame.writeToBuffer(),
         );
+
+        for (final rawPayload in rawFrame) {
+          final payload = Payload.fromBuffer(rawPayload);
+          
+          switch (payload.crdt.whichPayload()) { 
+            case CRDTPayload_Payload.incrementalChange:
+
+            case CRDTPayload_Payload.fullDocument:
+              // TODO: Handle this case.
+              throw UnimplementedError();
+            case CRDTPayload_Payload.mediaAttachment:
+              // TODO: Handle this case.
+              throw UnimplementedError();
+            case CRDTPayload_Payload.notSet:
+              // TODO: Handle this case.
+              throw UnimplementedError();
+          }
+        }
+
+        // final payload = Payload.fromBuffer();
+
+
+        // TODO: - handle crdt change
       } catch (e) {
         logger.e('Failed to process frame: $e');
       }
@@ -186,10 +207,7 @@ class EditorPageVm extends ChangeNotifier {
     _saveTicker?.cancel();
     _listenFramesTicker?.cancel();
     _commit();
-    DB.instance.updateDocumentContent(
-      doc: doc!,
-      parts: groupContext!.toParts(),
-    );
+    DB.instance.updateDocument(doc: doc!, parts: groupContext!.toParts());
     super.dispose();
   }
 }

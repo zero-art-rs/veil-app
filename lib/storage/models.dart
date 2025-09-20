@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
+import 'package:zk_notion_app/storage/sqlite/consts.dart';
 import 'package:zk_notion_app/utils/group_context_factory.dart';
 import 'package:zk_notion_app/utils/secret_factory.dart';
 
@@ -40,27 +41,35 @@ class ExternalAccount {
 
 class DocumentMember {
   final ExternalAccount account;
-  final bool isOwner;
+  final int role;
+  final String roleName;
 
   DocumentMember.fromJson(Map<String, dynamic> json)
     : account = ExternalAccount.fromJson(json['account']),
-      isOwner = json['isOwner'];
+      role = json['role'],
+      roleName = json['role_name'];
 
   toJson() => Map<String, dynamic>.from({
     'account': account.toJson(),
-    'isOwner': isOwner,
+    'role': int,
+    'role_name': roleName,
   });
 
-  DocumentMember({required this.account, required this.isOwner});
+  DocumentMember({
+    required this.account,
+    required this.role,
+    required this.roleName,
+  });
 }
+
+class DocumentMemberRole {}
 
 class Document {
   final String id;
   final String title;
   final BAutoCommit automergeDoc;
-  final List<DocumentMember> members;
+  List<DocumentMember> members;
   DateTime createdAt;
-  DateTime updatedAt;
   GroupContextParts groupContextParts;
   Key get key => ValueKey(id + title);
 
@@ -68,13 +77,20 @@ class Document {
     required this.id,
     required this.title,
     required this.automergeDoc,
-    required this.members,
     required this.createdAt,
-    required this.updatedAt,
     required this.groupContextParts,
+    this.members = const [],
   });
 
-  String ownerName() => members.firstWhere((e) => e.isOwner).account.name;
+  DocumentMember? ownerOrNull() {
+    if (members.isEmpty) return null;
+    print(members.first.role);
+    return members.firstWhere((m) => m.role == ownerRole);
+  }
+
+  void setMembers(List<DocumentMember> members) {
+    this.members = members;
+  }
 }
 
 class Keypair {
@@ -109,7 +125,7 @@ class Account {
   final Keypair keypair;
 
   Account({required this.name, required this.actorId, required this.keypair});
-  factory Account.withName(String name, {bool isCurrentUser = true}) => Account(
+  factory Account.withName(String name) => Account(
     name: name,
     actorId: generateActorId(),
     keypair: Keypair.generate(),

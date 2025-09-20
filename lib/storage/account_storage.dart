@@ -22,7 +22,7 @@ class AccountStorage {
     await _storage.write(key: _accountKey, value: jsonEncode(account.toJson()));
   }
 
-  Future<Account> getOrSetupAccount() async {
+  Future<Account> setAccountIfNeeded() async {
     final account = await getAccount();
     if (account != null) {
       return account;

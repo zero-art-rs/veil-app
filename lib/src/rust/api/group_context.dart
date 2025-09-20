@@ -119,6 +119,8 @@ abstract class BGroupContext implements RustOpaqueInterface {
 
   BigInt getEpoch();
 
+  Uint8List getGroupInf();
+
   (Uint8List, Uint8List, Uint8List, BigInt, Uint8List) intoParts();
 
   List<Uint8List> processFrame({required List<int> spFrame});

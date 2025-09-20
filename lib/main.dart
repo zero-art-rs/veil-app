@@ -26,13 +26,10 @@ import 'package:zk_notion_app/utils/platform.dart';
 Future<void> main() async {
   await RustLib.init();
   WidgetsFlutterBinding.ensureInitialized();
+
   try {
+    await AccountStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
-    final account = await AccountStorage.instance.getOrSetupAccount();
-    // await AccountStorage.instance.setAccount(Account.withName('Test account'));
-    await DB.instance.setupAccountIfNeeded(
-      ExternalAccount.fromAccount(account),
-    );
     logger.i('Db path: ${await getDatabasesPath()}');
   } catch (e) {
     logger.e('DB error: $e');
@@ -139,9 +136,13 @@ class _MyAppState extends State<MyApp> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () async {
-                    final groupContext = await InviteManager.instance
-                        .processJoin(doc.inviteData);
+                    final document = await InviteManager.instance.processJoin(
+                      doc.inviteData,
+                    );
 
+                    await DB.instance.insertDocument(document: document);
+
+                    if (!context.mounted) return;
                     Navigator.pop(context);
                   },
                   child: Text('Join'),
