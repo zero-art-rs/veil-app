@@ -62,7 +62,7 @@ class EditorPageVm extends ChangeNotifier {
       );
     }
 
-    // _saveTicker = Timer.periodic(const Duration(seconds: 3), (_) => commit());
+    _saveTicker = Timer.periodic(const Duration(seconds: 3), (_) => _commit());
     _listenFramesTicker = Timer.periodic(
       const Duration(seconds: 5),
       (_) => listenFrames(),
@@ -84,8 +84,9 @@ class EditorPageVm extends ChangeNotifier {
     final incrementalChange = doc!.automergeDoc.saveIncremental();
     if (incrementalChange.isEmpty) return;
 
-    final crdt = CRDTPayload(fullDocument: incrementalChange);
-    final payload = Payload(crdt: crdt).writeToBuffer();
+    final payload = Payload(
+      crdt: CRDTPayload(fullDocument: incrementalChange),
+    ).writeToBuffer();
 
     final frame = groupContext!.createFrame(payloads: [payload]);
     await GroupApiClient.instance.sendFrame(groupId: doc!.id, frame: frame);
@@ -124,25 +125,18 @@ class EditorPageVm extends ChangeNotifier {
       switch (spFrame.frame.frame.groupOperation.whichOperation()) {
         case GroupOperation_Operation.init:
           logger.d('init');
-          break;
         case GroupOperation_Operation.addMember:
           logger.d('addmember');
-          break;
         case GroupOperation_Operation.removeMember:
           logger.d('removeMember');
-          break;
         case GroupOperation_Operation.keyUpdate:
           logger.d('keyupdate');
-          break;
         case GroupOperation_Operation.leaveGroup:
           logger.d('leaveGroup');
-          break;
         case GroupOperation_Operation.dropGroup:
           logger.d('dropGroup');
-          break;
         case GroupOperation_Operation.notSet:
-          logger.d('notSet, skipping');
-          return;
+          logger.d('message');
       }
 
       try {
@@ -191,7 +185,7 @@ class EditorPageVm extends ChangeNotifier {
   void dispose() {
     _saveTicker?.cancel();
     _listenFramesTicker?.cancel();
-    // commit();
+    _commit();
     DB.instance.updateDocumentContent(
       doc: doc!,
       parts: groupContext!.toParts(),
