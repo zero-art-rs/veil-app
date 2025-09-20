@@ -242,6 +242,12 @@ impl BGroupContext {
     pub fn get_epoch(&self) -> u64 {
         self.group_context.get_epoch()
     }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn get_group_inf(&self) -> Vec<u8> {
+        let group_info: zero_art_proto::GroupInfo =  self.group_context.get_group_info().clone().into();
+        group_info.encode_to_vec()
+    }
 }
 
 pub struct BSecretsFactory {
