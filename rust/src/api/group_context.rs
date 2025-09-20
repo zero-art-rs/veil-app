@@ -3,7 +3,7 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use awesome_client_sdk::{
     group_context::{builder::GroupContextBuilder, GroupContext},
-    metadata, secrets_factory, zero_art_proto,
+    models, secrets_factory, zero_art_proto,
 };
 use cortado::{self, CortadoAffine, Fr as ScalarField};
 use crypto::schnorr;
@@ -13,14 +13,14 @@ use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;
 
 pub struct BUser {
-    user: metadata::user::User,
+    user: models::group_info::User,
 }
 
 impl BUser {
     #[flutter_rust_bridge::frb(sync)]
     pub fn new(id: String, name: String) -> Self {
         Self {
-            user: metadata::user::User {
+            user: models::group_info::User {
                 id,
                 name,
                 public_key: CortadoAffine::default(),
@@ -32,7 +32,7 @@ impl BUser {
 }
 
 pub struct BGroupInfo {
-    group_info: metadata::group::GroupInfo,
+    group_info: models::group_info::GroupInfo,
 }
 
 // empty since we are not going to invite members in create group stage yet.
@@ -40,12 +40,12 @@ impl BGroupInfo {
     #[flutter_rust_bridge::frb(sync)]
     pub fn new(id: String, name: String) -> Self {
         Self {
-            group_info: metadata::group::GroupInfo {
+            group_info: models::group_info::GroupInfo {
                 id: Uuid::parse_str(&id).unwrap(),
                 name,
                 metadata: vec![],
                 created: chrono::Utc::now(),
-                members: metadata::group::GroupMembers::default(),
+                members: models::group_info::GroupMembers::default(),
             },
         }
     }
@@ -71,7 +71,7 @@ impl BGroupContext {
         let leaf_secret = ScalarField::deserialize_uncompressed(&leaf_secret[..])
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
         let stk: [u8; 32] = stk.try_into().map_err(|_| anyhow!("failed to parse stk"))?;
-        let group_info: metadata::group::GroupInfo =
+        let group_info: models::group_info::GroupInfo =
             zero_art_proto::GroupInfo::decode(&group_info[..])
                 .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
                 .try_into()
@@ -132,9 +132,11 @@ impl BGroupContext {
             .into_iter()
             .map(|v| {
                 zero_art_proto::Payload::decode(&v[..])
-                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
+                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
+                    .try_into()
+                    .map_err(|_| anyhow!("failed to deserialize"))
             })
-            .collect::<anyhow::Result<Vec<zero_art_proto::Payload>>>()?;
+            .collect::<anyhow::Result<Vec<models::payload::Payload>>>()?;
 
         let (frame, invite) = self
             .group_context
@@ -147,7 +149,12 @@ impl BGroupContext {
             )
             .map_err(|e| anyhow!("failed to add member: {}", e.to_string()))?;
 
-        Ok((frame.encode_to_vec(), invite.encode_to_vec()))
+        Ok((
+            frame
+                .encode_to_vec()
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
+            invite.encode_to_vec(),
+        ))
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -163,9 +170,11 @@ impl BGroupContext {
             .into_iter()
             .map(|v| {
                 zero_art_proto::Payload::decode(&v[..])
-                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
+                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
+                    .try_into()
+                    .map_err(|_| anyhow!("failed to deserialize"))
             })
-            .collect::<anyhow::Result<Vec<zero_art_proto::Payload>>>()?;
+            .collect::<anyhow::Result<Vec<models::payload::Payload>>>()?;
 
         let (frame, invite) = self
             .group_context
@@ -175,7 +184,12 @@ impl BGroupContext {
             )
             .map_err(|e| anyhow!("failed to add member: {}", e.to_string()))?;
 
-        Ok((frame.encode_to_vec(), invite.encode_to_vec()))
+        Ok((
+            frame
+                .encode_to_vec()
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
+            invite.encode_to_vec(),
+        ))
     }
 
     #[flutter_rust_bridge::frb(sync)]
