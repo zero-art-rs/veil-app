@@ -154,7 +154,9 @@ impl BAutoCommit {
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn load_incremental(&mut self, bytes: Vec<u8>) -> anyhow::Result<usize> {
-        self.autocommit.load_incremental(&bytes).map_err(|e| anyhow!("Failed to load incremental: {}", e))
+        self.autocommit
+            .load_incremental(&bytes)
+            .map_err(|e| anyhow!("Failed to load incremental: {}", e))
     }
 
     #[flutter_rust_bridge::frb(sync)]

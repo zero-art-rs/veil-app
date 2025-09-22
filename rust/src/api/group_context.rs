@@ -239,13 +239,21 @@ impl BGroupContext {
     }
 
     #[flutter_rust_bridge::frb(sync)]
+    pub fn sign_challenge(&self, challenge: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+        self.group_context
+            .sign_with_tk(&Sha3_256::digest(challenge))
+            .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
     pub fn get_epoch(&self) -> u64 {
         self.group_context.get_epoch()
     }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn get_group_inf(&self) -> Vec<u8> {
-        let group_info: zero_art_proto::GroupInfo =  self.group_context.get_group_info().clone().into();
+        let group_info: zero_art_proto::GroupInfo =
+            self.group_context.get_group_info().clone().into();
         group_info.encode_to_vec()
     }
 }
