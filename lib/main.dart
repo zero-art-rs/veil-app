@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/managers/deeplink_manager.dart';
+import 'package:zk_notion_app/managers/documents_repo.dart';
 import 'package:zk_notion_app/managers/invite_manager.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
@@ -30,6 +31,7 @@ Future<void> main() async {
   try {
     await AccountStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
+    await DocumentsRepo.instance.loadDocuments();
     logger.i('Db path: ${await getDatabasesPath()}');
   } catch (e) {
     logger.e('DB error: $e');
@@ -140,7 +142,7 @@ class _MyAppState extends State<MyApp> {
                       doc.inviteData,
                     );
 
-                    await DB.instance.insertDocument(document: document);
+                    DocumentsRepo.instance.addDocument(document);
 
                     if (!context.mounted) return;
                     Navigator.pop(context);
@@ -289,7 +291,7 @@ class _MyAppState extends State<MyApp> {
             child: DesktopPrimaryPage(),
           ),
           ChangeNotifierProvider(
-            create: (_) => DocsPageViewModel()..loadDocuments(),
+            create: (_) => DocsPageViewModel()..sink(),
             child: DocsPage(),
           ),
         ],

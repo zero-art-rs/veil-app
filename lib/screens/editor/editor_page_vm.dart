@@ -10,6 +10,7 @@ import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor/overrides/helpers.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
+import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart' as models;
@@ -28,6 +29,7 @@ class EditorPageVm extends ChangeNotifier {
   BGroupContext? groupContext;
   Timer? _saveTicker;
   Timer? _listenFramesTicker;
+  bool isProcessingFrames = false;
 
   EditorPageVm(this.docId) {
     editor = createDefaultDocumentEditorOverriden(
@@ -48,6 +50,8 @@ class EditorPageVm extends ChangeNotifier {
       throw Exception('Document not found');
     }
 
+    final safeDoc = doc!;
+
     groupContext = doc!.groupContextParts.toGroupContext(
       identitySecretKey: Uint8List.fromList(account.keypair.rawPrivateKey),
     );
@@ -57,16 +61,19 @@ class EditorPageVm extends ChangeNotifier {
 
     if (doc!.automergeDoc.getBlocks().isNotEmpty) {
       editor = createDefaultDocumentEditorOverriden(
-        document: EditorAutomergeUtils.instance.toDoc(doc!.automergeDoc),
+        document: EditorAutomergeUtils.instance.toDoc(safeDoc.automergeDoc),
         composer: composer,
       );
     }
 
     _saveTicker = Timer.periodic(const Duration(seconds: 3), (_) => _commit());
-    _listenFramesTicker = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) => listenFrames(),
-    );
+    _listenFramesTicker = Timer.periodic(const Duration(seconds: 5), (_) {
+      try {
+        listenFrames();
+      } catch (e) {
+        logger.e(e);
+      }
+    });
     notifyListeners();
   }
 
@@ -84,8 +91,10 @@ class EditorPageVm extends ChangeNotifier {
     final incrementalChange = doc!.automergeDoc.saveIncremental();
     if (incrementalChange.isEmpty) return;
 
+    /// TODO: On page launch sends empty incremental change
+
     final payload = Payload(
-      crdt: CRDTPayload(fullDocument: incrementalChange),
+      crdt: CRDTPayload(incrementalChange: incrementalChange),
     ).writeToBuffer();
 
     final frame = groupContext!.createFrame(payloads: [payload]);
@@ -95,7 +104,6 @@ class EditorPageVm extends ChangeNotifier {
   }
 
   Future<void> listenFrames() async {
-    // try
     if (groupContext == null) {
       throw Exception('Group context is null');
     }
@@ -104,71 +112,123 @@ class EditorPageVm extends ChangeNotifier {
       throw Exception('Document is null');
     }
 
-    logger.i('------ FRAME TICK ------');
+    if (isProcessingFrames) {
+      logger.i('Skipping processing frames, already processing');
+      return;
+    }
 
-    final signatureTk = groupContext!.signWithTk(groupId: doc!.id, nonce: [0]);
-    final groupContextEpoch = groupContext!.getEpoch();
+    isProcessingFrames = true;
+    logger.d('Started processing frames...');
+
+    try {
+      final sequenceNumber = await processFrames(doc!, groupContext!);
+
+      if (sequenceNumber != null) {
+        doc!.sequenceNumber = sequenceNumber;
+        logger.i(
+          'Frames processed successfully, new sequenceNumber=$sequenceNumber',
+        );
+      } else {
+        logger.w('No sequenceNumber returned from processFrames');
+      }
+    } catch (e, st) {
+      logger.e('Error while processing frames', error: e, stackTrace: st);
+      rethrow;
+    } finally {
+      isProcessingFrames = false;
+      logger.d('Finished processing frames');
+    }
+  }
+
+  /// Returns last processed frame sequence number
+  Future<int?> processFrames(
+    models.Document doc,
+    BGroupContext groupContext,
+  ) async {
+    final signatureTk = groupContext.signWithTk(groupId: doc.id, nonce: [0]);
 
     final result = await GroupApiClient.instance.getFrames(
-      groupId: doc!.id,
+      groupId: doc.id,
       signature: base64UrlEncode(signatureTk),
       nonce: base64UrlEncode([0]),
-      epoch: groupContextEpoch.toInt(),
-      messageSequenceNumber: 0,
+      messageSequenceNumber: doc.sequenceNumber,
+      epoch: groupContext.getEpoch().toInt(),
     );
 
-    logger.i('Context epoch: $groupContextEpoch');
+    for (final spFrame in result.spFrames.reversed) {
+      final rawFramePayloads = groupContext.processFrame(
+        spFrame: spFrame.writeToBuffer(),
+      );
 
-    for (final spFrame in result.spFrames) {
-      logger.i("Frame epoch ${spFrame.frame.frame.epoch}");
+      // If rawFramePayloads is empty,
+      // it indicates that the frame belongs to the current user,
+      // thus processing is unnecessary.
 
-      switch (spFrame.frame.frame.groupOperation.whichOperation()) {
-        case GroupOperation_Operation.init:
-          logger.d('init');
-        case GroupOperation_Operation.addMember:
-          logger.d('addmember');
-        case GroupOperation_Operation.removeMember:
-          logger.d('removeMember');
-        case GroupOperation_Operation.keyUpdate:
-          logger.d('keyupdate');
-        case GroupOperation_Operation.leaveGroup:
-          logger.d('leaveGroup');
-        case GroupOperation_Operation.dropGroup:
-          logger.d('dropGroup');
-        case GroupOperation_Operation.notSet:
-          logger.d('message');
-      }
+      for (final rawPayload in rawFramePayloads) {
+        final payload = Payload.fromBuffer(rawPayload);
 
-      try {
-        final rawFrame = groupContext!.processFrame(
-          spFrame: spFrame.writeToBuffer(),
-        );
-
-        for (final rawPayload in rawFrame) {
-          final payload = Payload.fromBuffer(rawPayload);
-          
-          switch (payload.crdt.whichPayload()) { 
-            case CRDTPayload_Payload.incrementalChange:
-
-            case CRDTPayload_Payload.fullDocument:
-              // TODO: Handle this case.
-              throw UnimplementedError();
-            case CRDTPayload_Payload.mediaAttachment:
-              // TODO: Handle this case.
-              throw UnimplementedError();
-            case CRDTPayload_Payload.notSet:
-              // TODO: Handle this case.
-              throw UnimplementedError();
-          }
+        switch (payload.whichContent()) {
+          case Payload_Content.crdt:
+            logger.i('Received CRDT payload');
+            _handleCRDT(payload.crdt, doc);
+          case Payload_Content.action:
+            logger.i('Received action payload');
+            _handleGroupOperations(payload.action, doc);
+          default:
+            logger.i('Received unknown payload type');
+            throw UnimplementedError('Received unknown payload type');
         }
-
-        // final payload = Payload.fromBuffer();
-
-
-        // TODO: - handle crdt change
-      } catch (e) {
-        logger.e('Failed to process frame: $e');
       }
+    }
+
+    return result.spFrames.firstOrNull?.seqNum.toInt();
+  }
+
+  void _handleCRDT(CRDTPayload crdt, models.Document doc) {
+    switch (crdt.whichPayload()) {
+      case CRDTPayload_Payload.incrementalChange:
+        logger.d('Received incremental change');
+        doc.automergeDoc.loadIncremental(bytes: crdt.incrementalChange);
+        createDefaultDocumentEditorOverriden(
+          document: EditorAutomergeUtils.instance.toDoc(doc.automergeDoc),
+          composer: composer,
+        );
+      case CRDTPayload_Payload.fullDocument:
+        logger.d('Received full document');
+        doc.automergeDoc.loadIncremental(bytes: crdt.incrementalChange);
+        createDefaultDocumentEditorOverriden(
+          document: EditorAutomergeUtils.instance.toDoc(doc.automergeDoc),
+          composer: composer,
+        );
+      case CRDTPayload_Payload.mediaAttachment:
+        throw UnimplementedError('Media attachments not supported');
+      case CRDTPayload_Payload.notSet:
+        throw UnimplementedError('CRDT payload not set');
+    }
+
+    notifyListeners();
+  }
+
+  void _handleGroupOperations(GroupActionPayload gop, models.Document doc) {
+    switch (gop.whichAction()) {
+      case GroupActionPayload_Action.init:
+        logger.d('init received');
+      case GroupActionPayload_Action.inviteMember:
+        logger.d('invite member received');
+      case GroupActionPayload_Action.removeMember:
+        throw UnimplementedError('Remove member not supported');
+      case GroupActionPayload_Action.joinGroup:
+        logger.d('join group received');
+      case GroupActionPayload_Action.changeUser:
+        throw UnimplementedError('Change user not supported');
+      case GroupActionPayload_Action.changeGroup:
+        throw UnimplementedError('Change group not supported');
+      case GroupActionPayload_Action.leaveGroup:
+        throw UnimplementedError('Leave group not supported');
+      case GroupActionPayload_Action.finalizeRemoval:
+        throw UnimplementedError('Finalize removal not supported');
+      case GroupActionPayload_Action.notSet:
+        throw UnimplementedError('group operation not set');
     }
   }
 

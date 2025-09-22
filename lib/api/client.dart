@@ -42,6 +42,26 @@ class GroupApiClient {
     }
   }
 
+  Future<String> getCentrifugoJWT(String groupId, int epoch) async {
+    final challenge = await getChallenge(groupId);
+
+    final body = {
+      'challenge': challenge,
+      'epochs': epoch,
+      'chat_ids': [groupId],
+      'nonce': '0',
+      'proof': '',
+    };
+
+    final response = await _http.post(
+      Uri.parse('$baseUrl/centrifugo/jwt'),
+      body: jsonEncode(body),
+    );
+
+    final responseJson = jsonDecode(response.body);
+    return responseJson['jwt'] as String;
+  }
+
   Future<String> getChallenge(String groupId) async {
     final url = Uri.parse('$baseUrl/v1/group/$groupId/challenge');
 

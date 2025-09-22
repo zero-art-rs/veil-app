@@ -67,10 +67,12 @@ class DocumentMemberRole {}
 class Document {
   final String id;
   final String title;
-  final BAutoCommit automergeDoc;
+  BAutoCommit automergeDoc;
   List<DocumentMember> members;
   DateTime createdAt;
   GroupContextParts groupContextParts;
+  int sequenceNumber;
+
   Key get key => ValueKey(id + title);
 
   Document({
@@ -79,17 +81,25 @@ class Document {
     required this.automergeDoc,
     required this.createdAt,
     required this.groupContextParts,
+    this.sequenceNumber = 0,
     this.members = const [],
   });
 
   DocumentMember? ownerOrNull() {
     if (members.isEmpty) return null;
-    print(members.first.role);
     return members.firstWhere((m) => m.role == ownerRole);
   }
 
   void setMembers(List<DocumentMember> members) {
     this.members = members;
+  }
+
+  void setDocument(BAutoCommit doc) {
+    automergeDoc = doc;
+  }
+
+  void incrementSequenceNumber() {
+    sequenceNumber++;
   }
 }
 

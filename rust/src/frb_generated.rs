@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -701737308;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1383133995;
 
 // Section: executor
 
@@ -625,6 +625,58 @@ fn wire__crate__api__automerge__BAutoCommit_insert_block_impl(
                         &mut *api_that_guard,
                         api_index,
                         api_text,
+                    )?;
+                    Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__automerge__BAutoCommit_load_incremental_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "BAutoCommit_load_incremental",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>,
+            >>::sse_decode(&mut deserializer);
+            let api_bytes = <Vec<u8>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, true,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref_mut()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let mut api_that_guard = api_that_guard.unwrap();
+                    let output_ok = crate::api::automerge::BAutoCommit::load_incremental(
+                        &mut *api_that_guard,
+                        api_bytes,
                     )?;
                     Ok(output_ok)
                 })(),
@@ -2486,13 +2538,13 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__group_context__BGroupContext_add_unidentified_member_impl(
+        24 => wire__crate__api__group_context__BGroupContext_add_unidentified_member_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        44 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2534,118 +2586,123 @@ fn pde_ffi_dispatcher_sync_impl(
         12 => {
             wire__crate__api__automerge__BAutoCommit_insert_block_impl(ptr, rust_vec_len, data_len)
         }
-        13 => wire__crate__api__automerge__BAutoCommit_new_impl(ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__automerge__BAutoCommit_save_impl(ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__automerge__BAutoCommit_save_incremental_impl(
+        13 => wire__crate__api__automerge__BAutoCommit_load_incremental_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        16 => {
+        14 => wire__crate__api__automerge__BAutoCommit_new_impl(ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__automerge__BAutoCommit_save_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__automerge__BAutoCommit_save_incremental_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        17 => {
             wire__crate__api__automerge__BAutoCommit_set_actor_id_impl(ptr, rust_vec_len, data_len)
         }
-        17 => wire__crate__api__automerge__BAutoCommit_setup_block_label_impl(
+        18 => wire__crate__api__automerge__BAutoCommit_setup_block_label_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        18 => {
+        19 => {
             wire__crate__api__automerge__BAutoCommit_update_block_impl(ptr, rust_vec_len, data_len)
         }
-        19 => wire__crate__api__automerge__BChange_actor_id_hex_impl(ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__automerge__BChange_change_hash_impl(ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__automerge__BChange_timestamp_impl(ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__group_context__BGroupContext_add_identified_member_impl(
+        20 => wire__crate__api__automerge__BChange_actor_id_hex_impl(ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__automerge__BChange_change_hash_impl(ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__automerge__BChange_timestamp_impl(ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__group_context__BGroupContext_add_identified_member_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        24 => wire__crate__api__group_context__BGroupContext_create_frame_impl(
+        25 => wire__crate__api__group_context__BGroupContext_create_frame_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => wire__crate__api__group_context__BGroupContext_from_parts_impl(
+        26 => wire__crate__api__group_context__BGroupContext_from_parts_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        26 => wire__crate__api__group_context__BGroupContext_get_epoch_impl(
+        27 => wire__crate__api__group_context__BGroupContext_get_epoch_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        27 => wire__crate__api__group_context__BGroupContext_get_group_inf_impl(
+        28 => wire__crate__api__group_context__BGroupContext_get_group_inf_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        28 => wire__crate__api__group_context__BGroupContext_into_parts_impl(
+        29 => wire__crate__api__group_context__BGroupContext_into_parts_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        29 => wire__crate__api__group_context__BGroupContext_process_frame_impl(
+        30 => wire__crate__api__group_context__BGroupContext_process_frame_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        30 => wire__crate__api__group_context__BGroupContext_remove_member_impl(
+        31 => wire__crate__api__group_context__BGroupContext_remove_member_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        31 => wire__crate__api__group_context__BGroupContext_sign_with_tk_impl(
+        32 => wire__crate__api__group_context__BGroupContext_sign_with_tk_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        32 => wire__crate__api__group_context__BGroupInfo_new_impl(ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__group_context__BSecretsFactory_generate_secret_impl(
+        33 => wire__crate__api__group_context__BGroupInfo_new_impl(ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__group_context__BSecretsFactory_generate_secret_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        34 => {
+        35 => {
             wire__crate__api__group_context__BSecretsFactory_generate_secret_with_public_key_impl(
                 ptr,
                 rust_vec_len,
                 data_len,
             )
         }
-        35 => {
+        36 => {
             wire__crate__api__group_context__BSecretsFactory_new_impl(ptr, rust_vec_len, data_len)
         }
-        36 => wire__crate__api__group_context__BUser_new_impl(ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__group_context__create_group_impl(ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__group_context__create_group_from_identified_invite_impl(
+        37 => wire__crate__api__group_context__BUser_new_impl(ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__group_context__create_group_impl(ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__group_context__create_group_from_identified_invite_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        39 => wire__crate__api__group_context__create_group_from_unidentified_invite_impl(
+        40 => wire__crate__api__group_context__create_group_from_unidentified_invite_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        40 => wire__crate__api__group_context__destruct_identified_invite_impl(
+        41 => wire__crate__api__group_context__destruct_identified_invite_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        41 => wire__crate__api__group_context__destruct_unidentified_invite_impl(
+        42 => wire__crate__api__group_context__destruct_unidentified_invite_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        42 => wire__crate__api__automerge__generate_actor_id_impl(ptr, rust_vec_len, data_len),
-        43 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
-        45 => wire__crate__api__group_context__public_key_from_secret_key_impl(
+        43 => wire__crate__api__automerge__generate_actor_id_impl(ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        46 => wire__crate__api__group_context__public_key_from_secret_key_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        46 => wire__crate__api__group_context__sign_challenge_impl(ptr, rust_vec_len, data_len),
+        47 => wire__crate__api__group_context__sign_challenge_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

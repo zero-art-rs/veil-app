@@ -6,6 +6,7 @@ class SQLDocument {
   Uint8List content;
   DateTime createdAt;
   String groupContextParts;
+  int sequenceNumber;
 
   SQLDocument({
     required this.id,
@@ -13,6 +14,7 @@ class SQLDocument {
     required this.content,
     required this.createdAt,
     required this.groupContextParts,
+    required this.sequenceNumber,
   });
 
   Map<String, Object?> toJson() {
@@ -22,6 +24,7 @@ class SQLDocument {
       'content': content,
       'created_at': createdAt.toIso8601String(),
       'group_context_parts': groupContextParts,
+      'sequence_number': sequenceNumber,
     };
   }
 
@@ -32,6 +35,7 @@ class SQLDocument {
       content: json['content'] as Uint8List,
       createdAt: DateTime.parse(json['created_at'] as String),
       groupContextParts: json['group_context_parts'] as String,
+      sequenceNumber: json['sequence_number'] as int,
     );
   }
 }

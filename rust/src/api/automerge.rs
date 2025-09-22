@@ -3,7 +3,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use automerge::{
     transaction::{CommitOptions, Transactable},
     ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc,
@@ -117,8 +117,8 @@ impl BAutoCommit {
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    /// If content is the same nothing will be changed
-    pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
+    /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
+    pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<bool> {
         let obj_id = match self.autocommit.get(self.blocks_list_id(), index) {
             Ok(Some(id)) => id.1,
             Err(err) => bail!("Failed to get block with index {}, error: {}", index, err),
@@ -129,14 +129,14 @@ impl BAutoCommit {
         let block_hash = sha2::Sha256::digest(&block);
 
         if block_hash == sha2::Sha256::digest(&text) {
-            return Ok(());
+            return Ok((false));
         }
 
         let Err(err) = self
             .autocommit
             .splice_text(obj_id, 0, block.len() as isize, &text)
         else {
-            return Ok(());
+            return Ok((true));
         };
 
         bail!("Failed to update block: {}", err);
@@ -150,6 +150,11 @@ impl BAutoCommit {
     #[flutter_rust_bridge::frb(sync)]
     pub fn save_incremental(&mut self) -> Vec<u8> {
         self.autocommit.save_incremental()
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn load_incremental(&mut self, bytes: Vec<u8>) -> anyhow::Result<usize> {
+        self.autocommit.load_incremental(&bytes).map_err(|e| anyhow!("Failed to load incremental: {}", e))
     }
 
     #[flutter_rust_bridge::frb(sync)]

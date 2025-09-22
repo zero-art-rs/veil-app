@@ -102,7 +102,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
         createdAt: DateTime.now(),
       );
 
-      final doc = await DB.instance.insertDocument(document: document);
+      await DB.instance.insertDocument(document: document);
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 

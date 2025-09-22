@@ -216,6 +216,7 @@ class DB {
       content: document.automergeDoc.save(),
       createdAt: document.createdAt,
       groupContextParts: document.groupContextParts.toJsonString(),
+      sequenceNumber: document.sequenceNumber,
     );
 
     await _insert(documentsTable, sqlDoc.toJson());
@@ -242,6 +243,7 @@ class DB {
       {
         'content': doc.automergeDoc.save(),
         'group_context_parts': parts.toJsonString(),
+        'sequence_number': doc.sequenceNumber,
       },
       where: 'id = ?',
       whereArgs: [doc.id],

@@ -41,4 +41,52 @@ class EditorAutomergeUtils {
     final md = serializeDocumentToMarkdown(doc);
     return md.split('\n').toList();
   }
+
+  void updateMutableDocumentFromAutomerge(
+    Editor editor,
+    BAutoCommit automerge,
+  ) {
+    final doc = editor.document;
+    final length = automerge.blocksLength().toInt();
+
+    final requests = List<EditRequest>.empty(growable: true);
+
+    // 1. Update or insert nodes
+    for (var i = 0; i < length; i++) {
+      final text = automerge.getBlock(index: BigInt.from(i));
+
+      if (i < doc.nodeCount) {
+        final node = doc.getNodeAt(i);
+
+        if (node is ParagraphNode) {
+          if (node.text.toPlainText() != text) {
+            requests.add(
+              ReplaceNodeRequest(
+                existingNodeId: node.id,
+                newNode: ParagraphNode(id: node.id, text: AttributedText(text)),
+              ),
+            );
+          }
+        } else {
+          // Insert new node at index
+          requests.add(
+            InsertNodeAtIndexRequest(
+              nodeIndex: i,
+              newNode: ParagraphNode(
+                id: Editor.createNodeId(),
+                text: AttributedText(text),
+              ),
+            ),
+          );
+        }
+      }
+    }
+
+    // while (doc.nodeCount > length) {
+    //   final lastNode = doc.getNodeAt(doc.nodeCount - 1)!;
+    //   requests.add(DeleteNodeRequest(nodeId: lastNode.id));
+    // }
+
+    editor.execute(requests);
+  }
 }

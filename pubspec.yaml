@@ -61,7 +61,8 @@ dependencies:
   fixnum: ^1.1.0
   http: ^1.5.0
   material_symbols_icons: ^4.2742.0
-
+  rxdart: ^0.27.7
+  centrifuge: ^0.16.0
 
 dev_dependencies:
   flutter_test:

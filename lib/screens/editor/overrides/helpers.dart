@@ -20,3 +20,4 @@ Editor createDefaultDocumentEditorOverriden({
 
   return editor;
 }
+
