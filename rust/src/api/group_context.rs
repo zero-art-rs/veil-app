@@ -240,6 +240,7 @@ impl BGroupContext {
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn sign_challenge(&self, challenge: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+        println!("Challenge: {:?}", challenge);
         println!("Hashed challenge: {:?}",Sha3_256::digest(&challenge));
         self.group_context
             .sign_with_tk(&Sha3_256::digest(challenge))
