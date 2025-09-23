@@ -1,18 +1,16 @@
-import 'package:centrifuge/centrifuge.dart' as centrifuge;
+import 'package:flutter_client_sse/constants/sse_request_type_enum.dart';
+import 'package:flutter_client_sse/flutter_client_sse.dart';
 
 class CentrifugeProvider {
-  final _baseUrl = 'https://sse-veil.distributedlab.com';
+  final _url = 'https://sse-veil.distributedlab.com';
 
   static final instance = CentrifugeProvider();
 
-  Future<centrifuge.Client> connect(String jwtToken) async {
-    final client = centrifuge.createClient(
-      '$_baseUrl/connection/uni_sse',
-      centrifuge.ClientConfig(token: jwtToken),
+  Future<Stream<SSEModel>> connect(String jwtToken) async {
+    return SSEClient.subscribeToSSE(
+      method: SSERequestType.GET,
+      url: '$_url/connection/uni_sse?cf_connect={"token": "$jwtToken"}',
+      header: <String, String>{},
     );
-
-    await client.connect();
-
-    return client;
   }
 }

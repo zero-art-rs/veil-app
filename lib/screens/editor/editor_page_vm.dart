@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:centrifuge/centrifuge.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:super_editor/super_editor.dart';
 import 'package:zk_notion_app/api/centrifuge.dart';
 import 'package:zk_notion_app/api/client.dart';
@@ -29,7 +29,7 @@ class EditorPageVm extends ChangeNotifier {
   models.Document? doc;
   BGroupContext? groupContext;
 
-  StreamSubscription<ConnectedEvent>? _centrifugoSubscription;
+  StreamSubscription<SSEModel>? _centrifugoSubscription;
   Timer? _saveTicker;
   Timer? _listenFramesTicker;
   bool isProcessingFrames = false;
@@ -96,11 +96,20 @@ class EditorPageVm extends ChangeNotifier {
     logger.i('Connect centrifugo...');
     final centrifugeClient = await CentrifugeProvider.instance.connect(jwt);
 
-    _centrifugoSubscription = centrifugeClient.connected.listen((event) {
-      logger.i(event);
-    });
-
-    logger.i('State ${centrifugeClient.state}');
+    _centrifugoSubscription = centrifugeClient.listen(
+      (data) {
+        logger.i('Centrifugo event');
+        logger.i(data.id);
+        logger.i(data.event);
+        logger.i(data.data);
+      },
+      onError: (error) {
+        logger.e(error);
+      },
+      onDone: () {
+        logger.i('Centrifugo connection closed');
+      },
+    );
   }
 
   Future<void> _commit() async {

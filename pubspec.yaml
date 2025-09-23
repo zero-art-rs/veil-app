@@ -62,7 +62,7 @@ dependencies:
   http: ^1.5.0
   material_symbols_icons: ^4.2742.0
   rxdart: ^0.27.7
-  centrifuge: ^0.16.0
+  flutter_client_sse: ^2.0.3
 
 dev_dependencies:
   flutter_test:
