@@ -9,7 +9,7 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 uuid = { version = "1.17.0", features = ["v7", "serde"] }
 flutter_rust_bridge = "=2.11.1"
-automerge = { version = "0.6.1" }
+automerge = { version = "0.6.1", features = ["optree-visualisation"]}
 anyhow = "1.0.99"
 sha2 = "0.10.9"
 awesome-client-sdk = { git = "ssh://git@github.com/zk-messenger/awesome-client-sdk.git", branch = "dev" }
@@ -25,6 +25,7 @@ ark-ec = "0.5.0"
 chrono = "0.4.42"
 sha3 = "0.10.8"
 base64 = "0.22.1"
+graphviz-rust = "0.9.6"
 
 [patch.crates-io]
 aead = { path = "./patches/aead-0.5.2-fixed" }

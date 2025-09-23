@@ -29,6 +29,9 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   static BAutoCommit fromBytes({required List<int> bytes}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitFromBytes(bytes: bytes);
 
+  /// For tests only
+  Future<void> getAutomerge();
+
   String getBlock({required BigInt index});
 
   List<String> getBlocks();

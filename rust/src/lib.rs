@@ -1,19 +1,18 @@
 pub mod api;
 mod frb_generated;
 
-mod test {
+pub(crate) mod test {
     use std::{
-        any,
-        time::{SystemTime, UNIX_EPOCH},
+        any, fs::File, io::Write, str::FromStr, time::{SystemTime, UNIX_EPOCH}
     };
 
     use anyhow::Ok;
     use automerge::{
-        transaction::{CommitOptions, Transactable},
-        AutoCommit, SaveOptions,
+        patches::TextRepresentation, sync::{Message, State, SyncDoc}, transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, PatchLog, SaveOptions, TextEncoding
     };
+    use graphviz_rust::{cmd::Format, printer::PrinterContext};
 
-    use crate::api;
+    use crate::api::{self, automerge::generate_actor_id};
 
     #[test]
     fn bautomerge_flow() -> anyhow::Result<()> {
@@ -237,4 +236,39 @@ mod test {
         println!("{:?}", change_list_len);
         Ok(())
     }
+
+    #[test]
+    fn patch_flow() -> anyhow::Result<()> {
+        let actor_1 = generate_actor_id();
+        let actor_2 = generate_actor_id();
+
+        let mut bautomerge = api::automerge::BAutoCommit::new();
+        bautomerge.set_actor_id(actor_1)?;
+
+        bautomerge.setup_block_label()?;
+
+        bautomerge.insert_block(0, "hello".to_string())?;
+        bautomerge.insert_block(1, '5'.to_string())?;
+        bautomerge.commit();
+
+        bautomerge.set_actor_id(actor_2)?;
+
+        bautomerge.insert_block(0, "ferferferf".to_string())?;
+        bautomerge.update_block(1, "world".to_string())?;
+        bautomerge.commit();
+
+        let optree =  bautomerge.get_automerge().visualise_optree(None);
+
+        let graph = graphviz_rust::parse(&optree).unwrap();
+        let res = graphviz_rust::exec(graph, &mut PrinterContext::default(), vec![Format::Jpeg.into()]).unwrap();
+
+        let mut file = File::create("output.jpeg").unwrap();
+        file.write_all(&res).unwrap();
+
+
+
+        Ok(())
+    }
+
+
 }

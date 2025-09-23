@@ -2,15 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:centrifuge/centrifuge.dart';
 import 'package:flutter/material.dart';
 import 'package:super_editor/super_editor.dart';
+import 'package:zk_notion_app/api/centrifuge.dart';
 import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor/overrides/helpers.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart' as models;
@@ -27,6 +28,8 @@ class EditorPageVm extends ChangeNotifier {
 
   models.Document? doc;
   BGroupContext? groupContext;
+
+  StreamSubscription<ConnectedEvent>? _centrifugoSubscription;
   Timer? _saveTicker;
   Timer? _listenFramesTicker;
   bool isProcessingFrames = false;
@@ -56,6 +59,8 @@ class EditorPageVm extends ChangeNotifier {
       identitySecretKey: Uint8List.fromList(account.keypair.rawPrivateKey),
     );
 
+    _setupCentrifugo(groupContext!);
+
     doc!.automergeDoc.setActorId(uuid: account.actorId);
     doc!.automergeDoc.setupBlockLabel();
 
@@ -66,15 +71,36 @@ class EditorPageVm extends ChangeNotifier {
       );
     }
 
-    _saveTicker = Timer.periodic(const Duration(seconds: 3), (_) => _commit());
-    _listenFramesTicker = Timer.periodic(const Duration(seconds: 5), (_) {
-      try {
-        listenFrames();
-      } catch (e) {
-        logger.e(e);
-      }
-    });
+    _saveTicker = Timer.periodic(const Duration(seconds: 5), (_) => _commit());
     notifyListeners();
+  }
+
+  Future<void> _setupCentrifugo(BGroupContext gcontext) async {
+    logger.i('-----SETUP CENTRIFUGO-----');
+
+    logger.i('Getting challenge...');
+    final challenge = await GroupApiClient.instance.getChallenge(docId);
+
+    final proof = base64Encode(
+      gcontext.signChallenge(challenge: base64Decode(challenge)),
+    );
+
+    logger.i('Get Centrifugo JWT...');
+    final jwt = await GroupApiClient.instance.getCentrifugoJWT(
+      groupId: docId,
+      epoch: gcontext.getEpoch().toInt(),
+      proof: proof,
+      challenge: challenge,
+    );
+
+    logger.i('Connect centrifugo...');
+    final centrifugeClient = await CentrifugeProvider.instance.connect(jwt);
+
+    _centrifugoSubscription = centrifugeClient.connected.listen((event) {
+      logger.i(event);
+    });
+
+    logger.i('State ${centrifugeClient.state}');
   }
 
   Future<void> _commit() async {
@@ -91,7 +117,10 @@ class EditorPageVm extends ChangeNotifier {
     final incrementalChange = doc!.automergeDoc.saveIncremental();
     if (incrementalChange.isEmpty) return;
 
-    /// TODO: On page launch sends empty incremental change
+    logger.i('--- COMMIT --- ');
+    logger.i('Sending incremental change...');
+
+    // TODO: On page launch sends empty incremental change
 
     final payload = Payload(
       crdt: CRDTPayload(incrementalChange: incrementalChange),
@@ -267,6 +296,7 @@ class EditorPageVm extends ChangeNotifier {
     _saveTicker?.cancel();
     _listenFramesTicker?.cancel();
     _commit();
+    _centrifugoSubscription?.cancel();
     DB.instance.updateDocument(doc: doc!, parts: groupContext!.toParts());
     super.dispose();
   }

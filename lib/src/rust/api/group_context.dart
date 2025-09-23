@@ -130,6 +130,8 @@ abstract class BGroupContext implements RustOpaqueInterface {
     required List<int> payload,
   });
 
+  Uint8List signChallenge({required List<int> challenge});
+
   Uint8List signWithTk({required String groupId, required List<int> nonce});
 }
 

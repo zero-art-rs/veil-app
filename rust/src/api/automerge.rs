@@ -5,8 +5,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use automerge::{
-    transaction::{CommitOptions, Transactable},
-    ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc,
+    transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, Change, ChangeHash, ObjType, PatchLog, ReadDoc
 };
 use sha2::Digest;
 
@@ -129,14 +128,14 @@ impl BAutoCommit {
         let block_hash = sha2::Sha256::digest(&block);
 
         if block_hash == sha2::Sha256::digest(&text) {
-            return Ok((false));
+            return Ok(false);
         }
 
         let Err(err) = self
             .autocommit
             .splice_text(obj_id, 0, block.len() as isize, &text)
         else {
-            return Ok((true));
+            return Ok(true);
         };
 
         bail!("Failed to update block: {}", err);
@@ -158,6 +157,11 @@ impl BAutoCommit {
             .load_incremental(&bytes)
             .map_err(|e| anyhow!("Failed to load incremental: {}", e))
     }
+
+    // pub fn patch(&mut self) { 
+        // let patchlog = PatchLog::active(automerge::patches::TextRepresentation::String(automerge::TextEncoding::Utf8CodeUnit));
+        // self.autocommit.make_patches(&mut patchlog);
+    // }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn info(&self) -> String {
@@ -281,6 +285,11 @@ impl BAutoCommit {
         };
 
         Ok((before_doc, after_doc))
+    }
+
+    /// For tests only
+    pub fn get_automerge(&self) -> &AutoCommit {
+        &self.autocommit
     }
 }
 

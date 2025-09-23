@@ -42,24 +42,34 @@ class GroupApiClient {
     }
   }
 
-  Future<String> getCentrifugoJWT(String groupId, int epoch) async {
-    final challenge = await getChallenge(groupId);
-
+  Future<String> getCentrifugoJWT({
+    required String groupId,
+    required int epoch,
+    required String proof,
+    required String challenge,
+  }) async {
     final body = {
       'challenge': challenge,
-      'epochs': epoch,
+      'epochs': [epoch],
       'chat_ids': [groupId],
-      'nonce': '0',
-      'proof': '',
+      'nonce': base64Encode([0]),
+      'proof': proof,
     };
 
     final response = await _http.post(
-      Uri.parse('$baseUrl/centrifugo/jwt'),
+      Uri.parse('$baseUrl/centrifugo/auth'),
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
 
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to jwt centrifugo: ${response.statusCode} ${response.body}',
+      );
+    }
+
     final responseJson = jsonDecode(response.body);
-    return responseJson['jwt'] as String;
+    return responseJson['token'].toString();
   }
 
   Future<String> getChallenge(String groupId) async {
