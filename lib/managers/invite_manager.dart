@@ -86,6 +86,8 @@ class InviteManager {
       user: user,
     );
 
+    print('invite groupContext.getEpoch() ${groupContext.getEpoch()}');
+
     await GroupApiClient.instance.sendFrame(
       groupId: groupInfo.id,
       frame: frame,

@@ -35,6 +35,8 @@ class SyncProviderModel {
   });
 
   Future<void> initalProcess() async {
+    logger.e('document.sequenceNumber ${document.sequenceNumber}');
+
     final signature = groupContext.signWithTk(groupId: document.id, nonce: [0]);
 
     while (true) {
@@ -47,14 +49,28 @@ class SyncProviderModel {
           messageSequenceNumber: document.sequenceNumber,
         );
 
+        // if (result.spFrames.isEmpty) {
+        // logger.d('No new frames');
+        // break;
+        // }
+
+        // print(result.spFrames.);
+
+        logger.i(
+          'result.spFrames.first.seqNum.toInt() ${result.spFrames.first.seqNum.toInt()}',
+        );
         if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
           break;
         }
+
+        // print(document.automergeDoc.getBlocks());
 
         for (final spFrame in result.spFrames.reversed) {
           final rawFramePayloads = groupContext.processFrame(
             spFrame: spFrame.writeToBuffer(),
           );
+
+          logger.i('CHECK LENGTH OF PAYLOADS ${rawFramePayloads.length}');
 
           // If rawFramePayloads is empty,
           // it indicates that the frame belongs to the current user,
@@ -93,8 +109,6 @@ class SyncProviderModel {
       doc: document,
       parts: groupContext.asParts(),
     );
-
-    status.value = ProcessingStatus.idle;
   }
 
   /// Listen, transform data to frames send to processor.
@@ -105,10 +119,6 @@ class SyncProviderModel {
 
         final rawJson = json.decode(event.data!);
         if (rawJson['pub'] == null) return;
-
-        logger.i(
-          'Centrifugo event id: ${event.id}, event: ${event.event}, data: ${event.data}, chatId: ${document.id}, sequenceNumber: ${document.sequenceNumber}, status: $status',
-        );
 
         final frameBytes = base64Decode(
           rawJson['pub']['data']['content'].toString(),
@@ -124,8 +134,6 @@ class SyncProviderModel {
           frame: SPFrame(frame: frame),
           sequenceNumber: sequenceNumber,
         );
-
-        logger.i('Successfully processed frame');
       },
       onError: (error, [stackTrace]) {
         logger.e('Centrifugo error: $error, trace: $stackTrace');
@@ -180,7 +188,6 @@ class SyncProvider {
     BGroupContext groupContext,
   ) async {
     final syncModel = await _setupSync(document, groupContext);
-
     await _db.insertDocument(document: document);
 
     current.add(syncModel);

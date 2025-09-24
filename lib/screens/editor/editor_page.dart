@@ -89,6 +89,30 @@ class _EditorPageView extends StatelessWidget {
                 if (vm.isSinking) SyncCircleView(),
               ]
             : [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  margin: const EdgeInsets.all(8),
+                  child: SegmentedButton<EditorModes>(
+                    segments: const <ButtonSegment<EditorModes>>[
+                      ButtonSegment<EditorModes>(
+                        value: EditorModes.view,
+                        label: Text("View mode"),
+                      ),
+                      ButtonSegment<EditorModes>(
+                        value: EditorModes.edit,
+                        label: Text("Edit mode"),
+                      ),
+                    ],
+                    selected: <EditorModes>{vm.selectedMode},
+                    onSelectionChanged: (newSelection) {
+                      vm.selectMode(newSelection.first);
+                    },
+                  ),
+                ),
+
                 if (vm.isSinking) SyncCircleView(),
                 if (isMemberListAccessible)
                   IconButton(

@@ -34,7 +34,7 @@ Future<void> main() async {
     await DB.instance.open();
     await SyncProvider.instance.init();
     await DocumentsRepo.instance.loadDocuments();
-    logger.i('Db path: ${await getDatabasesPath()}');
+    logger.d('Db path: ${await getDatabasesPath()}');
   } catch (e) {
     logger.e('DB error: $e');
   }
@@ -143,7 +143,11 @@ class _MyAppState extends State<MyApp> {
                     final invite = await InviteManager.instance.processJoin(
                       doc.inviteData,
                     );
-                    
+
+                    logger.e(
+                      'invite group context epoch ${invite.$1.groupContextParts.epoch.toInt()}',
+                    );
+
                     await SyncProvider.instance.add(invite.$1, invite.$2);
 
                     if (!context.mounted) return;

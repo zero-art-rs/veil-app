@@ -24,6 +24,7 @@ class EditorPageVm extends ChangeNotifier {
 
   final SyncProviderModel syncModel;
 
+  StreamSubscription<SPFrame>? _subscription;
   bool isEditingFlow = false;
   bool isSinking = false;
   var selectedMode = EditorModes.view;
@@ -41,13 +42,16 @@ class EditorPageVm extends ChangeNotifier {
     isSinking = true;
     notifyListeners();
 
-    _changeManager.stream(syncModel.document.id).listen((spFrame) {
+    _subscription = _changeManager.stream(syncModel.document.id).listen((
+      spFrame,
+    ) {
       isSinking = true;
       notifyListeners();
 
-      logger.i('Received new frame');
+      logger.i('Received new frame ${spFrame.seqNum}');
       final crdtPayloads = processFrame(spFrame);
       if (selectedMode == EditorModes.edit) {
+        logger.i('received crdt payload');
         _crdtPayloadList.addAll(crdtPayloads);
       } else {
         mdEditor.text = EditorAutomergeUtils.instance.toDoc(
@@ -64,6 +68,7 @@ class EditorPageVm extends ChangeNotifier {
     for (final frame in frames.values) {
       logger.i('init: process frame');
       syncModel.groupContext.processFrame(spFrame: frame.writeToBuffer());
+      print('init frame seq num ${syncModel.document.sequenceNumber}');
     }
     isSinking = false;
 
@@ -84,6 +89,7 @@ class EditorPageVm extends ChangeNotifier {
       spFrame: frame.writeToBuffer(),
     );
 
+    logger.i('rawPayloads.length editor ${rawPayloads.length}');
     for (final rawPayload in rawPayloads) {
       final payload = Payload.fromBuffer(rawPayload);
 
@@ -93,39 +99,14 @@ class EditorPageVm extends ChangeNotifier {
       exposedCrdtPayload.add(crdt);
     }
 
+    syncModel.document.sequenceNumber = frame.seqNum.toInt();
+
     return exposedCrdtPayload;
   }
 
   void editMD() {
     notifyListeners();
   }
-
-  // Future<void> commit() async {
-  //   EditorAutomergeUtils.instance.fromDoc(
-  //     mdEditor.text,
-  //     syncModel.document.automergeDoc,
-  //   );
-
-  //   syncModel.document.automergeDoc.commit();
-
-  //   final incrementalChange = syncModel.document.automergeDoc.saveIncremental();
-  //   if (incrementalChange.isEmpty) return;
-
-  //   logger.i('--- COMMIT --- ');
-  //   logger.i('Sending incremental change...');
-
-  //   final payload = Payload(
-  //     crdt: CRDTPayload(incrementalChange: incrementalChange),
-  //   ).writeToBuffer();
-
-  //   final frame = syncModel.groupContext.createFrame(payloads: [payload]);
-  //   await GroupApiClient.instance.sendFrame(
-  //     groupId: syncModel.document.id,
-  //     frame: frame,
-  //   );
-
-  //   syncModel.document.automergeDoc.commit();
-  // }
 
   void selectMode(EditorModes mode) {
     selectedMode = mode;
@@ -225,8 +206,7 @@ class EditorPageVm extends ChangeNotifier {
 
   @override
   void dispose() async {
-    // commit();
-    await Future.delayed(Duration(seconds: 3));
+    _subscription?.cancel();
 
     await DB.instance.updateDocument(
       doc: syncModel.document,

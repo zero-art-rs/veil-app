@@ -179,6 +179,7 @@ class DB {
             groupContextParts: GroupContextParts.fromJsonString(
               doc.groupContextParts,
             ),
+            sequenceNumber: doc.sequenceNumber,
           ),
         )
         .toList();

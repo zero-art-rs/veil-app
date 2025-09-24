@@ -1,3 +1,4 @@
+import 'package:fixnum/fixnum.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 
@@ -30,7 +31,9 @@ class ChangeManager {
     }
 
     syncChange.frames[sequenceNumber] = frame;
-    syncChange.subject.add(frame);
+    syncChange.subject.add(
+      SPFrame(seqNum: Int64(sequenceNumber), frame: frame.frame),
+    );
   }
 
   void clearRange(String chatId, int startIndex, int endIndex) {

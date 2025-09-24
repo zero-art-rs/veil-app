@@ -9,7 +9,6 @@ import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/group_context_factory.dart';
 import 'package:zk_notion_app/widgets/banner.dart';
 
@@ -33,7 +32,10 @@ class PrimaryPageViewModel extends ChangeNotifier {
   static const constantTabs = 5;
 
   void init() async {
-    _syncModels = _syncProvider.getAll();
+    _syncProvider.subject.listen((event) {
+      _syncModels = event;
+      notifyListeners();
+    });
   }
 
   void setSelectedIndex(int index) {
