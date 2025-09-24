@@ -133,6 +133,8 @@ abstract class BGroupContext implements RustOpaqueInterface {
   Uint8List signChallenge({required List<int> challenge});
 
   Uint8List signWithTk({required String groupId, required List<int> nonce});
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List) toParts();
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupInfo>>

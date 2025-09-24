@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zk_notion_app/main.dart';
+import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
@@ -88,7 +89,7 @@ class DocsPage extends StatelessWidget {
         onPressed: () => _cuDocumentModal(context, isCreateFlow: true),
         label: const Icon(Icons.add),
       ),
-      body: vm.docs.isEmpty
+      body: vm.syncModels.isEmpty
           ? const _NodocumentsYet()
           : GridView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -98,16 +99,17 @@ class DocsPage extends StatelessWidget {
                 crossAxisSpacing: 10,
                 childAspectRatio: 1,
               ),
-              itemCount: vm.docs.length,
+              itemCount: vm.syncModels.length,
               itemBuilder: (context, i) => _DocCard(
-                doc: vm.docs[i],
+                doc: vm.syncModels[i],
                 onDelete: () => aysModal(
                   context: context,
                   title: 'Delete document',
-                  content: 'Are you sure to delete ${vm.docs[i].title}?',
+                  content:
+                      'Are you sure to delete ${vm.syncModels[i].document.title}?',
                   callback: () async {
                     try {
-                      await vm.deleteDoc(vm.docs[i]);
+                      await vm.deleteDoc(vm.syncModels[i].document);
                     } catch (err) {
                       if (!context.mounted) return;
                       TopBanner.show(
@@ -120,7 +122,7 @@ class DocsPage extends StatelessWidget {
                 ),
                 onEdit: () => _cuDocumentModal(
                   context,
-                  document: vm.docs[i],
+                  document: vm.syncModels[i].document,
                   isCreateFlow: false,
                 ),
               ),
@@ -148,13 +150,11 @@ class _NodocumentsYet extends StatelessWidget {
 
 class _DocCard extends StatelessWidget {
   const _DocCard({required this.doc, this.onEdit, this.onDelete});
-  final Document doc;
+  final SyncProviderModel doc;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   @override
   Widget build(BuildContext context) {
-    print(doc);
-
     final theme = Theme.of(context);
     return Material(
       shadowColor: Colors.black,
@@ -165,7 +165,7 @@ class _DocCard extends StatelessWidget {
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => EditorPage(doc: doc)),
+          MaterialPageRoute(builder: (context) => EditorPage(syncModel: doc)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -263,7 +263,7 @@ class _DocCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doc.title,
+                      doc.document.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall,

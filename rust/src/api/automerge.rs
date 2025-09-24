@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use automerge::{
-    transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, Change, ChangeHash, ObjType, PatchLog, ReadDoc
+    transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc
 };
 use sha2::Digest;
 
@@ -48,6 +48,13 @@ impl BAutoCommit {
         BAutoCommit {
             autocommit: AutoCommit::new(),
         }
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn load(data: Vec<u8>) -> anyhow::Result<BAutoCommit> {
+        let autocommit = AutoCommit::load(&data)?;
+
+        Ok(BAutoCommit { autocommit: autocommit } )
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -162,6 +169,19 @@ impl BAutoCommit {
         // let patchlog = PatchLog::active(automerge::patches::TextRepresentation::String(automerge::TextEncoding::Utf8CodeUnit));
         // self.autocommit.make_patches(&mut patchlog);
     // }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn empty_change(&mut self) {
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("time should go forward")
+            .as_secs();
+
+        let opts = CommitOptions::default().with_time(since_the_epoch as i64);
+
+        self.autocommit.empty_change(opts);
+    }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn info(&self) -> String {

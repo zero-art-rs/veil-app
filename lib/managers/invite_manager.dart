@@ -112,7 +112,7 @@ class InviteManager {
       automergeDoc: BAutoCommit(),
       members: members,
       createdAt: groupInfoProto.created.toDateTime(),
-      groupContextParts: groupContext.toParts(),
+      groupContextParts: groupContext.asParts(),
     );
   }
 }

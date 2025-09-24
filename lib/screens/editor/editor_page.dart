@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
+import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
-import 'package:zk_notion_app/storage/models.dart' as models;
 import 'package:zk_notion_app/widgets/square_rounded_btn.dart';
 import 'editor_page_vm.dart';
-import 'package:super_editor/super_editor.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
 class EditorPage extends StatelessWidget {
-  final models.Document doc;
+  final SyncProviderModel syncModel;
   final bool isMemberListAccessible;
   final bool isHistoryAccessible;
   final bool readOnly;
 
   const EditorPage({
     super.key,
-    required this.doc,
+    required this.syncModel,
     this.isMemberListAccessible = true,
     this.isHistoryAccessible = true,
     this.readOnly = false,
@@ -26,7 +26,7 @@ class EditorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => EditorPageVm(doc.id)..init(),
+      create: (_) => EditorPageVm(syncModel)..init(),
       child: _EditorPageView(
         isMemberListAccessible: isMemberListAccessible,
         isHistoryAccessible: isHistoryAccessible,
@@ -51,22 +51,14 @@ class _EditorPageView extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<EditorPageVm>();
     final cs = Theme.of(context).colorScheme;
-    final th = Theme.of(context).textTheme;
     final isDesktop = PlatformUtils.isDesktop;
 
-    if (vm.groupContext == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     return Scaffold(
-      backgroundColor: cs.onSurface,
       appBar: AppBar(
-        title: Text(
-          vm.doc!.title,
-          style: th.titleLarge!.apply(color: cs.surface),
+        title: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(vm.syncModel.document.title),
         ),
-        backgroundColor: cs.onSurface,
-        foregroundColor: Colors.black,
         actions: isDesktop
             ? [
                 Container(
@@ -75,13 +67,15 @@ class _EditorPageView extends StatelessWidget {
                     vertical: 6,
                   ),
                   margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: cs.tertiaryContainer,
-                  ),
-                  child: Text(
-                    readOnly ? 'Read mode' : 'Editable mode',
-                    style: th.bodyLarge,
+                  child: SegmentedButton<String>(
+                    segments: const <ButtonSegment<String>>[
+                      ButtonSegment(value: "view", label: Text("View mode")),
+                      ButtonSegment(value: "edit", label: Text("Edit mode")),
+                    ],
+                    selected: <String>{vm.selectedMode},
+                    onSelectionChanged: (newSelection) {
+                      vm.selectMode(newSelection.first);
+                    },
                   ),
                 ),
               ]
@@ -97,8 +91,8 @@ class _EditorPageView extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (_) => DocumentMemberListScreen(
                             members: members,
-                            doc: vm.doc!,
-                            groupContext: vm.groupContext!,
+                            doc: vm.syncModel.document,
+                            groupContext: vm.syncModel.groupContext,
                           ),
                         ),
                       );
@@ -113,8 +107,10 @@ class _EditorPageView extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              HistoryPage(items: changes, doc: vm.doc!),
+                          builder: (_) => HistoryPage(
+                            items: changes,
+                            doc: vm.syncModel.document,
+                          ),
                         ),
                       );
                     },
@@ -123,7 +119,54 @@ class _EditorPageView extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          SuperEditor(editor: vm.editor, focusNode: FocusNode()),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (vm.isEditView)
+                Expanded(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: vm.mdEditor,
+                          decoration: const InputDecoration(
+                            hintText: "Start writing...",
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(16),
+                          ),
+                          keyboardType: TextInputType.multiline,
+                          maxLines: null,
+                          onChanged: (_) => vm.editMD(),
+                        ),
+                      ),
+
+                      Container(
+                        alignment: Alignment.bottomRight,
+                        padding: EdgeInsets.all(12),
+                        child: FilledButton(
+                          onPressed: () => {},
+                          child: const Text("Commit"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              if (vm.isEditView && isDesktop)
+                Container(width: 1, height: double.infinity, color: cs.outline),
+
+              if (isDesktop)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SingleChildScrollView(
+                      child: GptMarkdown(vm.mdEditor.text),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
           if (isDesktop)
             Column(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -141,8 +184,8 @@ class _EditorPageView extends StatelessWidget {
                         onGenerateRoute: (_) => MaterialPageRoute(
                           builder: (_) => DocumentMemberListScreen(
                             members: members,
-                            doc: vm.doc!,
-                            groupContext: vm.groupContext!,
+                            doc: vm.syncModel.document,
+                            groupContext: vm.syncModel.groupContext,
                           ),
                         ),
                       ),
@@ -159,8 +202,10 @@ class _EditorPageView extends StatelessWidget {
                       height: 680,
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
-                          builder: (_) =>
-                              HistoryPage(items: changes, doc: vm.doc!),
+                          builder: (_) => HistoryPage(
+                            items: changes,
+                            doc: vm.syncModel.document,
+                          ),
                         ),
                       ),
                     );

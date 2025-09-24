@@ -12,7 +12,7 @@ pub(crate) mod test {
     };
     use graphviz_rust::{cmd::Format, printer::PrinterContext};
 
-    use crate::api::{self, automerge::generate_actor_id};
+    use crate::api::{self, automerge::{generate_actor_id, BAutoCommit}};
 
     #[test]
     fn bautomerge_flow() -> anyhow::Result<()> {
@@ -270,5 +270,87 @@ pub(crate) mod test {
         Ok(())
     }
 
+    #[test]
+    fn incremental_change() -> anyhow::Result<()> {
+        let actor_id = generate_actor_id();
 
+        println!("actor 1 {:?}", actor_id);
+
+        let mut automerge = api::automerge::BAutoCommit::new();
+        automerge.set_actor_id(actor_id)?;
+        automerge.setup_block_label()?;
+
+        automerge.insert_block(0, '1'.to_string())?;
+        automerge.insert_block(1, '5'.to_string())?;
+        automerge.commit();
+
+        let actor_2 = generate_actor_id();
+        println!("actor 2 {:?}", actor_2);
+        let mut automerge2 = api::automerge::BAutoCommit::new();
+        automerge2.set_actor_id(generate_actor_id())?;
+        automerge2.load_incremental(automerge.save_incremental())?;
+
+        automerge2.insert_block(0, '2'.to_string())?;
+        automerge2.commit();
+
+        automerge.insert_block(2, "10".to_string())?;
+        automerge.commit();
+
+        automerge2.load_incremental(automerge.save_incremental())?;
+        automerge2.empty_change();
+
+        automerge.load_incremental(automerge2.save_incremental())?;
+        automerge.empty_change();
+
+        println!("automerge2 {:?}", automerge2.get_blocks());
+        println!("automerge {:?}", automerge.get_blocks());
+
+        // assert!(automerge2.save() == automerge.save());
+
+
+
+        // automerge2.insert_block(4, "20".to_string())?;
+        // automerge2.commit();
+
+        // automerge.load_incremental(automerge2.save_incremental())
+
+        // let blocks = automerge2.get_blocks()?;
+        // println!("{:?}", blocks);
+
+        // let change_list = automerge2.get_change_list();
+        // println!("{:?}", change_list);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_load() -> anyhow::Result<()> { 
+        let actor_id = generate_actor_id();
+
+        println!("actor 1 {:?}", actor_id);
+
+        let mut automerge_1 = api::automerge::BAutoCommit::new();
+        automerge_1.setup_block_label()?;
+        automerge_1.set_actor_id(actor_id)?;
+
+        automerge_1.insert_block(0, "10".to_string())?;
+        automerge_1.insert_block(1, "20".to_string())?;
+        automerge_1.insert_block(2, "30".to_string())?;       
+        automerge_1.commit();
+
+
+        // let mut automerge_2 = api::automerge::BAutoCommit::new();
+        // automerge_2.setup_block_label()?;
+
+        let mut autocommit = BAutoCommit::load(automerge_1.save())?;
+
+        let blocks = autocommit.get_blocks()?;
+        println!("{:?}", blocks);
+
+        let changes = autocommit.get_change_list();
+        println!("{:?}", changes);
+
+
+        Ok(())
+    }
 }

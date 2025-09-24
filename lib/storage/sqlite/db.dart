@@ -219,7 +219,11 @@ class DB {
       sequenceNumber: document.sequenceNumber,
     );
 
-    await _insert(documentsTable, sqlDoc.toJson());
+    await _insert(
+      documentsTable,
+      sqlDoc.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
   }
 
   Future<void> updateDocumentTitle({

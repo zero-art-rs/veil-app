@@ -99,6 +99,13 @@ impl BGroupContext {
     }
 
     #[flutter_rust_bridge::frb(sync)]
+    pub fn to_parts(&self) -> anyhow::Result<(Vec<u8>, Vec<u8>, Vec<u8>, u64, Vec<u8>)> {
+        self.group_context
+            .to_parts()
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
     pub fn process_frame(&mut self, sp_frame: Vec<u8>) -> anyhow::Result<Vec<Vec<u8>>> {
         let sp_frame = zero_art_proto::SpFrame::decode(&sp_frame[..])
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;

@@ -90,8 +90,8 @@ class GroupContextParts {
 }
 
 extension BGroupContextExt on bridge.BGroupContext {
-  GroupContextParts toParts() {
-    final (leafSecret, art, stageKey, epoch, groupInfo) = intoParts();
+  GroupContextParts asParts() {
+    final (leafSecret, art, stageKey, epoch, groupInfo) = toParts();
 
     return GroupContextParts(
       leafSecret: leafSecret,

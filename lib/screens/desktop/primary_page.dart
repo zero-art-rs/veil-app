@@ -216,12 +216,12 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                 ),
               ),
               SideNavDivider(),
-              ...vm.docs.indexed.map(
+              ...vm.syncModels.indexed.map(
                 (doc) => SideNavItem(
                   icon: Icons.description_outlined,
-                  label: doc.$2.title,
+                  label: doc.$2.document.title,
                   onTap: () => vm.setSelectedPage(
-                    EditorPage(key: doc.$2.key, doc: doc.$2),
+                    EditorPage(key: doc.$2.document.key, syncModel: doc.$2),
                   ),
                   trailingBuilder: () => PopupMenuButton(
                     icon: Icon(Icons.more_vert_rounded),
@@ -233,8 +233,11 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                             spacing: 16,
                             children: [Icon(Icons.edit), Text('Edit')],
                           ),
-                          onTap: () =>
-                              _updateDocumentModal(context, vm, doc.$2),
+                          onTap: () => _updateDocumentModal(
+                            context,
+                            vm,
+                            doc.$2.document,
+                          ),
                         ),
                         PopupMenuItem(
                           value: 1,
@@ -245,7 +248,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                           onTap: () => _areYouSureToDeleteDocumentModal(
                             context,
                             vm,
-                            doc.$2,
+                            doc.$2.document,
                           ),
                         ),
                       ];

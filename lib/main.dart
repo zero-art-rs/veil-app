@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +8,7 @@ import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/managers/deeplink_manager.dart';
 import 'package:zk_notion_app/managers/documents_repo.dart';
 import 'package:zk_notion_app/managers/invite_manager.dart';
+import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
@@ -26,11 +26,13 @@ import 'package:zk_notion_app/utils/platform.dart';
 
 Future<void> main() async {
   await RustLib.init();
+
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
     await AccountStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
+    await SyncProvider.instance.init();
     await DocumentsRepo.instance.loadDocuments();
     logger.i('Db path: ${await getDatabasesPath()}');
   } catch (e) {

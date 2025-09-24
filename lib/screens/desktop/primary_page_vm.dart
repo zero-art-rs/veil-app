@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/api/client.dart';
+import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
@@ -16,6 +17,7 @@ import '../../main.dart';
 
 class PrimaryPageViewModel extends ChangeNotifier {
   final _accStorage = AccountStorage();
+  final _syncProvider = SyncProvider.instance;
 
   int _selectedIndex = 0;
   int get selectedIndex => _selectedIndex;
@@ -23,20 +25,15 @@ class PrimaryPageViewModel extends ChangeNotifier {
   Widget _selectedPage = AccountPage();
   Widget get selectedPage => _selectedPage;
 
-  List<Document> _docs = [];
-  List<Document> get docs => _docs;
+  List<SyncProviderModel> _syncModels = [];
+  List<SyncProviderModel> get syncModels => _syncModels;
 
   final TextEditingController textEditingController = TextEditingController();
 
   static const constantTabs = 5;
 
   void init() async {
-    try {
-      _docs = await DB.instance.getDocumentList();
-    } catch (err) {
-      logger.e('Failed to get documents: $err');
-    }
-    notifyListeners();
+    _syncModels = _syncProvider.getAll();
   }
 
   void setSelectedIndex(int index) {
@@ -49,28 +46,30 @@ class PrimaryPageViewModel extends ChangeNotifier {
     required String title,
     required String id,
   }) async {
-    try {
-      await DB.instance.updateDocumentTitle(id: id, title: title);
-      final index = _docs.indexWhere((e) => e.id == id);
-      _docs[index] = Document(
-        id: _docs[index].id,
-        title: title,
-        automergeDoc: _docs[index].automergeDoc,
-        members: _docs[index].members,
-        createdAt: _docs[index].createdAt,
-        groupContextParts: _docs[index].groupContextParts,
-      );
-      textEditingController.clear();
-      setSelectedPage(EditorPage(key: _docs[index].key, doc: _docs[index]));
-    } catch (err) {
-      logger.e('Failed to update document name: $err');
-      if (!context.mounted) return;
-      TopBanner.show(
-        context: context,
-        message: 'Failed to update document name',
-        kind: TopBannerCases.error,
-      );
-    }
+    // try {
+    //   await DB.instance.updateDocumentTitle(id: id, title: title);
+    //   final index = _syncModels.indexWhere((e) => e.id == id);
+    //   _syncModels[index] = Document(
+    //     id: _syncModels[index].id,
+    //     title: title,
+    //     automergeDoc: _syncModels[index].automergeDoc,
+    //     members: _syncModels[index].members,
+    //     createdAt: _syncModels[index].createdAt,
+    //     groupContextParts: _syncModels[index].groupContextParts,
+    //   );
+    //   textEditingController.clear();
+    //   setSelectedPage(
+    //     EditorPage(key: _syncModels[index].key, doc: _syncModels[index]),
+    //   );
+    // } catch (err) {
+    //   logger.e('Failed to update document name: $err');
+    //   if (!context.mounted) return;
+    //   TopBanner.show(
+    //     context: context,
+    //     message: 'Failed to update document name',
+    //     kind: TopBannerCases.error,
+    //   );
+    // }
   }
 
   Future<void> createDocument(BuildContext context) async {
@@ -98,20 +97,23 @@ class PrimaryPageViewModel extends ChangeNotifier {
         id: docID,
         title: resTitle,
         automergeDoc: content,
-        groupContextParts: groupContext.toParts(),
+        groupContextParts: groupContext.asParts(),
         createdAt: DateTime.now(),
       );
 
-      await DB.instance.insertDocument(document: document);
-
+      _syncProvider.add(document, groupContext);
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 
-      _docs.add(document);
       textEditingController.clear();
 
-      final index = _docs.length - 1;
+      final index = _syncModels.length - 1;
       setSelectedIndex(constantTabs + index);
-      setSelectedPage(EditorPage(key: _docs[index].key, doc: _docs[index]));
+      setSelectedPage(
+        EditorPage(
+          key: _syncModels[index].document.key,
+          syncModel: _syncModels[index],
+        ),
+      );
 
       notifyListeners();
     } catch (err) {
@@ -132,24 +134,34 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
   Future<void> removeDocument(BuildContext context, String id) async {
     try {
-      await DB.instance.deleteDocument(id);
+      await _syncProvider.remove(id);
 
-      final index = _docs.indexWhere((element) => element.id == id);
+      final index = _syncModels.indexWhere(
+        (element) => element.document.id == id,
+      );
       if (index == -1) throw FormatException('Document not found');
 
-      _docs.removeWhere((element) => element.id == id);
+      _syncModels.removeWhere((element) => element.document.id == id);
 
-      if (_docs.isEmpty) {
+      if (_syncModels.isEmpty) {
         setSelectedIndex(0);
         setSelectedPage(AccountPage());
       } else if (index > 0) {
         setSelectedIndex(constantTabs + index - 1);
         setSelectedPage(
-          EditorPage(key: _docs[index - 1].key, doc: _docs[index - 1]),
+          EditorPage(
+            key: _syncModels[index - 1].document.key,
+            syncModel: _syncModels[index - 1],
+          ),
         );
       } else {
         setSelectedIndex(constantTabs + 1);
-        setSelectedPage(EditorPage(key: _docs.first.key, doc: _docs.first));
+        setSelectedPage(
+          EditorPage(
+            key: _syncModels.first.document.key,
+            syncModel: _syncModels.first,
+          ),
+        );
       }
 
       notifyListeners();
@@ -167,7 +179,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
   Future<List<MemberScreenModel>> prepareMembers() async {
     final account = await _accStorage.getAccount();
-    return _docs[selectedIndex - constantTabs].members
+    return _syncModels[selectedIndex - constantTabs].document.members
         .map(
           (e) => MemberScreenModel(
             member: e,
@@ -178,9 +190,9 @@ class PrimaryPageViewModel extends ChangeNotifier {
   }
 
   (List<ChangeEvent>, Document) prepareChanges() {
-    final doc = _docs[selectedIndex - constantTabs];
+    final syncModel = _syncModels[selectedIndex - constantTabs];
 
-    final changes = doc.automergeDoc
+    final changes = syncModel.document.automergeDoc
         .getChangeList()
         .indexed
         .map(
@@ -196,6 +208,6 @@ class PrimaryPageViewModel extends ChangeNotifier {
         .reversed
         .toList();
 
-    return (changes, doc);
+    return (changes, syncModel.document);
   }
 }
