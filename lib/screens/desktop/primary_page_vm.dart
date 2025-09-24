@@ -101,19 +101,9 @@ class PrimaryPageViewModel extends ChangeNotifier {
         createdAt: DateTime.now(),
       );
 
-      _syncProvider.add(document, groupContext);
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-
+      await _syncProvider.add(document, groupContext);
       textEditingController.clear();
-
-      final index = _syncModels.length - 1;
-      setSelectedIndex(constantTabs + index);
-      setSelectedPage(
-        EditorPage(
-          key: _syncModels[index].document.key,
-          syncModel: _syncModels[index],
-        ),
-      );
 
       notifyListeners();
     } catch (err) {
@@ -134,13 +124,12 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
   Future<void> removeDocument(BuildContext context, String id) async {
     try {
-      await _syncProvider.remove(id);
-
       final index = _syncModels.indexWhere(
         (element) => element.document.id == id,
       );
       if (index == -1) throw FormatException('Document not found');
 
+      await _syncProvider.remove(id);
       _syncModels.removeWhere((element) => element.document.id == id);
 
       if (_syncModels.isEmpty) {

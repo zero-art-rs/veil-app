@@ -14,7 +14,7 @@ class InviteManager {
 
   static final InviteManager instance = InviteManager();
 
-  Future<Document> processJoin(String base64Invite) async {
+  Future<(Document, BGroupContext)> processJoin(String base64Invite) async {
     final account = await accountStorage.getAccount();
 
     if (account == null) {
@@ -46,7 +46,7 @@ class InviteManager {
     }
   }
 
-  Future<Document> _processUnidentifiedInvite(
+  Future<(Document, BGroupContext)> _processUnidentifiedInvite(
     Uint8List inviteBytes,
     Uint8List secretKey,
     BUser user,
@@ -106,13 +106,16 @@ class InviteManager {
         )
         .toList();
 
-    return Document(
-      id: groupInfoProto.id,
-      title: groupInfoProto.name,
-      automergeDoc: BAutoCommit(),
-      members: members,
-      createdAt: groupInfoProto.created.toDateTime(),
-      groupContextParts: groupContext.asParts(),
+    return (
+      Document(
+        id: groupInfoProto.id,
+        title: groupInfoProto.name,
+        automergeDoc: BAutoCommit(),
+        members: members,
+        createdAt: groupInfoProto.created.toDateTime(),
+        groupContextParts: groupContext.asParts(),
+      ),
+      groupContext,
     );
   }
 }

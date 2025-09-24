@@ -140,11 +140,11 @@ class _MyAppState extends State<MyApp> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () async {
-                    final document = await InviteManager.instance.processJoin(
+                    final invite = await InviteManager.instance.processJoin(
                       doc.inviteData,
                     );
-
-                    DocumentsRepo.instance.addDocument(document);
+                    
+                    await SyncProvider.instance.add(invite.$1, invite.$2);
 
                     if (!context.mounted) return;
                     Navigator.pop(context);

@@ -298,14 +298,19 @@ pub(crate) mod test {
 
         automerge2.load_incremental(automerge.save_incremental())?;
         automerge2.empty_change();
+        automerge2.commit();
 
         automerge.load_incremental(automerge2.save_incremental())?;
         automerge.empty_change();
+        automerge.commit();
 
         println!("automerge2 {:?}", automerge2.get_blocks());
         println!("automerge {:?}", automerge.get_blocks());
 
-        // assert!(automerge2.save() == automerge.save());
+        println!("automerge2 change list: {:?}", automerge2.get_change_list());
+        println!("automerge change list: {:?}", automerge.get_change_list());
+
+        // assert!(automerge2.get_change_list() == automerge.get_change_list());
 
 
 

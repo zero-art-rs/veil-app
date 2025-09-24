@@ -46,6 +46,9 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   /// If index is duplicate it will add new value at this index and previous value will be moved to next index
   void insertBlock({required BigInt index, required String text});
 
+  static BAutoCommit load({required List<int> data}) =>
+      RustLib.instance.api.crateApiAutomergeBAutoCommitLoad(data: data);
+
   BigInt loadIncremental({required List<int> bytes});
 
   factory BAutoCommit() =>

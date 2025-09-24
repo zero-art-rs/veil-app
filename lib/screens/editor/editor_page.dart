@@ -6,6 +6,7 @@ import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/widgets/square_rounded_btn.dart';
+import 'package:zk_notion_app/widgets/sync_widget.dart';
 import 'editor_page_vm.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
@@ -25,7 +26,7 @@ class EditorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
+    return ChangeNotifierProvider<EditorPageVm>(
       create: (_) => EditorPageVm(syncModel)..init(),
       child: _EditorPageView(
         isMemberListAccessible: isMemberListAccessible,
@@ -67,19 +68,28 @@ class _EditorPageView extends StatelessWidget {
                     vertical: 6,
                   ),
                   margin: const EdgeInsets.all(8),
-                  child: SegmentedButton<String>(
-                    segments: const <ButtonSegment<String>>[
-                      ButtonSegment(value: "view", label: Text("View mode")),
-                      ButtonSegment(value: "edit", label: Text("Edit mode")),
+                  child: SegmentedButton<EditorModes>(
+                    segments: const <ButtonSegment<EditorModes>>[
+                      ButtonSegment<EditorModes>(
+                        value: EditorModes.view,
+                        label: Text("View mode"),
+                      ),
+                      ButtonSegment<EditorModes>(
+                        value: EditorModes.edit,
+                        label: Text("Edit mode"),
+                      ),
                     ],
-                    selected: <String>{vm.selectedMode},
+                    selected: <EditorModes>{vm.selectedMode},
                     onSelectionChanged: (newSelection) {
                       vm.selectMode(newSelection.first);
                     },
                   ),
                 ),
+
+                if (vm.isSinking) SyncCircleView(),
               ]
             : [
+                if (vm.isSinking) SyncCircleView(),
                 if (isMemberListAccessible)
                   IconButton(
                     icon: const Icon(Icons.group),
@@ -122,7 +132,7 @@ class _EditorPageView extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (vm.isEditView)
+              if (vm.selectedMode == EditorModes.edit)
                 Expanded(
                   child: Column(
                     children: [
@@ -152,7 +162,7 @@ class _EditorPageView extends StatelessWidget {
                   ),
                 ),
 
-              if (vm.isEditView && isDesktop)
+              if (vm.selectedMode == EditorModes.edit && isDesktop)
                 Container(width: 1, height: double.infinity, color: cs.outline),
 
               if (isDesktop)

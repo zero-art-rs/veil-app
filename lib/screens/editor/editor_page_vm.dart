@@ -1,30 +1,33 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/main.dart';
+import 'package:zk_notion_app/managers/change_manager.dart';
 import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
+import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/editor_automerge.dart';
 import 'package:zk_notion_app/utils/group_context_factory.dart';
+import 'package:zk_notion_app/utils/payload.dart';
+
+enum EditorModes { edit, view }
 
 class EditorPageVm extends ChangeNotifier {
   final mdEditor = TextEditingController();
   final _accStorage = AccountStorage();
+  final _changeManager = ChangeManager.instance;
 
-  final editModes = ["edit", "view"];
-  var selectedMode = "view";
-
-  bool get isEditView => selectedMode == "edit";
   final SyncProviderModel syncModel;
 
-  StreamSubscription<SSEModel>? _centrifugoSubscription;
-  bool isProcessingFrames = false;
+  bool isEditingFlow = false;
+  bool isSinking = false;
+  var selectedMode = EditorModes.view;
+  final _crdtPayloadList = <ExposedCRDTPayload>[];
 
   EditorPageVm(this.syncModel);
 
@@ -34,6 +37,35 @@ class EditorPageVm extends ChangeNotifier {
     if (account == null) {
       throw Exception('To open a document, you must have an account');
     }
+
+    isSinking = true;
+    notifyListeners();
+
+    _changeManager.stream(syncModel.document.id).listen((spFrame) {
+      isSinking = true;
+      notifyListeners();
+
+      logger.i('Received new frame');
+      final crdtPayloads = processFrame(spFrame);
+      if (selectedMode == EditorModes.edit) {
+        _crdtPayloadList.addAll(crdtPayloads);
+      } else {
+        mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+          syncModel.document.automergeDoc,
+        );
+      }
+
+      isSinking = false;
+      notifyListeners();
+    });
+
+    logger.i('init: Processing frames');
+    final frames = _changeManager.getFrames(syncModel.document.id);
+    for (final frame in frames.values) {
+      logger.i('init: process frame');
+      syncModel.groupContext.processFrame(spFrame: frame.writeToBuffer());
+    }
+    isSinking = false;
 
     syncModel.document.automergeDoc.setupBlockLabel();
     syncModel.document.automergeDoc.setActorId(uuid: account.actorId);
@@ -45,32 +77,119 @@ class EditorPageVm extends ChangeNotifier {
     notifyListeners();
   }
 
+  List<ExposedCRDTPayload> processFrame(SPFrame frame) {
+    List<ExposedCRDTPayload> exposedCrdtPayload = [];
+
+    final rawPayloads = syncModel.groupContext.processFrame(
+      spFrame: frame.writeToBuffer(),
+    );
+
+    for (final rawPayload in rawPayloads) {
+      final payload = Payload.fromBuffer(rawPayload);
+
+      final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
+      if (crdt == null) continue;
+
+      exposedCrdtPayload.add(crdt);
+    }
+
+    return exposedCrdtPayload;
+  }
+
   void editMD() {
     notifyListeners();
   }
 
-  Future<void> commit() async {
-    final incrementalChange = syncModel.document.automergeDoc.saveIncremental();
-    if (incrementalChange.isEmpty) return;
+  // Future<void> commit() async {
+  //   EditorAutomergeUtils.instance.fromDoc(
+  //     mdEditor.text,
+  //     syncModel.document.automergeDoc,
+  //   );
 
-    logger.i('--- COMMIT --- ');
-    logger.i('Sending incremental change...');
+  //   syncModel.document.automergeDoc.commit();
 
-    final payload = Payload(
-      crdt: CRDTPayload(incrementalChange: incrementalChange),
-    ).writeToBuffer();
+  //   final incrementalChange = syncModel.document.automergeDoc.saveIncremental();
+  //   if (incrementalChange.isEmpty) return;
 
-    final frame = syncModel.groupContext.createFrame(payloads: [payload]);
-    await GroupApiClient.instance.sendFrame(
-      groupId: syncModel.document.id,
-      frame: frame,
-    );
+  //   logger.i('--- COMMIT --- ');
+  //   logger.i('Sending incremental change...');
 
-    syncModel.document.automergeDoc.commit();
+  //   final payload = Payload(
+  //     crdt: CRDTPayload(incrementalChange: incrementalChange),
+  //   ).writeToBuffer();
+
+  //   final frame = syncModel.groupContext.createFrame(payloads: [payload]);
+  //   await GroupApiClient.instance.sendFrame(
+  //     groupId: syncModel.document.id,
+  //     frame: frame,
+  //   );
+
+  //   syncModel.document.automergeDoc.commit();
+  // }
+
+  void selectMode(EditorModes mode) {
+    selectedMode = mode;
+
+    if (selectedMode != EditorModes.edit) {
+      synchronize();
+    }
+
+    notifyListeners();
   }
 
-  void selectMode(String mode) {
-    selectedMode = mode;
+  void synchronize() async {
+    logger.i('start sync');
+    isSinking = true;
+    notifyListeners();
+
+    EditorAutomergeUtils.instance.fromDoc(
+      mdEditor.text,
+      syncModel.document.automergeDoc,
+    );
+
+    // does not commit if no changes in editor
+    syncModel.document.automergeDoc.commit();
+
+    for (final payload in _crdtPayloadList) {
+      switch (payload.kind) {
+        case ExposedCRDTPayloadKind.incrementalChange:
+          final incrementalChange = payload.crdt.incrementalChange;
+          syncModel.document.automergeDoc.loadIncremental(
+            bytes: incrementalChange,
+          );
+
+          syncModel.document.automergeDoc.emptyChange();
+          syncModel.document.automergeDoc.commit();
+        default:
+          logger.i('Received full doc, ignore');
+        // case ExposedCRDTPayloadKind.fullDocument:
+        //   syncModel.document.automergeDoc = BAutoCommit.load(
+        //     data: payload.crdt.fullDocument,
+        //   );
+      }
+    }
+
+    final saveIncremental = syncModel.document.automergeDoc.saveIncremental();
+
+    if (saveIncremental.isNotEmpty) {
+      logger.i('Trying to send frame');
+      await GroupApiClient.instance.sendFrame(
+        groupId: syncModel.document.id,
+        frame: syncModel.groupContext.createFrame(
+          payloads: [
+            Payload(
+              crdt: CRDTPayload(incrementalChange: saveIncremental),
+            ).writeToBuffer(),
+          ],
+        ),
+      );
+    }
+
+    mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+      syncModel.document.automergeDoc,
+    );
+
+    isSinking = false;
     notifyListeners();
   }
 
@@ -105,10 +224,11 @@ class EditorPageVm extends ChangeNotifier {
   }
 
   @override
-  void dispose() {
-    _centrifugoSubscription?.cancel();
-    commit();
-    DB.instance.updateDocument(
+  void dispose() async {
+    // commit();
+    await Future.delayed(Duration(seconds: 3));
+
+    await DB.instance.updateDocument(
       doc: syncModel.document,
       parts: syncModel.groupContext.asParts(),
     );
