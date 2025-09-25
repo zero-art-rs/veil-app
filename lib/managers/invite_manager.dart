@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/src/rust/api/group_context.dart';
