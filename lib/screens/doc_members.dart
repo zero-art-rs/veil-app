@@ -286,16 +286,16 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         spacing: 8,
         children: [
-          FloatingActionButton(
-            onPressed: () => _onAddMember(context),
-            tooltip: 'Invite member',
-            child: const Icon(Icons.person_add_alt_1_outlined),
-          ),
-
+          // TODO: - Uncomment when contact spks will be supported
+          // FloatingActionButton(
+          //   onPressed: () => _onAddMember(context),
+          //   tooltip: 'Invite member',
+          //   child: const Icon(Icons.person_add_alt_1_outlined),
+          // ),
           FloatingActionButton(
             onPressed: () => _inviteUndentifiedMember(context),
             tooltip: 'Invite undentified member',
-            child: const Icon(Symbols.domino_mask),
+            child: const Icon(Icons.person_add_alt_1_outlined),
           ),
         ],
       ),
@@ -319,11 +319,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         ),
       );
     } else {
-      return IconButton(
-        tooltip: 'Remove member',
-        icon: const Icon(Icons.person_remove_outlined),
-        onPressed: () => _onRemoveMember(g),
-      );
+      return SizedBox();
     }
   }
 }

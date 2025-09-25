@@ -10,8 +10,8 @@ import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
+import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/db.dart';
 import 'package:zk_notion_app/utils/editor_automerge.dart';
 import 'package:zk_notion_app/utils/group_context_factory.dart';
@@ -113,7 +113,7 @@ class EditorPageVm extends ChangeNotifier {
             bytes: incrementalChange,
           );
 
-          // syncModel.document.automergeDoc.emptyChange();
+        // syncModel.document.automergeDoc.emptyChange();
         default:
           logger.i('Received full doc, ignore');
         // case ExposedCRDTPayloadKind.fullDocument:
@@ -190,6 +190,7 @@ class EditorPageVm extends ChangeNotifier {
       'Document state after merge ${syncModel.document.automergeDoc.getBlocks()}',
     );
 
+    // TODO: Can be duplicate, will think
     if (saveIncremental.isNotEmpty) {
       await GroupApiClient.instance.sendFrame(
         groupId: syncModel.document.id,
@@ -203,10 +204,6 @@ class EditorPageVm extends ChangeNotifier {
       );
     }
 
-    logger.i(
-      'Current document state  ${syncModel.document.automergeDoc.getBlocks()}',
-    );
-
     mdEditor.text = EditorAutomergeUtils.instance.toDoc(
       syncModel.document.automergeDoc,
     );
@@ -217,14 +214,33 @@ class EditorPageVm extends ChangeNotifier {
 
   Future<List<MemberScreenModel>> prepareMembers() async {
     final account = await _accStorage.getAccount();
-    return syncModel.document.members
+
+    if (account == null) {
+      throw Exception('No account, unreachable flow');
+    }
+
+    final groupInfo = GroupInfo.fromBuffer(
+      syncModel.groupContext.getGroupInf(),
+    );
+
+    final members = groupInfo.members
         .map(
           (e) => MemberScreenModel(
-            member: e,
-            isYou: e.account.actorId == account?.actorId,
+            member: DocumentMember(
+              account: ExternalAccount(
+                actorId: e.id,
+                name: e.name,
+                rawPublicKey: e.publicKey,
+              ),
+              role: e.role.value,
+              roleName: e.role.name,
+            ),
+            isYou: account.actorId == e.id,
           ),
         )
         .toList();
+
+    return members;
   }
 
   List<ChangeEvent> prepareChanges() {
@@ -248,6 +264,10 @@ class EditorPageVm extends ChangeNotifier {
   @override
   void dispose() async {
     _subscription?.cancel();
+
+    if (_crdtPayloadList.isNotEmpty) {
+
+    }
 
     await DB.instance.updateDocument(
       doc: syncModel.document,

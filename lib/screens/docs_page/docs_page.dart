@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
 import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
@@ -219,6 +220,7 @@ class _DocCard extends StatelessWidget {
                           },
                           itemBuilder: (context) => [
                             PopupMenuItem(
+                              enabled: false,
                               value: _DocAction.delete,
                               child: ListTile(
                                 leading: const Icon(Icons.ios_share_outlined),
@@ -229,6 +231,7 @@ class _DocCard extends StatelessWidget {
                             ),
                             const PopupMenuDivider(),
                             PopupMenuItem(
+                              enabled: false,
                               value: _DocAction.edit,
                               child: ListTile(
                                 leading: const Icon(Icons.edit),
@@ -263,14 +266,14 @@ class _DocCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doc.document.title,
+                      doc.groupContext.getGroupInfo().name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'test',
+                      doc.groupContext.getOwner().name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall,

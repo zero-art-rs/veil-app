@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
 import 'package:zk_notion_app/managers/sync_provider.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
@@ -58,7 +59,7 @@ class _EditorPageView extends StatelessWidget {
       appBar: AppBar(
         title: Align(
           alignment: Alignment.centerLeft,
-          child: Text(vm.syncModel.document.title),
+          child: Text(vm.syncModel.groupContext.getGroupInfo().name),
         ),
         actions: [
           SegmentedButton<EditorModes>(
