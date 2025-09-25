@@ -3,16 +3,26 @@ mod frb_generated;
 
 pub(crate) mod test {
     use std::{
-        any, fs::File, io::Write, str::FromStr, time::{SystemTime, UNIX_EPOCH}
+        any,
+        fs::File,
+        io::Write,
+        str::FromStr,
+        time::{SystemTime, UNIX_EPOCH},
     };
 
     use anyhow::Ok;
     use automerge::{
-        patches::TextRepresentation, sync::{Message, State, SyncDoc}, transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, PatchLog, SaveOptions, TextEncoding
+        patches::TextRepresentation,
+        sync::{Message, State, SyncDoc},
+        transaction::{CommitOptions, Transactable},
+        ActorId, AutoCommit, PatchLog, SaveOptions, TextEncoding,
     };
     use graphviz_rust::{cmd::Format, printer::PrinterContext};
 
-    use crate::api::{self, automerge::{generate_actor_id, BAutoCommit}};
+    use crate::api::{
+        self,
+        automerge::{generate_actor_id, BAutoCommit},
+    };
 
     #[test]
     fn bautomerge_flow() -> anyhow::Result<()> {
@@ -257,15 +267,18 @@ pub(crate) mod test {
         bautomerge.update_block(1, "world".to_string())?;
         bautomerge.commit();
 
-        let optree =  bautomerge.get_automerge().visualise_optree(None);
+        let optree = bautomerge.get_automerge().visualise_optree(None);
 
         let graph = graphviz_rust::parse(&optree).unwrap();
-        let res = graphviz_rust::exec(graph, &mut PrinterContext::default(), vec![Format::Jpeg.into()]).unwrap();
+        let res = graphviz_rust::exec(
+            graph,
+            &mut PrinterContext::default(),
+            vec![Format::Jpeg.into()],
+        )
+        .unwrap();
 
         let mut file = File::create("output.jpeg").unwrap();
         file.write_all(&res).unwrap();
-
-
 
         Ok(())
     }
@@ -312,8 +325,6 @@ pub(crate) mod test {
 
         // assert!(automerge2.get_change_list() == automerge.get_change_list());
 
-
-
         // automerge2.insert_block(4, "20".to_string())?;
         // automerge2.commit();
 
@@ -329,7 +340,7 @@ pub(crate) mod test {
     }
 
     #[test]
-    fn test_load() -> anyhow::Result<()> { 
+    fn test_load() -> anyhow::Result<()> {
         let actor_id = generate_actor_id();
 
         println!("actor 1 {:?}", actor_id);
@@ -340,9 +351,8 @@ pub(crate) mod test {
 
         automerge_1.insert_block(0, "10".to_string())?;
         automerge_1.insert_block(1, "20".to_string())?;
-        automerge_1.insert_block(2, "30".to_string())?;       
+        automerge_1.insert_block(2, "30".to_string())?;
         automerge_1.commit();
-
 
         // let mut automerge_2 = api::automerge::BAutoCommit::new();
         // automerge_2.setup_block_label()?;
@@ -354,7 +364,6 @@ pub(crate) mod test {
 
         let changes = autocommit.get_change_list();
         println!("{:?}", changes);
-
 
         Ok(())
     }

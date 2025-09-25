@@ -34,11 +34,13 @@ class SyncProviderModel {
     required this.jwt,
   });
 
-  Future<void> initalProcess() async {
-    logger.e('document.sequenceNumber ${document.sequenceNumber}');
+  Future<void> synchronizeInitially() async {
+    logger.i('document.sequenceNumber ${document.sequenceNumber}');
+    logger.i('group epoch ${groupContext.getEpoch().toInt()}');
 
     final signature = groupContext.signWithTk(groupId: document.id, nonce: [0]);
 
+    // var seqnum = 0;
     while (true) {
       try {
         final result = await GroupApiClient.instance.getFrames(
@@ -55,22 +57,26 @@ class SyncProviderModel {
         // }
 
         // print(result.spFrames.);
+        // logger.i('-------RECEIVED FRAMES');
+        // for (final spFrame in result.spFrames) {
+        //   logger.i('spFrame.seqNum.toInt() ${spFrame.seqNum.toInt()}');
+        //   logger.i(
+        //     'spFrame.seqNum.toInt() ${spFrame.frame.frame.epoch.toInt()}',
+        //   );
+        //   logger.i('spFrame.seqNum.toInt() ${spFrame.frame}');
+        // }
+        // logger.i('--------RECEIVED FRAMES END');
 
-        logger.i(
-          'result.spFrames.first.seqNum.toInt() ${result.spFrames.first.seqNum.toInt()}',
-        );
         if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
           break;
         }
-
-        // print(document.automergeDoc.getBlocks());
 
         for (final spFrame in result.spFrames.reversed) {
           final rawFramePayloads = groupContext.processFrame(
             spFrame: spFrame.writeToBuffer(),
           );
 
-          logger.i('CHECK LENGTH OF PAYLOADS ${rawFramePayloads.length}');
+          // logger.i('CHECK LENGTH OF PAYLOADS ${rawFramePayloads.length}');
 
           // If rawFramePayloads is empty,
           // it indicates that the frame belongs to the current user,
@@ -81,7 +87,6 @@ class SyncProviderModel {
 
             final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
 
-            logger.d('crdt kind: ${crdt?.kind}');
             if (crdt == null) continue;
 
             switch (crdt.kind) {
@@ -91,6 +96,7 @@ class SyncProviderModel {
                   bytes: crdt.crdt.incrementalChange,
                 );
                 document.automergeDoc.emptyChange();
+                document.automergeDoc.commit();
               case ExposedCRDTPayloadKind.fullDocument:
                 logger.d('Received full document');
                 document.automergeDoc = BAutoCommit.load(
@@ -99,20 +105,17 @@ class SyncProviderModel {
             }
           }
         }
+
+        // seqnum = result.spFrames.first.seqNum.toInt();
         document.sequenceNumber = result.spFrames.first.seqNum.toInt();
       } catch (err) {
-        logger.e(err);
+        logger.e('Sync provider inital process error: $err');
       }
     }
-
-    await DB.instance.updateDocument(
-      doc: document,
-      parts: groupContext.asParts(),
-    );
   }
 
   /// Listen, transform data to frames send to processor.
-  void listen(Stream<SSEModel> stream, ChangeManager changeManager) {
+  void listenCentrifugo(Stream<SSEModel> stream, ChangeManager changeManager) {
     listener = stream.listen(
       (event) {
         if (event.data == null || event.data!.isEmpty) return;
@@ -120,19 +123,14 @@ class SyncProviderModel {
         final rawJson = json.decode(event.data!);
         if (rawJson['pub'] == null) return;
 
-        final frameBytes = base64Decode(
-          rawJson['pub']['data']['content'].toString(),
-        );
+        final frameBytes = base64Decode(rawJson['pub']['data'].toString());
 
-        final sequenceNumber = int.parse(
-          rawJson['pub']['data']['sequence_number'].toString(),
-        );
-        final frame = Frame.fromBuffer(frameBytes);
+        final frame = SPFrame.fromBuffer(frameBytes);
 
         changeManager.addFrame(
           groupId: document.id,
-          frame: SPFrame(frame: frame),
-          sequenceNumber: sequenceNumber,
+          frame: frame,
+          sequenceNumber: frame.seqNum.toInt(),
         );
       },
       onError: (error, [stackTrace]) {
@@ -179,17 +177,20 @@ class SyncProvider {
         identitySecretKey: Uint8List.fromList(_account.keypair.rawPrivateKey),
       );
 
-      add(doc, groupContext);
+      await add(doc, groupContext);
+      await DB.instance.updateDocument(doc: doc, parts: groupContext.asParts());
     }
   }
 
   Future<SyncProviderModel> add(
     Document document,
-    BGroupContext groupContext,
-  ) async {
-    final syncModel = await _setupSync(document, groupContext);
-    await _db.insertDocument(document: document);
-
+    BGroupContext groupContext, {
+    insertToDb = false,
+  }) async {
+    final syncModel = await _synchronizeDocument(document, groupContext);
+    if (insertToDb) {
+      await _db.insertDocument(document: document);
+    }
     current.add(syncModel);
     subject.add(current);
 
@@ -224,7 +225,7 @@ class SyncProvider {
     return current;
   }
 
-  Future<SyncProviderModel> _setupSync(
+  Future<SyncProviderModel> _synchronizeDocument(
     Document doc,
     BGroupContext groupContext,
   ) async {
@@ -248,8 +249,8 @@ class SyncProvider {
       jwt: jwt,
     );
 
-    syncModel.listen(stream, _changeManager);
-    await syncModel.initalProcess();
+    syncModel.listenCentrifugo(stream, _changeManager);
+    await syncModel.synchronizeInitially();
 
     return syncModel;
   }

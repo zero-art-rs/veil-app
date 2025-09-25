@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1182921510;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 797143745;
 
 // Section: executor
 
@@ -1579,6 +1579,58 @@ fn wire__crate__api__group_context__BGroupContext_into_parts_impl(
         },
     )
 }
+fn wire__crate__api__group_context__BGroupContext_join_group_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "BGroupContext_join_group",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <RustOpaqueMoi<
+                flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupContext>,
+            >>::sse_decode(&mut deserializer);
+            let api_user = <BUser>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let mut api_that_guard = None;
+                    let decode_indices_ =
+                        flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+                            flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+                                &api_that, 0, true,
+                            ),
+                        ]);
+                    for i in decode_indices_ {
+                        match i {
+                            0 => api_that_guard = Some(api_that.lockable_decode_sync_ref_mut()),
+                            _ => unreachable!(),
+                        }
+                    }
+                    let mut api_that_guard = api_that_guard.unwrap();
+                    let output_ok = crate::api::group_context::BGroupContext::join_group(
+                        &mut *api_that_guard,
+                        api_user,
+                    )?;
+                    Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
 fn wire__crate__api__group_context__BGroupContext_process_frame_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -2078,7 +2130,6 @@ fn wire__crate__api__group_context__create_group_from_identified_invite_impl(
             let api_spk_secret_key = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_art = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_invite = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_user = <BUser>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
@@ -2087,7 +2138,6 @@ fn wire__crate__api__group_context__create_group_from_identified_invite_impl(
                         api_spk_secret_key,
                         api_art,
                         api_invite,
-                        api_user,
                     )?;
                     Ok(output_ok)
                 })(),
@@ -2119,7 +2169,6 @@ fn wire__crate__api__group_context__create_group_from_unidentified_invite_impl(
             let api_identity_secret_key = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_art = <Vec<u8>>::sse_decode(&mut deserializer);
             let api_invite = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_user = <BUser>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
@@ -2128,7 +2177,6 @@ fn wire__crate__api__group_context__create_group_from_unidentified_invite_impl(
                             api_identity_secret_key,
                             api_art,
                             api_invite,
-                            api_user,
                         )?;
                     Ok(output_ok)
                 })(),
@@ -2645,15 +2693,6 @@ impl SseDecode for (BAutoCommit, BAutoCommit) {
     }
 }
 
-impl SseDecode for (BGroupContext, Vec<u8>) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_field0 = <BGroupContext>::sse_decode(deserializer);
-        let mut var_field1 = <Vec<u8>>::sse_decode(deserializer);
-        return (var_field0, var_field1);
-    }
-}
-
 impl SseDecode
     for (
         BGroupContext,
@@ -2782,7 +2821,7 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        50 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
+        51 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2884,77 +2923,82 @@ fn pde_ffi_dispatcher_sync_impl(
             rust_vec_len,
             data_len,
         ),
-        33 => wire__crate__api__group_context__BGroupContext_process_frame_impl(
+        33 => wire__crate__api__group_context__BGroupContext_join_group_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        34 => wire__crate__api__group_context__BGroupContext_remove_member_impl(
+        34 => wire__crate__api__group_context__BGroupContext_process_frame_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        35 => wire__crate__api__group_context__BGroupContext_sign_challenge_impl(
+        35 => wire__crate__api__group_context__BGroupContext_remove_member_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        36 => wire__crate__api__group_context__BGroupContext_sign_with_tk_impl(
+        36 => wire__crate__api__group_context__BGroupContext_sign_challenge_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        37 => wire__crate__api__group_context__BGroupContext_to_parts_impl(
+        37 => wire__crate__api__group_context__BGroupContext_sign_with_tk_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        38 => wire__crate__api__group_context__BGroupInfo_new_impl(ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__group_context__BSecretsFactory_generate_secret_impl(
+        38 => wire__crate__api__group_context__BGroupContext_to_parts_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        40 => {
+        39 => wire__crate__api__group_context__BGroupInfo_new_impl(ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__group_context__BSecretsFactory_generate_secret_impl(
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        41 => {
             wire__crate__api__group_context__BSecretsFactory_generate_secret_with_public_key_impl(
                 ptr,
                 rust_vec_len,
                 data_len,
             )
         }
-        41 => {
+        42 => {
             wire__crate__api__group_context__BSecretsFactory_new_impl(ptr, rust_vec_len, data_len)
         }
-        42 => wire__crate__api__group_context__BUser_new_impl(ptr, rust_vec_len, data_len),
-        43 => wire__crate__api__group_context__create_group_impl(ptr, rust_vec_len, data_len),
-        44 => wire__crate__api__group_context__create_group_from_identified_invite_impl(
+        43 => wire__crate__api__group_context__BUser_new_impl(ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__group_context__create_group_impl(ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__group_context__create_group_from_identified_invite_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        45 => wire__crate__api__group_context__create_group_from_unidentified_invite_impl(
+        46 => wire__crate__api__group_context__create_group_from_unidentified_invite_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        46 => wire__crate__api__group_context__destruct_identified_invite_impl(
+        47 => wire__crate__api__group_context__destruct_identified_invite_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        47 => wire__crate__api__group_context__destruct_unidentified_invite_impl(
+        48 => wire__crate__api__group_context__destruct_unidentified_invite_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        48 => wire__crate__api__automerge__generate_actor_id_impl(ptr, rust_vec_len, data_len),
-        49 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
-        51 => wire__crate__api__group_context__public_key_from_secret_key_impl(
+        49 => wire__crate__api__automerge__generate_actor_id_impl(ptr, rust_vec_len, data_len),
+        50 => wire__crate__api__simple__greet_impl(ptr, rust_vec_len, data_len),
+        52 => wire__crate__api__group_context__public_key_from_secret_key_impl(
             ptr,
             rust_vec_len,
             data_len,
         ),
-        52 => wire__crate__api__group_context__sign_challenge_impl(ptr, rust_vec_len, data_len),
+        53 => wire__crate__api__group_context__sign_challenge_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -3268,14 +3312,6 @@ impl SseEncode for (BAutoCommit, BAutoCommit) {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <BAutoCommit>::sse_encode(self.0, serializer);
         <BAutoCommit>::sse_encode(self.1, serializer);
-    }
-}
-
-impl SseEncode for (BGroupContext, Vec<u8>) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <BGroupContext>::sse_encode(self.0, serializer);
-        <Vec<u8>>::sse_encode(self.1, serializer);
     }
 }
 

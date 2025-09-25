@@ -89,49 +89,31 @@ class _EditorPageView extends StatelessWidget {
                 if (vm.isSinking) SyncCircleView(),
               ]
             : [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  margin: const EdgeInsets.all(8),
-                  child: SegmentedButton<EditorModes>(
-                    segments: const <ButtonSegment<EditorModes>>[
-                      ButtonSegment<EditorModes>(
-                        value: EditorModes.view,
-                        label: Text("View mode"),
-                      ),
-                      ButtonSegment<EditorModes>(
-                        value: EditorModes.edit,
-                        label: Text("Edit mode"),
-                      ),
-                    ],
-                    selected: <EditorModes>{vm.selectedMode},
-                    onSelectionChanged: (newSelection) {
-                      vm.selectMode(newSelection.first);
-                    },
-                  ),
-                ),
-
+                // Container(
+                //   padding: const EdgeInsets.symmetric(
+                //     horizontal: 12,
+                //     vertical: 6,
+                //   ),
+                //   margin: const EdgeInsets.all(8),
+                //   child: SegmentedButton<EditorModes>(
+                //     segments: const <ButtonSegment<EditorModes>>[
+                //       ButtonSegment<EditorModes>(
+                //         value: EditorModes.view,
+                //         label: Text("View mode"),
+                //       ),
+                //       ButtonSegment<EditorModes>(
+                //         value: EditorModes.edit,
+                //         label: Text("Edit mode"),
+                //       ),
+                //     ],
+                //     selected: <EditorModes>{vm.selectedMode},
+                //     onSelectionChanged: (newSelection) {
+                //       vm.selectMode(newSelection.first);
+                //     },
+                //   ),
+                // ),
                 if (vm.isSinking) SyncCircleView(),
-                if (isMemberListAccessible)
-                  IconButton(
-                    icon: const Icon(Icons.group),
-                    onPressed: () async {
-                      final members = await vm.prepareMembers();
-                      if (!context.mounted) return;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DocumentMemberListScreen(
-                            members: members,
-                            doc: vm.syncModel.document,
-                            groupContext: vm.syncModel.groupContext,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+
                 if (isHistoryAccessible)
                   IconButton(
                     icon: const Icon(Icons.history),
@@ -189,29 +171,30 @@ class _EditorPageView extends StatelessWidget {
               if (vm.selectedMode == EditorModes.edit && isDesktop)
                 Container(width: 1, height: double.infinity, color: cs.outline),
 
-              if (isDesktop)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SingleChildScrollView(
-                      child: GptMarkdown(vm.mdEditor.text),
-                    ),
+              // if (isDesktop)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SingleChildScrollView(
+                    child: GptMarkdown(vm.mdEditor.text),
                   ),
                 ),
+              ),
             ],
           ),
 
-          if (isDesktop)
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ModalSquareRoundedButton(
-                  iconData: Icons.group_outlined,
-                  onPressed: (context) async {
-                    final members = await vm.prepareMembers();
-                    if (!context.mounted) return;
+          // if (isDesktop)
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ModalSquareRoundedButton(
+                iconData: Icons.group_outlined,
+                onPressed: (ctx) async {
+                  final members = await vm.prepareMembers();
+                  if (!context.mounted) return;
+                  if (isDesktop) {
                     showPopover(
-                      context: context,
+                      context: ctx,
                       width: 360,
                       height: 680,
                       bodyBuilder: (_) => Navigator(
@@ -224,14 +207,28 @@ class _EditorPageView extends StatelessWidget {
                         ),
                       ),
                     );
-                  },
-                ),
-                ModalSquareRoundedButton(
-                  iconData: Icons.history_sharp,
-                  onPressed: (context) {
-                    final changes = vm.prepareChanges();
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DocumentMemberListScreen(
+                          members: members,
+                          doc: vm.syncModel.document,
+                          groupContext: vm.syncModel.groupContext,
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+              ModalSquareRoundedButton(
+                iconData: Icons.history_sharp,
+                onPressed: (ctx) {
+                  final changes = vm.prepareChanges();
+
+                  if (isDesktop) {
                     showPopover(
-                      context: context,
+                      context: ctx,
                       width: 360,
                       height: 680,
                       bodyBuilder: (_) => Navigator(
@@ -243,10 +240,21 @@ class _EditorPageView extends StatelessWidget {
                         ),
                       ),
                     );
-                  },
-                ),
-              ],
-            ),
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HistoryPage(
+                          items: changes,
+                          doc: vm.syncModel.document,
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
         ],
       ),
     );

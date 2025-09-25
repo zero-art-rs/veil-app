@@ -5,7 +5,8 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use automerge::{
-    transaction::{CommitOptions, Transactable}, ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc
+    transaction::{CommitOptions, Transactable},
+    ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc,
 };
 use sha2::Digest;
 
@@ -54,7 +55,9 @@ impl BAutoCommit {
     pub fn load(data: Vec<u8>) -> anyhow::Result<BAutoCommit> {
         let autocommit = AutoCommit::load(&data)?;
 
-        Ok(BAutoCommit { autocommit: autocommit } )
+        Ok(BAutoCommit {
+            autocommit: autocommit,
+        })
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -165,9 +168,9 @@ impl BAutoCommit {
             .map_err(|e| anyhow!("Failed to load incremental: {}", e))
     }
 
-    // pub fn patch(&mut self) { 
-        // let patchlog = PatchLog::active(automerge::patches::TextRepresentation::String(automerge::TextEncoding::Utf8CodeUnit));
-        // self.autocommit.make_patches(&mut patchlog);
+    // pub fn patch(&mut self) {
+    // let patchlog = PatchLog::active(automerge::patches::TextRepresentation::String(automerge::TextEncoding::Utf8CodeUnit));
+    // self.autocommit.make_patches(&mut patchlog);
     // }
 
     #[flutter_rust_bridge::frb(sync)]

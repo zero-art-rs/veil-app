@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:zk_notion_app/api/client.dart';
+import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/src/rust/api/group_context.dart';
@@ -14,7 +15,7 @@ class InviteManager {
 
   static final InviteManager instance = InviteManager();
 
-  Future<(Document, BGroupContext)> processJoin(String base64Invite) async {
+  Future<(BGroupContext, Document)> processJoin(String base64Invite) async {
     final account = await accountStorage.getAccount();
 
     if (account == null) {
@@ -46,7 +47,7 @@ class InviteManager {
     }
   }
 
-  Future<(Document, BGroupContext)> _processUnidentifiedInvite(
+  Future<(BGroupContext, Document)> _processUnidentifiedInvite(
     Uint8List inviteBytes,
     Uint8List secretKey,
     BUser user,
@@ -79,45 +80,20 @@ class InviteManager {
 
     final art = base64Decode(artBase64);
 
-    final (groupContext, frame) = createGroupFromUnidentifiedInvite(
+    final groupContext = createGroupFromUnidentifiedInvite(
       identitySecretKey: secretKey,
       art: art,
       invite: inviteBytes,
-      user: user,
     );
 
-    print('invite groupContext.getEpoch() ${groupContext.getEpoch()}');
-
-    await GroupApiClient.instance.sendFrame(
-      groupId: groupInfo.id,
-      frame: frame,
+    final document = Document(
+      id: groupInfo.id,
+      title: 'TEMP TITLE',
+      automergeDoc: BAutoCommit(),
+      createdAt: DateTime.now(),
+      groupContextParts: groupContext.asParts(),
     );
 
-    final groupInfoProto = GroupInfo.fromBuffer(groupContext.getGroupInf());
-    final members = groupInfo.members
-        .map(
-          (m) => DocumentMember(
-            account: ExternalAccount(
-              actorId: m.id,
-              name: m.name,
-              rawPublicKey: m.publicKey,
-            ),
-            role: m.role.value,
-            roleName: m.role.name,
-          ),
-        )
-        .toList();
-
-    return (
-      Document(
-        id: groupInfoProto.id,
-        title: groupInfoProto.name,
-        automergeDoc: BAutoCommit(),
-        members: members,
-        createdAt: groupInfoProto.created.toDateTime(),
-        groupContextParts: groupContext.asParts(),
-      ),
-      groupContext,
-    );
+    return (groupContext, document);
   }
 }

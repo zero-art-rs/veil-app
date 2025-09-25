@@ -29,31 +29,27 @@ createGroup({
   payloads: payloads,
 );
 
-(BGroupContext, Uint8List) createGroupFromIdentifiedInvite({
+BGroupContext createGroupFromIdentifiedInvite({
   required List<int> identitySecretKey,
   required List<int> spkSecretKey,
   required List<int> art,
   required List<int> invite,
-  required BUser user,
 }) => RustLib.instance.api.crateApiGroupContextCreateGroupFromIdentifiedInvite(
   identitySecretKey: identitySecretKey,
   spkSecretKey: spkSecretKey,
   art: art,
   invite: invite,
-  user: user,
 );
 
-(BGroupContext, Uint8List) createGroupFromUnidentifiedInvite({
+BGroupContext createGroupFromUnidentifiedInvite({
   required List<int> identitySecretKey,
   required List<int> art,
   required List<int> invite,
-  required BUser user,
 }) =>
     RustLib.instance.api.crateApiGroupContextCreateGroupFromUnidentifiedInvite(
       identitySecretKey: identitySecretKey,
       art: art,
       invite: invite,
-      user: user,
     );
 
 (Uint8List, Uint8List, BigInt, Uint8List) destructIdentifiedInvite({
@@ -122,6 +118,8 @@ abstract class BGroupContext implements RustOpaqueInterface {
   Uint8List getGroupInf();
 
   (Uint8List, Uint8List, Uint8List, BigInt, Uint8List) intoParts();
+
+  Uint8List joinGroup({required BUser user});
 
   List<Uint8List> processFrame({required List<int> spFrame});
 

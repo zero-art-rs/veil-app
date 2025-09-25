@@ -9,7 +9,7 @@ class EditorAutomergeUtils {
     return md;
   }
 
-  fromDoc(String md, BAutoCommit automerge) {
+  void fromDoc(String md, BAutoCommit automerge) {
     final blocks = md.split('\n').toList();
     final length = automerge.blocksLength().toInt();
 

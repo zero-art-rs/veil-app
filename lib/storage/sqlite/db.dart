@@ -119,6 +119,14 @@ class DB {
   // High-level API
   // -------------------------------------------------
 
+  Future<void> removeAll() {
+    return transaction((db) async {
+      await db._delete(contactsTable);
+      await db._delete(contactsSpksTable);
+      await db._delete(documentsTable);
+    });
+  }
+
   Future<void> insertContact(
     ExternalAccount account, {
     ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.rollback,

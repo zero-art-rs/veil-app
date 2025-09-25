@@ -104,7 +104,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-      await _syncProvider.add(document, groupContext);
+      await _syncProvider.add(document, groupContext, insertToDb: true);
       textEditingController.clear();
 
       notifyListeners();

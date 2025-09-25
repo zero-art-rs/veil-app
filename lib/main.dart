@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/managers/deeplink_manager.dart';
 import 'package:zk_notion_app/managers/documents_repo.dart';
@@ -14,6 +15,7 @@ import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
 import 'package:zk_notion_app/screens/tab_bar.dart';
+import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/src/rust/frb_generated.dart';
 import 'package:zk_notion_app/assets/theme.dart';
 import 'package:logger/logger.dart';
@@ -32,11 +34,12 @@ Future<void> main() async {
   try {
     await AccountStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
+    // DB.instance.removeAll();
+    logger.d('Db path: ${await getDatabasesPath()}');
     await SyncProvider.instance.init();
     await DocumentsRepo.instance.loadDocuments();
-    logger.d('Db path: ${await getDatabasesPath()}');
   } catch (e) {
-    logger.e('DB error: $e');
+    logger.e('Launch app error: $e');
   }
   runApp(MyApp());
 }
@@ -140,18 +143,8 @@ class _MyAppState extends State<MyApp> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () async {
-                    final invite = await InviteManager.instance.processJoin(
-                      doc.inviteData,
-                    );
-
-                    logger.e(
-                      'invite group context epoch ${invite.$1.groupContextParts.epoch.toInt()}',
-                    );
-
-                    await SyncProvider.instance.add(invite.$1, invite.$2);
-
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
+                    // TODO: add handle loader and errors ui
+                    await _acceptInvite(context, doc.inviteData);
                   },
                   child: Text('Join'),
                 ),
@@ -161,6 +154,29 @@ class _MyAppState extends State<MyApp> {
         ],
       ),
     );
+  }
+
+  Future<void> _acceptInvite(BuildContext context, String inviteData) async {
+    final account = await AccountStorage.instance.getAccount();
+
+    if (account == null) {
+      throw Exception('No account, unreachable flow');
+    }
+
+    final (groupContext, document) = await InviteManager.instance.processJoin(
+      inviteData,
+    );
+
+    await SyncProvider.instance.add(document, groupContext, insertToDb: true);
+
+    final frame = groupContext.joinGroup(
+      user: BUser(id: account.actorId, name: account.name),
+    );
+
+    await GroupApiClient.instance.sendFrame(groupId: document.id, frame: frame);
+
+    if (!context.mounted) return;
+    Navigator.pop(context);
   }
 
   void _showContactPopUp(BuildContext context, ExternalAccount account) {

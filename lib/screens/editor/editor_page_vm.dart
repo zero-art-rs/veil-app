@@ -39,47 +39,82 @@ class EditorPageVm extends ChangeNotifier {
       throw Exception('To open a document, you must have an account');
     }
 
+    syncModel.document.automergeDoc.setupBlockLabel();
+    syncModel.document.automergeDoc.setActorId(uuid: account.actorId);
+
     isSinking = true;
     notifyListeners();
 
     _subscription = _changeManager.stream(syncModel.document.id).listen((
       spFrame,
-    ) {
+    ) async {
       isSinking = true;
       notifyListeners();
 
-      logger.i('Received new frame ${spFrame.seqNum}');
       final crdtPayloads = processFrame(spFrame);
+
       if (selectedMode == EditorModes.edit) {
-        logger.i('received crdt payload');
         _crdtPayloadList.addAll(crdtPayloads);
       } else {
+        syncDocument(crdtPayloads);
+
         mdEditor.text = EditorAutomergeUtils.instance.toDoc(
           syncModel.document.automergeDoc,
         );
       }
 
+      await DB.instance.updateDocument(
+        doc: syncModel.document,
+        parts: syncModel.groupContext.asParts(),
+      );
+
       isSinking = false;
       notifyListeners();
     });
 
-    logger.i('init: Processing frames');
     final frames = _changeManager.getFrames(syncModel.document.id);
     for (final frame in frames.values) {
-      logger.i('init: process frame');
-      syncModel.groupContext.processFrame(spFrame: frame.writeToBuffer());
-      print('init frame seq num ${syncModel.document.sequenceNumber}');
+      final exposedCrdtPayload = processFrame(frame);
+      syncDocument(exposedCrdtPayload);
     }
-    isSinking = false;
-
-    syncModel.document.automergeDoc.setupBlockLabel();
-    syncModel.document.automergeDoc.setActorId(uuid: account.actorId);
 
     mdEditor.text = EditorAutomergeUtils.instance.toDoc(
       syncModel.document.automergeDoc,
     );
 
+    await DB.instance.updateDocument(
+      doc: syncModel.document,
+      parts: syncModel.groupContext.asParts(),
+    );
+
+    isSinking = false;
+
+    logger.i(
+      'Init document state  ${syncModel.document.automergeDoc.getBlocks()}',
+    );
+
     notifyListeners();
+  }
+
+  void syncDocument(List<ExposedCRDTPayload> payloads) {
+    for (final payload in payloads) {
+      switch (payload.kind) {
+        case ExposedCRDTPayloadKind.incrementalChange:
+          logger.i('Received incremental change while syncing');
+          final incrementalChange = payload.crdt.incrementalChange;
+          syncModel.document.automergeDoc.loadIncremental(
+            bytes: incrementalChange,
+          );
+
+          syncModel.document.automergeDoc.emptyChange();
+        default:
+          logger.i('Received full doc, ignore');
+        // case ExposedCRDTPayloadKind.fullDocument:
+        //   syncModel.document.automergeDoc = BAutoCommit.load(
+        //     data: payload.crdt.fullDocument,
+        //   );
+      }
+    }
   }
 
   List<ExposedCRDTPayload> processFrame(SPFrame frame) {
@@ -89,7 +124,6 @@ class EditorPageVm extends ChangeNotifier {
       spFrame: frame.writeToBuffer(),
     );
 
-    logger.i('rawPayloads.length editor ${rawPayloads.length}');
     for (final rawPayload in rawPayloads) {
       final payload = Payload.fromBuffer(rawPayload);
 
@@ -100,7 +134,6 @@ class EditorPageVm extends ChangeNotifier {
     }
 
     syncModel.document.sequenceNumber = frame.seqNum.toInt();
-
     return exposedCrdtPayload;
   }
 
@@ -112,14 +145,13 @@ class EditorPageVm extends ChangeNotifier {
     selectedMode = mode;
 
     if (selectedMode != EditorModes.edit) {
-      synchronize();
+      editorTextSynchronize();
     }
 
     notifyListeners();
   }
 
-  void synchronize() async {
-    logger.i('start sync');
+  void editorTextSynchronize() async {
     isSinking = true;
     notifyListeners();
 
@@ -128,32 +160,13 @@ class EditorPageVm extends ChangeNotifier {
       syncModel.document.automergeDoc,
     );
 
-    // does not commit if no changes in editor
+    // TODO: does not commit if no changes in editor
     syncModel.document.automergeDoc.commit();
-
-    for (final payload in _crdtPayloadList) {
-      switch (payload.kind) {
-        case ExposedCRDTPayloadKind.incrementalChange:
-          final incrementalChange = payload.crdt.incrementalChange;
-          syncModel.document.automergeDoc.loadIncremental(
-            bytes: incrementalChange,
-          );
-
-          syncModel.document.automergeDoc.emptyChange();
-          syncModel.document.automergeDoc.commit();
-        default:
-          logger.i('Received full doc, ignore');
-        // case ExposedCRDTPayloadKind.fullDocument:
-        //   syncModel.document.automergeDoc = BAutoCommit.load(
-        //     data: payload.crdt.fullDocument,
-        //   );
-      }
-    }
+    syncDocument(_crdtPayloadList);
 
     final saveIncremental = syncModel.document.automergeDoc.saveIncremental();
 
     if (saveIncremental.isNotEmpty) {
-      logger.i('Trying to send frame');
       await GroupApiClient.instance.sendFrame(
         groupId: syncModel.document.id,
         frame: syncModel.groupContext.createFrame(
@@ -165,6 +178,10 @@ class EditorPageVm extends ChangeNotifier {
         ),
       );
     }
+
+    logger.i(
+      'Current document state  ${syncModel.document.automergeDoc.getBlocks()}',
+    );
 
     mdEditor.text = EditorAutomergeUtils.instance.toDoc(
       syncModel.document.automergeDoc,

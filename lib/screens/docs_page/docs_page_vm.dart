@@ -51,7 +51,7 @@ class DocsPageViewModel extends ChangeNotifier {
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 
-    _syncProvider.add(document, groupContext);
+    await _syncProvider.add(document, groupContext);
   }
 
   Future<void> updateDocumentName(Document doc, {required String title}) async {
@@ -72,7 +72,7 @@ class DocsPageViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteDoc(Document doc) async {
-    _syncProvider.remove(doc.id);
+    await _syncProvider.remove(doc.id);
     notifyListeners();
   }
 

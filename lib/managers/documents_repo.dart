@@ -13,6 +13,8 @@ class DocumentsRepo {
   Future<void> loadDocuments() async {
     final docs = await _db.getDocumentList();
     subject.value = docs;
+
+    print(docs);
     subject.add(current);
   }
 
