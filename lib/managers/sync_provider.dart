@@ -95,8 +95,7 @@ class SyncProviderModel {
                 document.automergeDoc.loadIncremental(
                   bytes: crdt.crdt.incrementalChange,
                 );
-                document.automergeDoc.emptyChange();
-                document.automergeDoc.commit();
+                // document.automergeDoc.emptyChange();
               case ExposedCRDTPayloadKind.fullDocument:
                 logger.d('Received full document');
                 document.automergeDoc = BAutoCommit.load(

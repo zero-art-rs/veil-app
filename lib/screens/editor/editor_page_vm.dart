@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/main.dart';
@@ -24,6 +26,7 @@ class EditorPageVm extends ChangeNotifier {
 
   final SyncProviderModel syncModel;
 
+  String? _hashBeforeEditing;
   StreamSubscription<SPFrame>? _subscription;
   bool isEditingFlow = false;
   bool isSinking = false;
@@ -63,6 +66,10 @@ class EditorPageVm extends ChangeNotifier {
         );
       }
 
+      logger.i(
+        'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
+      );
+
       await DB.instance.updateDocument(
         doc: syncModel.document,
         parts: syncModel.groupContext.asParts(),
@@ -100,13 +107,13 @@ class EditorPageVm extends ChangeNotifier {
     for (final payload in payloads) {
       switch (payload.kind) {
         case ExposedCRDTPayloadKind.incrementalChange:
-          logger.i('Received incremental change while syncing');
+          logger.i('Received incremental change');
           final incrementalChange = payload.crdt.incrementalChange;
           syncModel.document.automergeDoc.loadIncremental(
             bytes: incrementalChange,
           );
 
-          syncModel.document.automergeDoc.emptyChange();
+          // syncModel.document.automergeDoc.emptyChange();
         default:
           logger.i('Received full doc, ignore');
         // case ExposedCRDTPayloadKind.fullDocument:
@@ -146,6 +153,10 @@ class EditorPageVm extends ChangeNotifier {
 
     if (selectedMode != EditorModes.edit) {
       editorTextSynchronize();
+
+      _hashBeforeEditing = sha256
+          .convert(utf8.encode(mdEditor.text))
+          .toString();
     }
 
     notifyListeners();
@@ -155,16 +166,29 @@ class EditorPageVm extends ChangeNotifier {
     isSinking = true;
     notifyListeners();
 
-    EditorAutomergeUtils.instance.fromDoc(
-      mdEditor.text,
-      syncModel.document.automergeDoc,
-    );
+    var hashAfterEditing = sha256
+        .convert(utf8.encode(mdEditor.text))
+        .toString();
 
-    // TODO: does not commit if no changes in editor
-    syncModel.document.automergeDoc.commit();
+    if (_hashBeforeEditing != hashAfterEditing) {
+      EditorAutomergeUtils.instance.fromDoc(
+        mdEditor.text,
+        syncModel.document.automergeDoc,
+      );
+      syncModel.document.automergeDoc.commit();
+    } else {
+      logger.i('No changes after editing');
+    }
+
+    if (_crdtPayloadList.isNotEmpty) {
+      logger.i('Syncing buffered changes..');
+    }
     syncDocument(_crdtPayloadList);
-
     final saveIncremental = syncModel.document.automergeDoc.saveIncremental();
+
+    logger.i(
+      'Document state after merge ${syncModel.document.automergeDoc.getBlocks()}',
+    );
 
     if (saveIncremental.isNotEmpty) {
       await GroupApiClient.instance.sendFrame(

@@ -60,78 +60,27 @@ class _EditorPageView extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Text(vm.syncModel.document.title),
         ),
-        actions: isDesktop
-            ? [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  margin: const EdgeInsets.all(8),
-                  child: SegmentedButton<EditorModes>(
-                    segments: const <ButtonSegment<EditorModes>>[
-                      ButtonSegment<EditorModes>(
-                        value: EditorModes.view,
-                        label: Text("View mode"),
-                      ),
-                      ButtonSegment<EditorModes>(
-                        value: EditorModes.edit,
-                        label: Text("Edit mode"),
-                      ),
-                    ],
-                    selected: <EditorModes>{vm.selectedMode},
-                    onSelectionChanged: (newSelection) {
-                      vm.selectMode(newSelection.first);
-                    },
-                  ),
-                ),
+        actions: [
+          SegmentedButton<EditorModes>(
+            showSelectedIcon: false,
+            segments: const <ButtonSegment<EditorModes>>[
+              ButtonSegment<EditorModes>(
+                value: EditorModes.view,
+                label: Icon(Icons.menu_book),
+              ),
+              ButtonSegment<EditorModes>(
+                value: EditorModes.edit,
+                label: Icon(Icons.edit),
+              ),
+            ],
+            selected: <EditorModes>{vm.selectedMode},
+            onSelectionChanged: (newSelection) {
+              vm.selectMode(newSelection.first);
+            },
+          ),
 
-                if (vm.isSinking) SyncCircleView(),
-              ]
-            : [
-                // Container(
-                //   padding: const EdgeInsets.symmetric(
-                //     horizontal: 12,
-                //     vertical: 6,
-                //   ),
-                //   margin: const EdgeInsets.all(8),
-                //   child: SegmentedButton<EditorModes>(
-                //     segments: const <ButtonSegment<EditorModes>>[
-                //       ButtonSegment<EditorModes>(
-                //         value: EditorModes.view,
-                //         label: Text("View mode"),
-                //       ),
-                //       ButtonSegment<EditorModes>(
-                //         value: EditorModes.edit,
-                //         label: Text("Edit mode"),
-                //       ),
-                //     ],
-                //     selected: <EditorModes>{vm.selectedMode},
-                //     onSelectionChanged: (newSelection) {
-                //       vm.selectMode(newSelection.first);
-                //     },
-                //   ),
-                // ),
-                if (vm.isSinking) SyncCircleView(),
-
-                if (isHistoryAccessible)
-                  IconButton(
-                    icon: const Icon(Icons.history),
-                    onPressed: () {
-                      // vm.commit();
-                      final changes = vm.prepareChanges();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => HistoryPage(
-                            items: changes,
-                            doc: vm.syncModel.document,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-              ],
+          if (vm.isSinking) SyncCircleView(),
+        ],
       ),
       body: Stack(
         children: [
@@ -155,15 +104,6 @@ class _EditorPageView extends StatelessWidget {
                           onChanged: (_) => vm.editMD(),
                         ),
                       ),
-
-                      Container(
-                        alignment: Alignment.bottomRight,
-                        padding: EdgeInsets.all(12),
-                        child: FilledButton(
-                          onPressed: () => {},
-                          child: const Text("Commit"),
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -171,19 +111,18 @@ class _EditorPageView extends StatelessWidget {
               if (vm.selectedMode == EditorModes.edit && isDesktop)
                 Container(width: 1, height: double.infinity, color: cs.outline),
 
-              // if (isDesktop)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SingleChildScrollView(
-                    child: GptMarkdown(vm.mdEditor.text),
+              if (!(!isDesktop && vm.selectedMode == EditorModes.edit))
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SingleChildScrollView(
+                      child: GptMarkdown(vm.mdEditor.text),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
 
-          // if (isDesktop)
           Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
