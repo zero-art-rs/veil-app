@@ -176,22 +176,13 @@ class EditorPageVm extends ChangeNotifier {
         syncModel.document.automergeDoc,
       );
       syncModel.document.automergeDoc.commit();
-    } else {
-      logger.i('No changes after editing');
-    }
 
-    if (_crdtPayloadList.isNotEmpty) {
-      logger.i('Syncing buffered changes..');
-    }
-    syncDocument(_crdtPayloadList);
-    final saveIncremental = syncModel.document.automergeDoc.saveIncremental();
+      if (_crdtPayloadList.isNotEmpty) {
+        logger.i('Syncing buffered changes..');
+      }
+      syncDocument(_crdtPayloadList);
 
-    logger.i(
-      'Document state after merge ${syncModel.document.automergeDoc.getBlocks()}',
-    );
-
-    // TODO: Can be duplicate, will think
-    if (saveIncremental.isNotEmpty) {
+      final saveIncremental = syncModel.document.automergeDoc.saveIncremental();
       await GroupApiClient.instance.sendFrame(
         groupId: syncModel.document.id,
         frame: syncModel.groupContext.createFrame(
@@ -202,11 +193,22 @@ class EditorPageVm extends ChangeNotifier {
           ],
         ),
       );
-    }
 
-    mdEditor.text = EditorAutomergeUtils.instance.toDoc(
-      syncModel.document.automergeDoc,
-    );
+      logger.i(
+        'Document state after merge ${syncModel.document.automergeDoc.getBlocks()}',
+      );
+    } else {
+      if (_crdtPayloadList.isNotEmpty) {
+        logger.i('Syncing buffered changes..');
+
+        syncDocument(_crdtPayloadList);
+        mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+          syncModel.document.automergeDoc,
+        );
+      } else {
+        logger.i('No buffered changes, no local changes, nothing to sync');
+      }
+    }
 
     isSinking = false;
     notifyListeners();
@@ -266,7 +268,7 @@ class EditorPageVm extends ChangeNotifier {
     _subscription?.cancel();
 
     if (_crdtPayloadList.isNotEmpty) {
-
+      syncDocument(_crdtPayloadList);
     }
 
     await DB.instance.updateDocument(
