@@ -1,9 +1,11 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/managers/sync_provider.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
-import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
@@ -92,19 +94,19 @@ class PrimaryPageViewModel extends ChangeNotifier {
         groupName: resTitle,
         groupID: docID,
         owner: owner,
-        autoCommit: content,
       );
 
       final document = Document(
         id: docID,
-        title: resTitle,
+        createdAt: DateTime.now(),
         automergeDoc: content,
         groupContextParts: groupContext.asParts(),
-        createdAt: DateTime.now(),
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+
       await _syncProvider.add(document, groupContext, insertToDb: true);
+
       textEditingController.clear();
 
       notifyListeners();
@@ -168,20 +170,9 @@ class PrimaryPageViewModel extends ChangeNotifier {
     }
   }
 
-  Future<List<MemberScreenModel>> prepareMembers() async {
-    final account = await _accStorage.getAccount();
-    return _syncModels[selectedIndex - constantTabs].document.members
-        .map(
-          (e) => MemberScreenModel(
-            member: e,
-            isYou: e.account.actorId == account?.actorId,
-          ),
-        )
-        .toList();
-  }
-
   (List<ChangeEvent>, Document) prepareChanges() {
     final syncModel = _syncModels[selectedIndex - constantTabs];
+    final members = syncModel.groupContext.retrieveGroupInfo().members;
 
     final changes = syncModel.document.automergeDoc
         .getChangeList()
@@ -192,6 +183,11 @@ class PrimaryPageViewModel extends ChangeNotifier {
             actorIdHex: e.$2.actorIdHex(),
             changeHashHex: e.$2.changeHash(),
             date: e.$2.timestamp(),
+            name:
+                members
+                    .firstWhereOrNull((elem) => elem.id == e.$2.actorIdHex())
+                    ?.name ??
+                e.$2.actorIdHex(),
             isInitial: e.$1 == 0,
           ),
         )

@@ -3,7 +3,7 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
 import 'package:zk_notion_app/extensions/group_context.dart';
-import 'package:zk_notion_app/managers/sync_provider.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
 import 'package:zk_notion_app/widgets/square_rounded_btn.dart';
@@ -59,7 +59,7 @@ class _EditorPageView extends StatelessWidget {
       appBar: AppBar(
         title: Align(
           alignment: Alignment.centerLeft,
-          child: Text(vm.syncModel.groupContext.getGroupInfo().name),
+          child: Text(vm.syncModel.groupContext.retrieveGroupInfo().name),
         ),
         actions: [
           SegmentedButton<EditorModes>(

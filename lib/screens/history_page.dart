@@ -9,6 +9,7 @@ class HistoryPage extends StatelessWidget {
     required this.doc,
     this.onChangeTap,
   });
+
   final List<ChangeEvent> items;
   final Document doc;
   final void Function(BuildContext context, ChangeEvent change)? onChangeTap;
@@ -61,9 +62,33 @@ class HistoryPage extends StatelessWidget {
 }
 
 class _ChangeEventCard extends StatelessWidget {
-  const _ChangeEventCard({required this.event, this.onTap});
+  _ChangeEventCard({required this.event, this.onTap});
   final ChangeEvent event;
   final Function()? onTap;
+
+  final _materialColors = <MaterialColor>[
+    Colors.red,
+    Colors.pink,
+    Colors.purple,
+    Colors.deepPurple,
+    Colors.indigo,
+    Colors.blue,
+    Colors.lightBlue,
+    Colors.cyan,
+    Colors.teal,
+    Colors.green,
+    Colors.lightGreen,
+    Colors.lime,
+    Colors.brown,
+    Colors.blueGrey,
+  ];
+
+  Color colorFromId(String id) {
+    final hash = id.hashCode;
+    final index = hash.abs() % _materialColors.length;
+
+    return _materialColors[index][800]!;
+  }
 
   Widget _initialChangeLabel(BuildContext context) {
     if (event.isInitial) {
@@ -129,18 +154,22 @@ class _ChangeEventCard extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              Wrap(
-                runSpacing: 8,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 8,
                 children: [
                   _InfoChip(
                     icon: Icons.today,
                     label: _formatDateFromSeconds(event.date),
                   ),
+                  // Expanded(
                   _InfoChip(
                     icon: Icons.person_outline,
-                    label: event.actorIdHex,
+                    label: event.name,
                     monospace: true,
+                    actorColor: colorFromId(event.actorIdHex),
                   ),
+                  // ),
                 ],
               ),
             ],
@@ -156,10 +185,12 @@ class _InfoChip extends StatelessWidget {
     required this.icon,
     required this.label,
     this.monospace = false,
+    this.actorColor,
   });
   final IconData icon;
   final String label;
   final bool monospace;
+  final Color? actorColor;
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +198,8 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer.withOpacity(0.6),
+        color:
+            actorColor ?? theme.colorScheme.secondaryContainer.withOpacity(0.6),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -197,10 +229,12 @@ class ChangeEvent {
   final String title;
   final String changeHashHex;
   final String actorIdHex;
+  final String name;
   final int date;
   final bool isInitial;
 
   const ChangeEvent({
+    required this.name,
     required this.title,
     required this.changeHashHex,
     required this.actorIdHex,

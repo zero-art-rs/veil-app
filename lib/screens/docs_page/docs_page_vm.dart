@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/v4.dart';
 import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/sync_provider.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
@@ -34,41 +35,23 @@ class DocsPageViewModel extends ChangeNotifier {
 
     final docID = UuidV4().generate();
     final content = BAutoCommit();
+
     final (groupContext, frame) = GroupContextFactory.createGroupContext(
       groupName: resTitle,
       groupID: docID,
       owner: owner,
-      autoCommit: content,
     );
 
     final document = Document(
       id: docID,
-      title: resTitle,
+      createdAt: DateTime.now(),
       automergeDoc: content,
       groupContextParts: groupContext.asParts(),
-      createdAt: DateTime.now(),
     );
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 
     await _syncProvider.add(document, groupContext);
-  }
-
-  Future<void> updateDocumentName(Document doc, {required String title}) async {
-    // await DB.instance.updateDocumentTitle(id: doc.id, title: title);
-
-    // final index = _syncModels.indexWhere((d) => d.document.id == doc.id);
-    // if (index != -1) {
-    //   _docs[index] = Document(
-    //     id: doc.id,
-    //     title: title,
-    //     automergeDoc: doc.automergeDoc,
-    //     members: doc.members,
-    //     createdAt: doc.createdAt,
-    //     groupContextParts: doc.groupContextParts,
-    //   );
-    //   notifyListeners();
-    // }
   }
 
   Future<void> deleteDoc(Document doc) async {

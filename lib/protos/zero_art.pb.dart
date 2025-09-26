@@ -1429,19 +1429,19 @@ class ProtectedPayload extends $pb.GeneratedMessage {
 /// auxiliary protected invite data
 class ProtectedInviteData extends $pb.GeneratedMessage {
   factory ProtectedInviteData({
+    $core.String? groupId,
     $fixnum.Int64? epoch,
     $core.List<$core.int>? stageKey,
-    GroupInfo? groupInfo,
   }) {
     final $result = create();
+    if (groupId != null) {
+      $result.groupId = groupId;
+    }
     if (epoch != null) {
       $result.epoch = epoch;
     }
     if (stageKey != null) {
       $result.stageKey = stageKey;
-    }
-    if (groupInfo != null) {
-      $result.groupInfo = groupInfo;
     }
     return $result;
   }
@@ -1450,9 +1450,9 @@ class ProtectedInviteData extends $pb.GeneratedMessage {
   factory ProtectedInviteData.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ProtectedInviteData', package: const $pb.PackageName(_omitMessageNames ? '' : 'zero_art_proto'), createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'groupId')
     ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'epoch', $pb.PbFieldType.OU6, defaultOrMaker: $fixnum.Int64.ZERO)
     ..a<$core.List<$core.int>>(3, _omitFieldNames ? '' : 'stageKey', $pb.PbFieldType.OY)
-    ..aOM<GroupInfo>(4, _omitFieldNames ? '' : 'groupInfo', subBuilder: GroupInfo.create)
     ..hasRequiredFields = false
   ;
 
@@ -1477,35 +1477,32 @@ class ProtectedInviteData extends $pb.GeneratedMessage {
   static ProtectedInviteData getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ProtectedInviteData>(create);
   static ProtectedInviteData? _defaultInstance;
 
-  /// string group_id = 1;
+  @$pb.TagNumber(1)
+  $core.String get groupId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set groupId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasGroupId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearGroupId() => clearField(1);
+
   @$pb.TagNumber(2)
-  $fixnum.Int64 get epoch => $_getI64(0);
+  $fixnum.Int64 get epoch => $_getI64(1);
   @$pb.TagNumber(2)
-  set epoch($fixnum.Int64 v) { $_setInt64(0, v); }
+  set epoch($fixnum.Int64 v) { $_setInt64(1, v); }
   @$pb.TagNumber(2)
-  $core.bool hasEpoch() => $_has(0);
+  $core.bool hasEpoch() => $_has(1);
   @$pb.TagNumber(2)
   void clearEpoch() => clearField(2);
 
   @$pb.TagNumber(3)
-  $core.List<$core.int> get stageKey => $_getN(1);
+  $core.List<$core.int> get stageKey => $_getN(2);
   @$pb.TagNumber(3)
-  set stageKey($core.List<$core.int> v) { $_setBytes(1, v); }
+  set stageKey($core.List<$core.int> v) { $_setBytes(2, v); }
   @$pb.TagNumber(3)
-  $core.bool hasStageKey() => $_has(1);
+  $core.bool hasStageKey() => $_has(2);
   @$pb.TagNumber(3)
   void clearStageKey() => clearField(3);
-
-  @$pb.TagNumber(4)
-  GroupInfo get groupInfo => $_getN(2);
-  @$pb.TagNumber(4)
-  set groupInfo(GroupInfo v) { setField(4, v); }
-  @$pb.TagNumber(4)
-  $core.bool hasGroupInfo() => $_has(2);
-  @$pb.TagNumber(4)
-  void clearGroupInfo() => clearField(4);
-  @$pb.TagNumber(4)
-  GroupInfo ensureGroupInfo() => $_ensure(2);
 }
 
 /// Invite for some identified user (Q_id, Q_spk)

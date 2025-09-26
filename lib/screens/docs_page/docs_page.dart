@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:zk_notion_app/extensions/group_context.dart';
 import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/sync_provider.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
+import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
-import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
 import 'package:zk_notion_app/widgets/banner.dart';
 import 'package:zk_notion_app/widgets/ays_modal.dart';
@@ -14,20 +14,14 @@ enum _DocAction { edit, delete, share }
 class DocsPage extends StatelessWidget {
   const DocsPage({super.key});
 
-  void _cuDocumentModal(
-    BuildContext context, {
-    Document? document,
-    bool isCreateFlow = true,
-  }) {
-    final controller = TextEditingController(text: document?.title ?? '');
+  void _createDocumentModal(BuildContext context) {
+    final controller = TextEditingController(text: '');
     final vm = context.read<DocsPageViewModel>();
 
     showDialog(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: Text(
-          isCreateFlow ? 'Create a document' : 'Update document name',
-        ),
+        title: Text('Create a document'),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -42,28 +36,18 @@ class DocsPage extends StatelessWidget {
           TextButton(
             onPressed: () async {
               try {
-                if (isCreateFlow) {
-                  await vm.createDoc(controller.text);
-                } else {
-                  await vm.updateDocumentName(
-                    document!,
-                    title: controller.text,
-                  );
-                }
+                await vm.createDoc(controller.text);
                 if (!context.mounted) return;
                 Navigator.pop(context);
               } catch (err) {
-                logger.e(
-                  'Failed to ${isCreateFlow ? "create" : "update"} document: $err',
-                );
+                logger.e('Failed to create document: $err');
                 TopBanner.show(
                   context: context,
-                  message:
-                      'Failed to ${isCreateFlow ? "create" : "update"} document',
+                  message: 'Failed to create document',
                 );
               }
             },
-            child: Text(isCreateFlow ? 'Create' : 'Update'),
+            child: Text('Create'),
           ),
         ],
       ),
@@ -87,7 +71,7 @@ class DocsPage extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _cuDocumentModal(context, isCreateFlow: true),
+        onPressed: () => _createDocumentModal(context),
         label: const Icon(Icons.add),
       ),
       body: vm.syncModels.isEmpty
@@ -107,7 +91,7 @@ class DocsPage extends StatelessWidget {
                   context: context,
                   title: 'Delete document',
                   content:
-                      'Are you sure to delete ${vm.syncModels[i].document.title}?',
+                      'Are you sure to delete ${vm.syncModels[i].groupContext.retrieveGroupInfo().name}?',
                   callback: () async {
                     try {
                       await vm.deleteDoc(vm.syncModels[i].document);
@@ -121,11 +105,7 @@ class DocsPage extends StatelessWidget {
                     }
                   },
                 ),
-                onEdit: () => _cuDocumentModal(
-                  context,
-                  document: vm.syncModels[i].document,
-                  isCreateFlow: false,
-                ),
+                onEdit: () => {},
               ),
             ),
     );
@@ -154,6 +134,9 @@ class _DocCard extends StatelessWidget {
   final SyncProviderModel doc;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+
+  GroupInfo get groupInfo => doc.groupContext.retrieveGroupInfo();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -266,7 +249,7 @@ class _DocCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doc.groupContext.getGroupInfo().name,
+                      groupInfo.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall,

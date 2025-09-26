@@ -9,7 +9,7 @@ import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/managers/deeplink_manager.dart';
 import 'package:zk_notion_app/managers/documents_repo.dart';
 import 'package:zk_notion_app/managers/invite_manager.dart';
-import 'package:zk_notion_app/managers/sync_provider.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
 import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
@@ -34,10 +34,9 @@ Future<void> main() async {
   try {
     await AccountStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
-    // DB.instance.removeAll();
+    DB.instance.removeAll();
     logger.d('Db path: ${await getDatabasesPath()}');
     await SyncProvider.instance.init();
-    await DocumentsRepo.instance.loadDocuments();
   } catch (e) {
     logger.e('Launch app error: $e');
   }
@@ -163,17 +162,21 @@ class _MyAppState extends State<MyApp> {
       throw Exception('No account, unreachable flow');
     }
 
-    final (groupContext, document) = await InviteManager.instance.processJoin(
+    final (pendingGroupContext, document) = await InviteManager.instance.join(
       inviteData,
     );
 
-    await SyncProvider.instance.add(document, groupContext, insertToDb: true);
-
-    final frame = groupContext.joinGroup(
-      user: BUser(id: account.actorId, name: account.name),
+    // make pending add
+    await SyncProvider.instance.addFromInvite(
+      document,
+      pendingGroupContext,
+      user: BUser(name: account.name, publicKey: account.keypair.rawPublicKey),
     );
 
-    await GroupApiClient.instance.sendFrame(groupId: document.id, frame: frame);
+    // pendingGroupContext.signWithTk(groupId: groupId, nonce: nonce)
+    // pendingGroupContext.processFrame(frame: frame) - polling
+    // final frame pendingGroupContext.joinGroupAs(user: user)
+    // sendframe -> if 200 pendingGroupContext.upgrade() else go to polling and repeat
 
     if (!context.mounted) return;
     Navigator.pop(context);

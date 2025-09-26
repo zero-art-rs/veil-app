@@ -68,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 797143745;
+  int get rustContentHash => 465518214;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -179,6 +179,10 @@ abstract class RustLibApi extends BaseApi {
     required List<Uint8List> payloads,
   });
 
+  void crateApiGroupContextBGroupContextCommitState({
+    required BGroupContext that,
+  });
+
   Uint8List crateApiGroupContextBGroupContextCreateFrame({
     required BGroupContext that,
     required List<Uint8List> payloads,
@@ -191,33 +195,23 @@ abstract class RustLibApi extends BaseApi {
     required List<int> stk,
     required BigInt epoch,
     required List<int> groupInfo,
+    required bool isLastSender,
   });
 
   BigInt crateApiGroupContextBGroupContextGetEpoch({
     required BGroupContext that,
   });
 
-  Uint8List crateApiGroupContextBGroupContextGetGroupInf({
+  Uint8List crateApiGroupContextBGroupContextGetGroupInfo({
     required BGroupContext that,
   });
 
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List)
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
   crateApiGroupContextBGroupContextIntoParts({required BGroupContext that});
-
-  Uint8List crateApiGroupContextBGroupContextJoinGroup({
-    required BGroupContext that,
-    required BUser user,
-  });
 
   List<Uint8List> crateApiGroupContextBGroupContextProcessFrame({
     required BGroupContext that,
-    required List<int> spFrame,
-  });
-
-  Uint8List crateApiGroupContextBGroupContextRemoveMember({
-    required BGroupContext that,
-    required List<int> leafPublicKey,
-    required List<int> payload,
+    required List<int> frame,
   });
 
   Uint8List crateApiGroupContextBGroupContextSignChallenge({
@@ -231,12 +225,108 @@ abstract class RustLibApi extends BaseApi {
     required List<int> nonce,
   });
 
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List)
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
   crateApiGroupContextBGroupContextToParts({required BGroupContext that});
+
+  String crateApiGroupContextBGroupInfoId({required BGroupInfo that});
+
+  String crateApiGroupContextBGroupInfoName({required BGroupInfo that});
 
   BGroupInfo crateApiGroupContextBGroupInfoNew({
     required String id,
     required String name,
+  });
+
+  BigInt crateApiGroupContextBInviteContextEpoch({
+    required BInviteContext that,
+  });
+
+  String crateApiGroupContextBInviteContextGroupId({
+    required BInviteContext that,
+  });
+
+  Uint8List crateApiGroupContextBInviteContextLeafPublicKey({
+    required BInviteContext that,
+  });
+
+  BInviteContext crateApiGroupContextBInviteContextNew({
+    required List<int> identitySecretKey,
+    required List<int> spkSecretKey,
+    required List<int> invite,
+  });
+
+  Uint8List crateApiGroupContextBInviteContextSignAsIdentity({
+    required BInviteContext that,
+    required List<int> msg,
+  });
+
+  Uint8List crateApiGroupContextBInviteContextSignAsLeaf({
+    required BInviteContext that,
+    required List<int> msg,
+  });
+
+  Uint8List crateApiGroupContextBInviteContextSignChallenge({
+    required BInviteContext that,
+    required List<int> nonce,
+    required List<int> challenge,
+  });
+
+  BPendingGroupContext crateApiGroupContextBInviteContextUpgrade({
+    required BInviteContext that,
+    required List<int> publicArt,
+  });
+
+  BPendingGroupContext crateApiGroupContextBPendingGroupContextFromParts({
+    required List<int> identitySecretKey,
+    required List<int> leafSecret,
+    required List<int> art,
+    required List<int> stk,
+    required BigInt epoch,
+    required List<int> groupInfo,
+    required bool isLastSender,
+  });
+
+  BigInt crateApiGroupContextBPendingGroupContextGetEpoch({
+    required BPendingGroupContext that,
+  });
+
+  Uint8List crateApiGroupContextBPendingGroupContextGetGroupInfo({
+    required BPendingGroupContext that,
+  });
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBPendingGroupContextIntoParts({
+    required BPendingGroupContext that,
+  });
+
+  Uint8List crateApiGroupContextBPendingGroupContextJoinGroupAs({
+    required BPendingGroupContext that,
+    required BUser user,
+  });
+
+  List<Uint8List> crateApiGroupContextBPendingGroupContextProcessFrame({
+    required BPendingGroupContext that,
+    required List<int> frame,
+  });
+
+  Uint8List crateApiGroupContextBPendingGroupContextSignChallenge({
+    required BPendingGroupContext that,
+    required List<int> challenge,
+  });
+
+  Uint8List crateApiGroupContextBPendingGroupContextSignWithTk({
+    required BPendingGroupContext that,
+    required String groupId,
+    required List<int> nonce,
+  });
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBPendingGroupContextToParts({
+    required BPendingGroupContext that,
+  });
+
+  BGroupContext crateApiGroupContextBPendingGroupContextUpgrade({
+    required BPendingGroupContext that,
   });
 
   Uint8List crateApiGroupContextBSecretsFactoryGenerateSecret({
@@ -252,43 +342,18 @@ abstract class RustLibApi extends BaseApi {
     required U8Array32 seed,
   });
 
+  String crateApiGroupContextBUserId({required BUser that});
+
   BUser crateApiGroupContextBUserNew({
-    required String id,
     required String name,
+    required List<int> publicKey,
   });
 
-  (BGroupContext, Uint8List, Map<Uint8List, Uint8List>, List<Uint8List>)
-  crateApiGroupContextCreateGroup({
+  (BGroupContext, Uint8List) crateApiGroupContextCreateGroup({
     required List<int> identitySecretKey,
     required BUser user,
     required BGroupInfo groupInfo,
-    required List<(Uint8List, Uint8List?)> identifiedMembersKeys,
-    required BigInt unidentifiedMembersCount,
-    required List<Uint8List> payloads,
   });
-
-  BGroupContext crateApiGroupContextCreateGroupFromIdentifiedInvite({
-    required List<int> identitySecretKey,
-    required List<int> spkSecretKey,
-    required List<int> art,
-    required List<int> invite,
-  });
-
-  BGroupContext crateApiGroupContextCreateGroupFromUnidentifiedInvite({
-    required List<int> identitySecretKey,
-    required List<int> art,
-    required List<int> invite,
-  });
-
-  (Uint8List, Uint8List, BigInt, Uint8List)
-  crateApiGroupContextDestructIdentifiedInvite({
-    required List<int> invite,
-    required List<int> identitySecretKey,
-    required List<int> spkSecretKey,
-  });
-
-  (Uint8List, Uint8List, BigInt, Uint8List)
-  crateApiGroupContextDestructUnidentifiedInvite({required List<int> invite});
 
   String crateApiAutomergeGenerateActorId();
 
@@ -298,14 +363,6 @@ abstract class RustLibApi extends BaseApi {
 
   Uint8List crateApiGroupContextPublicKeyFromSecretKey({
     required List<int> secretKey,
-  });
-
-  Uint8List crateApiGroupContextSignChallenge({
-    required List<int> leafSecret,
-    required String chatId,
-    required List<int> nonce,
-    required List<int> challenge,
-    required BigInt epoch,
   });
 
   RustArcIncrementStrongCountFnType
@@ -338,6 +395,24 @@ abstract class RustLibApi extends BaseApi {
   get rust_arc_decrement_strong_count_BGroupInfo;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_BGroupInfoPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BInviteContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BInviteContext;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_BInviteContextPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BPendingGroupContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BPendingGroupContext;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_BPendingGroupContextPtr;
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_BSecretsFactory;
@@ -1208,6 +1283,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  void crateApiGroupContextBGroupContextCommitState({
+    required BGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextCommitStateConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextCommitStateConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_commit_state",
+        argNames: ["that"],
+      );
+
+  @override
   Uint8List crateApiGroupContextBGroupContextCreateFrame({
     required BGroupContext that,
     required List<Uint8List> payloads,
@@ -1221,7 +1327,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_list_list_prim_u_8_strict(payloads, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1248,6 +1354,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required List<int> stk,
     required BigInt epoch,
     required List<int> groupInfo,
+    required bool isLastSender,
   }) {
     return handler.executeSync(
       SyncTask(
@@ -1259,7 +1366,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_prim_u_8_loose(stk, serializer);
           sse_encode_u_64(epoch, serializer);
           sse_encode_list_prim_u_8_loose(groupInfo, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
+          sse_encode_bool(isLastSender, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1267,7 +1375,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGroupContextBGroupContextFromPartsConstMeta,
-        argValues: [identitySecretKey, leafSecret, art, stk, epoch, groupInfo],
+        argValues: [
+          identitySecretKey,
+          leafSecret,
+          art,
+          stk,
+          epoch,
+          groupInfo,
+          isLastSender,
+        ],
         apiImpl: this,
       ),
     );
@@ -1283,6 +1399,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           "stk",
           "epoch",
           "groupInfo",
+          "isLastSender",
         ],
       );
 
@@ -1298,7 +1415,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_u_64,
@@ -1318,7 +1435,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Uint8List crateApiGroupContextBGroupContextGetGroupInf({
+  Uint8List crateApiGroupContextBGroupContextGetGroupInfo({
     required BGroupContext that,
   }) {
     return handler.executeSync(
@@ -1329,27 +1446,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiGroupContextBGroupContextGetGroupInfConstMeta,
+        constMeta: kCrateApiGroupContextBGroupContextGetGroupInfoConstMeta,
         argValues: [that],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiGroupContextBGroupContextGetGroupInfConstMeta =>
+  TaskConstMeta get kCrateApiGroupContextBGroupContextGetGroupInfoConstMeta =>
       const TaskConstMeta(
-        debugName: "BGroupContext_get_group_inf",
+        debugName: "BGroupContext_get_group_info",
         argNames: ["that"],
       );
 
   @override
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List)
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
   crateApiGroupContextBGroupContextIntoParts({required BGroupContext that}) {
     return handler.executeSync(
       SyncTask(
@@ -1359,11 +1476,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33)!;
         },
         codec: SseCodec(
           decodeSuccessData:
-              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict,
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGroupContextBGroupContextIntoPartsConstMeta,
@@ -1380,45 +1497,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Uint8List crateApiGroupContextBGroupContextJoinGroup({
-    required BGroupContext that,
-    required BUser user,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
-            that,
-            serializer,
-          );
-          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
-            user,
-            serializer,
-          );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiGroupContextBGroupContextJoinGroupConstMeta,
-        argValues: [that, user],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiGroupContextBGroupContextJoinGroupConstMeta =>
-      const TaskConstMeta(
-        debugName: "BGroupContext_join_group",
-        argNames: ["that", "user"],
-      );
-
-  @override
   List<Uint8List> crateApiGroupContextBGroupContextProcessFrame({
     required BGroupContext that,
-    required List<int> spFrame,
+    required List<int> frame,
   }) {
     return handler.executeSync(
       SyncTask(
@@ -1428,7 +1509,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          sse_encode_list_prim_u_8_loose(spFrame, serializer);
+          sse_encode_list_prim_u_8_loose(frame, serializer);
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34)!;
         },
         codec: SseCodec(
@@ -1436,7 +1517,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGroupContextBGroupContextProcessFrameConstMeta,
-        argValues: [that, spFrame],
+        argValues: [that, frame],
         apiImpl: this,
       ),
     );
@@ -1445,42 +1526,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiGroupContextBGroupContextProcessFrameConstMeta =>
       const TaskConstMeta(
         debugName: "BGroupContext_process_frame",
-        argNames: ["that", "spFrame"],
-      );
-
-  @override
-  Uint8List crateApiGroupContextBGroupContextRemoveMember({
-    required BGroupContext that,
-    required List<int> leafPublicKey,
-    required List<int> payload,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
-            that,
-            serializer,
-          );
-          sse_encode_list_prim_u_8_loose(leafPublicKey, serializer);
-          sse_encode_list_prim_u_8_loose(payload, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiGroupContextBGroupContextRemoveMemberConstMeta,
-        argValues: [that, leafPublicKey, payload],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiGroupContextBGroupContextRemoveMemberConstMeta =>
-      const TaskConstMeta(
-        debugName: "BGroupContext_remove_member",
-        argNames: ["that", "leafPublicKey", "payload"],
+        argNames: ["that", "frame"],
       );
 
   @override
@@ -1497,7 +1543,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_list_prim_u_8_loose(challenge, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1532,7 +1578,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_String(groupId, serializer);
           sse_encode_list_prim_u_8_loose(nonce, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 37)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1552,7 +1598,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List)
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
   crateApiGroupContextBGroupContextToParts({required BGroupContext that}) {
     return handler.executeSync(
       SyncTask(
@@ -1562,11 +1608,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 37)!;
         },
         codec: SseCodec(
           decodeSuccessData:
-              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict,
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGroupContextBGroupContextToPartsConstMeta,
@@ -1583,6 +1629,58 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  String crateApiGroupContextBGroupInfoId({required BGroupInfo that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupInfoIdConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupInfoIdConstMeta =>
+      const TaskConstMeta(debugName: "BGroupInfo_id", argNames: ["that"]);
+
+  @override
+  String crateApiGroupContextBGroupInfoName({required BGroupInfo that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 39)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupInfoNameConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupInfoNameConstMeta =>
+      const TaskConstMeta(debugName: "BGroupInfo_name", argNames: ["that"]);
+
+  @override
   BGroupInfo crateApiGroupContextBGroupInfoNew({
     required String id,
     required String name,
@@ -1593,7 +1691,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 39)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1614,6 +1712,634 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  BigInt crateApiGroupContextBInviteContextEpoch({
+    required BInviteContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 41)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextEpochConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextEpochConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_epoch",
+        argNames: ["that"],
+      );
+
+  @override
+  String crateApiGroupContextBInviteContextGroupId({
+    required BInviteContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 42)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextGroupIdConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextGroupIdConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_group_id",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBInviteContextLeafPublicKey({
+    required BInviteContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextLeafPublicKeyConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextLeafPublicKeyConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_leaf_public_key",
+        argNames: ["that"],
+      );
+
+  @override
+  BInviteContext crateApiGroupContextBInviteContextNew({
+    required List<int> identitySecretKey,
+    required List<int> spkSecretKey,
+    required List<int> invite,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
+          sse_encode_list_prim_u_8_loose(spkSecretKey, serializer);
+          sse_encode_list_prim_u_8_loose(invite, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextNewConstMeta,
+        argValues: [identitySecretKey, spkSecretKey, invite],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextNewConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_new",
+        argNames: ["identitySecretKey", "spkSecretKey", "invite"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBInviteContextSignAsIdentity({
+    required BInviteContext that,
+    required List<int> msg,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(msg, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextSignAsIdentityConstMeta,
+        argValues: [that, msg],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBInviteContextSignAsIdentityConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_sign_as_identity",
+        argNames: ["that", "msg"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBInviteContextSignAsLeaf({
+    required BInviteContext that,
+    required List<int> msg,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(msg, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextSignAsLeafConstMeta,
+        argValues: [that, msg],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextSignAsLeafConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_sign_as_leaf",
+        argNames: ["that", "msg"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBInviteContextSignChallenge({
+    required BInviteContext that,
+    required List<int> nonce,
+    required List<int> challenge,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(nonce, serializer);
+          sse_encode_list_prim_u_8_loose(challenge, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextSignChallengeConstMeta,
+        argValues: [that, nonce, challenge],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextSignChallengeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_sign_challenge",
+        argNames: ["that", "nonce", "challenge"],
+      );
+
+  @override
+  BPendingGroupContext crateApiGroupContextBInviteContextUpgrade({
+    required BInviteContext that,
+    required List<int> publicArt,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(publicArt, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 48)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextUpgradeConstMeta,
+        argValues: [that, publicArt],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextUpgradeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_upgrade",
+        argNames: ["that", "publicArt"],
+      );
+
+  @override
+  BPendingGroupContext crateApiGroupContextBPendingGroupContextFromParts({
+    required List<int> identitySecretKey,
+    required List<int> leafSecret,
+    required List<int> art,
+    required List<int> stk,
+    required BigInt epoch,
+    required List<int> groupInfo,
+    required bool isLastSender,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
+          sse_encode_list_prim_u_8_loose(leafSecret, serializer);
+          sse_encode_list_prim_u_8_loose(art, serializer);
+          sse_encode_list_prim_u_8_loose(stk, serializer);
+          sse_encode_u_64(epoch, serializer);
+          sse_encode_list_prim_u_8_loose(groupInfo, serializer);
+          sse_encode_bool(isLastSender, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 49)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextFromPartsConstMeta,
+        argValues: [
+          identitySecretKey,
+          leafSecret,
+          art,
+          stk,
+          epoch,
+          groupInfo,
+          isLastSender,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextFromPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_from_parts",
+        argNames: [
+          "identitySecretKey",
+          "leafSecret",
+          "art",
+          "stk",
+          "epoch",
+          "groupInfo",
+          "isLastSender",
+        ],
+      );
+
+  @override
+  BigInt crateApiGroupContextBPendingGroupContextGetEpoch({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 50)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextGetEpochConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextGetEpochConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_get_epoch",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBPendingGroupContextGetGroupInfo({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 51)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiGroupContextBPendingGroupContextGetGroupInfoConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextGetGroupInfoConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_get_group_info",
+        argNames: ["that"],
+      );
+
+  @override
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBPendingGroupContextIntoParts({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 52)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextIntoPartsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextIntoPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_into_parts",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBPendingGroupContextJoinGroupAs({
+    required BPendingGroupContext that,
+    required BUser user,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+            user,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 53)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBPendingGroupContextJoinGroupAsConstMeta,
+        argValues: [that, user],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextJoinGroupAsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_join_group_as",
+        argNames: ["that", "user"],
+      );
+
+  @override
+  List<Uint8List> crateApiGroupContextBPendingGroupContextProcessFrame({
+    required BPendingGroupContext that,
+    required List<int> frame,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(frame, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 54)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBPendingGroupContextProcessFrameConstMeta,
+        argValues: [that, frame],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextProcessFrameConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_process_frame",
+        argNames: ["that", "frame"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBPendingGroupContextSignChallenge({
+    required BPendingGroupContext that,
+    required List<int> challenge,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(challenge, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 55)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBPendingGroupContextSignChallengeConstMeta,
+        argValues: [that, challenge],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextSignChallengeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_sign_challenge",
+        argNames: ["that", "challenge"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBPendingGroupContextSignWithTk({
+    required BPendingGroupContext that,
+    required String groupId,
+    required List<int> nonce,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_String(groupId, serializer);
+          sse_encode_list_prim_u_8_loose(nonce, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 56)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextSignWithTkConstMeta,
+        argValues: [that, groupId, nonce],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextSignWithTkConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_sign_with_tk",
+        argNames: ["that", "groupId", "nonce"],
+      );
+
+  @override
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBPendingGroupContextToParts({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 57)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextToPartsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBPendingGroupContextToPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_to_parts",
+        argNames: ["that"],
+      );
+
+  @override
+  BGroupContext crateApiGroupContextBPendingGroupContextUpgrade({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 58)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextUpgradeConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBPendingGroupContextUpgradeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_upgrade",
+        argNames: ["that"],
+      );
+
+  @override
   Uint8List crateApiGroupContextBSecretsFactoryGenerateSecret({
     required BSecretsFactory that,
   }) {
@@ -1625,7 +2351,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 59)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1658,7 +2384,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 41)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 60)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1689,7 +2415,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_u_8_array_32(seed, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 42)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 61)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1707,42 +2433,67 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "BSecretsFactory_new", argNames: ["seed"]);
 
   @override
+  String crateApiGroupContextBUserId({required BUser that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 62)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBUserIdConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBUserIdConstMeta =>
+      const TaskConstMeta(debugName: "BUser_id", argNames: ["that"]);
+
+  @override
   BUser crateApiGroupContextBUserNew({
-    required String id,
     required String name,
+    required List<int> publicKey,
   }) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(id, serializer);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43)!;
+          sse_encode_list_prim_u_8_loose(publicKey, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 63)!;
         },
         codec: SseCodec(
           decodeSuccessData:
               sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser,
-          decodeErrorData: null,
+          decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGroupContextBUserNewConstMeta,
-        argValues: [id, name],
+        argValues: [name, publicKey],
         apiImpl: this,
       ),
     );
   }
 
   TaskConstMeta get kCrateApiGroupContextBUserNewConstMeta =>
-      const TaskConstMeta(debugName: "BUser_new", argNames: ["id", "name"]);
+      const TaskConstMeta(
+        debugName: "BUser_new",
+        argNames: ["name", "publicKey"],
+      );
 
   @override
-  (BGroupContext, Uint8List, Map<Uint8List, Uint8List>, List<Uint8List>)
-  crateApiGroupContextCreateGroup({
+  (BGroupContext, Uint8List) crateApiGroupContextCreateGroup({
     required List<int> identitySecretKey,
     required BUser user,
     required BGroupInfo groupInfo,
-    required List<(Uint8List, Uint8List?)> identifiedMembersKeys,
-    required BigInt unidentifiedMembersCount,
-    required List<Uint8List> payloads,
   }) {
     return handler.executeSync(
       SyncTask(
@@ -1757,28 +2508,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             groupInfo,
             serializer,
           );
-          sse_encode_list_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(
-            identifiedMembersKeys,
-            serializer,
-          );
-          sse_encode_usize(unidentifiedMembersCount, serializer);
-          sse_encode_list_list_prim_u_8_strict(payloads, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 64)!;
         },
         codec: SseCodec(
           decodeSuccessData:
-              sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict_map_list_prim_u_8_strict_list_prim_u_8_strict_none_list_list_prim_u_8_strict,
+              sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGroupContextCreateGroupConstMeta,
-        argValues: [
-          identitySecretKey,
-          user,
-          groupInfo,
-          identifiedMembersKeys,
-          unidentifiedMembersCount,
-          payloads,
-        ],
+        argValues: [identitySecretKey, user, groupInfo],
         apiImpl: this,
       ),
     );
@@ -1787,148 +2525,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiGroupContextCreateGroupConstMeta =>
       const TaskConstMeta(
         debugName: "create_group",
-        argNames: [
-          "identitySecretKey",
-          "user",
-          "groupInfo",
-          "identifiedMembersKeys",
-          "unidentifiedMembersCount",
-          "payloads",
-        ],
-      );
-
-  @override
-  BGroupContext crateApiGroupContextCreateGroupFromIdentifiedInvite({
-    required List<int> identitySecretKey,
-    required List<int> spkSecretKey,
-    required List<int> art,
-    required List<int> invite,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
-          sse_encode_list_prim_u_8_loose(spkSecretKey, serializer);
-          sse_encode_list_prim_u_8_loose(art, serializer);
-          sse_encode_list_prim_u_8_loose(invite, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta:
-            kCrateApiGroupContextCreateGroupFromIdentifiedInviteConstMeta,
-        argValues: [identitySecretKey, spkSecretKey, art, invite],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta
-  get kCrateApiGroupContextCreateGroupFromIdentifiedInviteConstMeta =>
-      const TaskConstMeta(
-        debugName: "create_group_from_identified_invite",
-        argNames: ["identitySecretKey", "spkSecretKey", "art", "invite"],
-      );
-
-  @override
-  BGroupContext crateApiGroupContextCreateGroupFromUnidentifiedInvite({
-    required List<int> identitySecretKey,
-    required List<int> art,
-    required List<int> invite,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
-          sse_encode_list_prim_u_8_loose(art, serializer);
-          sse_encode_list_prim_u_8_loose(invite, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta:
-            kCrateApiGroupContextCreateGroupFromUnidentifiedInviteConstMeta,
-        argValues: [identitySecretKey, art, invite],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta
-  get kCrateApiGroupContextCreateGroupFromUnidentifiedInviteConstMeta =>
-      const TaskConstMeta(
-        debugName: "create_group_from_unidentified_invite",
-        argNames: ["identitySecretKey", "art", "invite"],
-      );
-
-  @override
-  (Uint8List, Uint8List, BigInt, Uint8List)
-  crateApiGroupContextDestructIdentifiedInvite({
-    required List<int> invite,
-    required List<int> identitySecretKey,
-    required List<int> spkSecretKey,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(invite, serializer);
-          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
-          sse_encode_list_prim_u_8_loose(spkSecretKey, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiGroupContextDestructIdentifiedInviteConstMeta,
-        argValues: [invite, identitySecretKey, spkSecretKey],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiGroupContextDestructIdentifiedInviteConstMeta =>
-      const TaskConstMeta(
-        debugName: "destruct_identified_invite",
-        argNames: ["invite", "identitySecretKey", "spkSecretKey"],
-      );
-
-  @override
-  (Uint8List, Uint8List, BigInt, Uint8List)
-  crateApiGroupContextDestructUnidentifiedInvite({required List<int> invite}) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(invite, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 48)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiGroupContextDestructUnidentifiedInviteConstMeta,
-        argValues: [invite],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiGroupContextDestructUnidentifiedInviteConstMeta =>
-      const TaskConstMeta(
-        debugName: "destruct_unidentified_invite",
-        argNames: ["invite"],
+        argNames: ["identitySecretKey", "user", "groupInfo"],
       );
 
   @override
@@ -1937,7 +2534,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 49)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 65)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -1960,7 +2557,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 50)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 66)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -1985,7 +2582,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 51,
+            funcId: 67,
             port: port_,
           );
         },
@@ -2012,7 +2609,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(secretKey, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 52)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 68)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -2029,42 +2626,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "public_key_from_secret_key",
         argNames: ["secretKey"],
-      );
-
-  @override
-  Uint8List crateApiGroupContextSignChallenge({
-    required List<int> leafSecret,
-    required String chatId,
-    required List<int> nonce,
-    required List<int> challenge,
-    required BigInt epoch,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(leafSecret, serializer);
-          sse_encode_String(chatId, serializer);
-          sse_encode_list_prim_u_8_loose(nonce, serializer);
-          sse_encode_list_prim_u_8_loose(challenge, serializer);
-          sse_encode_u_64(epoch, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 53)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiGroupContextSignChallengeConstMeta,
-        argValues: [leafSecret, chatId, nonce, challenge, epoch],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiGroupContextSignChallengeConstMeta =>
-      const TaskConstMeta(
-        debugName: "sign_challenge",
-        argNames: ["leafSecret", "chatId", "nonce", "challenge", "epoch"],
       );
 
   RustArcIncrementStrongCountFnType
@@ -2098,6 +2659,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustArcDecrementStrongCountFnType
   get rust_arc_decrement_strong_count_BGroupInfo => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BInviteContext => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BInviteContext => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BPendingGroupContext => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BPendingGroupContext => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext;
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_BSecretsFactory => wire
@@ -2158,6 +2735,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BInviteContext
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BPendingGroupContext
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   BSecretsFactory
   dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
     dynamic raw,
@@ -2191,6 +2786,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return BGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BPendingGroupContext
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -2230,14 +2834,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Map<Uint8List, Uint8List>
-  dco_decode_Map_list_prim_u_8_strict_list_prim_u_8_strict_None(dynamic raw) {
+  BGroupInfo
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    dynamic raw,
+  ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Map.fromEntries(
-      dco_decode_list_record_list_prim_u_8_strict_list_prim_u_8_strict(
-        raw,
-      ).map((e) => MapEntry(e.$1, e.$2)),
-    );
+    return BGroupInfoImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BInviteContext
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BPendingGroupContext
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BUser
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BUserImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -2274,6 +2903,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return BGroupInfoImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BInviteContext
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BPendingGroupContext
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -2350,28 +2997,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<(Uint8List, Uint8List)>
-  dco_decode_list_record_list_prim_u_8_strict_list_prim_u_8_strict(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict)
-        .toList();
-  }
-
-  @protected
-  List<(Uint8List, Uint8List?)>
-  dco_decode_list_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(dco_decode_record_list_prim_u_8_strict_opt_list_prim_u_8_strict)
-        .toList();
-  }
-
-  @protected
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_list_prim_u_8_strict(raw);
@@ -2398,22 +3023,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  (BGroupContext, Uint8List, Map<Uint8List, Uint8List>, List<Uint8List>)
-  dco_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict_map_list_prim_u_8_strict_list_prim_u_8_strict_none_list_list_prim_u_8_strict(
+  (BGroupContext, Uint8List)
+  dco_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4) {
-      throw Exception('Expected 4 elements, got ${arr.length}');
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
     }
     return (
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
         arr[0],
       ),
       dco_decode_list_prim_u_8_strict(arr[1]),
-      dco_decode_Map_list_prim_u_8_strict_list_prim_u_8_strict_None(arr[2]),
-      dco_decode_list_list_prim_u_8_strict(arr[3]),
     );
   }
 
@@ -2432,14 +3055,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List)
-  dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5) {
-      throw Exception('Expected 5 elements, got ${arr.length}');
+    if (arr.length != 6) {
+      throw Exception('Expected 6 elements, got ${arr.length}');
     }
     return (
       dco_decode_list_prim_u_8_strict(arr[0]),
@@ -2447,38 +3070,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       dco_decode_list_prim_u_8_strict(arr[2]),
       dco_decode_u_64(arr[3]),
       dco_decode_list_prim_u_8_strict(arr[4]),
-    );
-  }
-
-  @protected
-  (Uint8List, Uint8List, BigInt, Uint8List)
-  dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 4) {
-      throw Exception('Expected 4 elements, got ${arr.length}');
-    }
-    return (
-      dco_decode_list_prim_u_8_strict(arr[0]),
-      dco_decode_list_prim_u_8_strict(arr[1]),
-      dco_decode_u_64(arr[2]),
-      dco_decode_list_prim_u_8_strict(arr[3]),
-    );
-  }
-
-  @protected
-  (Uint8List, Uint8List?)
-  dco_decode_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2) {
-      throw Exception('Expected 2 elements, got ${arr.length}');
-    }
-    return (
-      dco_decode_list_prim_u_8_strict(arr[0]),
-      dco_decode_opt_list_prim_u_8_strict(arr[1]),
+      dco_decode_bool(arr[5]),
     );
   }
 
@@ -2568,6 +3160,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BInviteContext
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BPendingGroupContext
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
   BSecretsFactory
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
     SseDeserializer deserializer,
@@ -2610,6 +3226,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return BGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BPendingGroupContext
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalSseDecode(
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
@@ -2664,16 +3292,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Map<Uint8List, Uint8List>
-  sse_decode_Map_list_prim_u_8_strict_list_prim_u_8_strict_None(
+  BGroupInfo
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner =
-        sse_decode_list_record_list_prim_u_8_strict_list_prim_u_8_strict(
-          deserializer,
-        );
-    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+    return BGroupInfoImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BInviteContext
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BPendingGroupContext
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BUser
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BUserImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
   }
 
   @protected
@@ -2719,6 +3382,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return BGroupInfoImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BInviteContext
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BPendingGroupContext
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalSseDecode(
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
@@ -2827,44 +3514,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<(Uint8List, Uint8List)>
-  sse_decode_list_record_list_prim_u_8_strict_list_prim_u_8_strict(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <(Uint8List, Uint8List)>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(
-        sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict(
-          deserializer,
-        ),
-      );
-    }
-    return ans_;
-  }
-
-  @protected
-  List<(Uint8List, Uint8List?)>
-  sse_decode_list_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <(Uint8List, Uint8List?)>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(
-        sse_decode_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(
-          deserializer,
-        ),
-      );
-    }
-    return ans_;
-  }
-
-  @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -2893,8 +3542,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  (BGroupContext, Uint8List, Map<Uint8List, Uint8List>, List<Uint8List>)
-  sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict_map_list_prim_u_8_strict_list_prim_u_8_strict_none_list_list_prim_u_8_strict(
+  (BGroupContext, Uint8List)
+  sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -2903,12 +3552,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           deserializer,
         );
     var var_field1 = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_field2 =
-        sse_decode_Map_list_prim_u_8_strict_list_prim_u_8_strict_None(
-          deserializer,
-        );
-    var var_field3 = sse_decode_list_list_prim_u_8_strict(deserializer);
-    return (var_field0, var_field1, var_field2, var_field3);
+    return (var_field0, var_field1);
   }
 
   @protected
@@ -2923,8 +3567,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List)
-  sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -2933,31 +3577,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_field2 = sse_decode_list_prim_u_8_strict(deserializer);
     var var_field3 = sse_decode_u_64(deserializer);
     var var_field4 = sse_decode_list_prim_u_8_strict(deserializer);
-    return (var_field0, var_field1, var_field2, var_field3, var_field4);
-  }
-
-  @protected
-  (Uint8List, Uint8List, BigInt, Uint8List)
-  sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_field1 = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_field2 = sse_decode_u_64(deserializer);
-    var var_field3 = sse_decode_list_prim_u_8_strict(deserializer);
-    return (var_field0, var_field1, var_field2, var_field3);
-  }
-
-  @protected
-  (Uint8List, Uint8List?)
-  sse_decode_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_field1 = sse_decode_opt_list_prim_u_8_strict(deserializer);
-    return (var_field0, var_field1);
+    var var_field5 = sse_decode_bool(deserializer);
+    return (
+      var_field0,
+      var_field1,
+      var_field2,
+      var_field3,
+      var_field4,
+      var_field5,
+    );
   }
 
   @protected
@@ -3059,6 +3687,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    BInviteContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BInviteContextImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    BPendingGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BPendingGroupContextImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
   sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
     BSecretsFactory self,
     SseSerializer serializer,
@@ -3105,6 +3759,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
       (self as BGroupContextImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    BPendingGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BPendingGroupContextImpl).frbInternalSseEncode(move: false),
       serializer,
     );
   }
@@ -3162,13 +3829,53 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_Map_list_prim_u_8_strict_list_prim_u_8_strict_None(
-    Map<Uint8List, Uint8List> self,
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    BGroupInfo self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_record_list_prim_u_8_strict_list_prim_u_8_strict(
-      self.entries.map((e) => (e.key, e.value)).toList(),
+    sse_encode_usize(
+      (self as BGroupInfoImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    BInviteContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BInviteContextImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    BPendingGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BPendingGroupContextImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    BUser self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BUserImpl).frbInternalSseEncode(move: false),
       serializer,
     );
   }
@@ -3221,6 +3928,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
       (self as BGroupInfoImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    BInviteContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BInviteContextImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    BPendingGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BPendingGroupContextImpl).frbInternalSseEncode(move: null),
       serializer,
     );
   }
@@ -3329,36 +4062,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_record_list_prim_u_8_strict_list_prim_u_8_strict(
-    List<(Uint8List, Uint8List)> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict(
-        item,
-        serializer,
-      );
-    }
-  }
-
-  @protected
-  void sse_encode_list_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(
-    List<(Uint8List, Uint8List?)> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(
-        item,
-        serializer,
-      );
-    }
-  }
-
-  @protected
   void sse_encode_opt_list_prim_u_8_strict(
     Uint8List? self,
     SseSerializer serializer,
@@ -3390,8 +4093,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-  sse_encode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict_map_list_prim_u_8_strict_list_prim_u_8_strict_none_list_list_prim_u_8_strict(
-    (BGroupContext, Uint8List, Map<Uint8List, Uint8List>, List<Uint8List>) self,
+  sse_encode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
+    (BGroupContext, Uint8List) self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -3400,11 +4103,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       serializer,
     );
     sse_encode_list_prim_u_8_strict(self.$2, serializer);
-    sse_encode_Map_list_prim_u_8_strict_list_prim_u_8_strict_None(
-      self.$3,
-      serializer,
-    );
-    sse_encode_list_list_prim_u_8_strict(self.$4, serializer);
   }
 
   @protected
@@ -3419,8 +4117,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-  sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
-    (Uint8List, Uint8List, Uint8List, BigInt, Uint8List) self,
+  sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
+    (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -3429,29 +4127,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_prim_u_8_strict(self.$3, serializer);
     sse_encode_u_64(self.$4, serializer);
     sse_encode_list_prim_u_8_strict(self.$5, serializer);
-  }
-
-  @protected
-  void
-  sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict(
-    (Uint8List, Uint8List, BigInt, Uint8List) self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_prim_u_8_strict(self.$1, serializer);
-    sse_encode_list_prim_u_8_strict(self.$2, serializer);
-    sse_encode_u_64(self.$3, serializer);
-    sse_encode_list_prim_u_8_strict(self.$4, serializer);
-  }
-
-  @protected
-  void sse_encode_record_list_prim_u_8_strict_opt_list_prim_u_8_strict(
-    (Uint8List, Uint8List?) self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_prim_u_8_strict(self.$1, serializer);
-    sse_encode_opt_list_prim_u_8_strict(self.$2, serializer);
+    sse_encode_bool(self.$6, serializer);
   }
 
   @protected
@@ -3657,6 +4333,9 @@ class BGroupContextImpl extends RustOpaque implements BGroupContext {
         payloads: payloads,
       );
 
+  void commitState() => RustLib.instance.api
+      .crateApiGroupContextBGroupContextCommitState(that: this);
+
   Uint8List createFrame({required List<Uint8List> payloads}) =>
       RustLib.instance.api.crateApiGroupContextBGroupContextCreateFrame(
         that: this,
@@ -3666,31 +4345,18 @@ class BGroupContextImpl extends RustOpaque implements BGroupContext {
   BigInt getEpoch() => RustLib.instance.api
       .crateApiGroupContextBGroupContextGetEpoch(that: this);
 
-  Uint8List getGroupInf() => RustLib.instance.api
-      .crateApiGroupContextBGroupContextGetGroupInf(that: this);
+  Uint8List getGroupInfo() => RustLib.instance.api
+      .crateApiGroupContextBGroupContextGetGroupInfo(that: this);
 
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List) intoParts() => RustLib
-      .instance
-      .api
-      .crateApiGroupContextBGroupContextIntoParts(that: this);
-
-  Uint8List joinGroup({required BUser user}) => RustLib.instance.api
-      .crateApiGroupContextBGroupContextJoinGroup(that: this, user: user);
-
-  List<Uint8List> processFrame({required List<int> spFrame}) =>
-      RustLib.instance.api.crateApiGroupContextBGroupContextProcessFrame(
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) intoParts() =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextIntoParts(
         that: this,
-        spFrame: spFrame,
       );
 
-  Uint8List removeMember({
-    required List<int> leafPublicKey,
-    required List<int> payload,
-  }) => RustLib.instance.api.crateApiGroupContextBGroupContextRemoveMember(
-    that: this,
-    leafPublicKey: leafPublicKey,
-    payload: payload,
-  );
+  List<Uint8List> processFrame({required List<int> frame}) => RustLib
+      .instance
+      .api
+      .crateApiGroupContextBGroupContextProcessFrame(that: this, frame: frame);
 
   Uint8List signChallenge({required List<int> challenge}) =>
       RustLib.instance.api.crateApiGroupContextBGroupContextSignChallenge(
@@ -3705,7 +4371,7 @@ class BGroupContextImpl extends RustOpaque implements BGroupContext {
         nonce: nonce,
       );
 
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List) toParts() =>
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) toParts() =>
       RustLib.instance.api.crateApiGroupContextBGroupContextToParts(that: this);
 }
 
@@ -3727,6 +4393,137 @@ class BGroupInfoImpl extends RustOpaque implements BGroupInfo {
     rustArcDecrementStrongCountPtr:
         RustLib.instance.api.rust_arc_decrement_strong_count_BGroupInfoPtr,
   );
+
+  String id() =>
+      RustLib.instance.api.crateApiGroupContextBGroupInfoId(that: this);
+
+  String name() =>
+      RustLib.instance.api.crateApiGroupContextBGroupInfoName(that: this);
+}
+
+@sealed
+class BInviteContextImpl extends RustOpaque implements BInviteContext {
+  // Not to be used by end users
+  BInviteContextImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  BInviteContextImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_BInviteContext,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BInviteContext,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BInviteContextPtr,
+  );
+
+  BigInt epoch() =>
+      RustLib.instance.api.crateApiGroupContextBInviteContextEpoch(that: this);
+
+  String groupId() => RustLib.instance.api
+      .crateApiGroupContextBInviteContextGroupId(that: this);
+
+  Uint8List leafPublicKey() => RustLib.instance.api
+      .crateApiGroupContextBInviteContextLeafPublicKey(that: this);
+
+  Uint8List signAsIdentity({required List<int> msg}) => RustLib.instance.api
+      .crateApiGroupContextBInviteContextSignAsIdentity(that: this, msg: msg);
+
+  Uint8List signAsLeaf({required List<int> msg}) => RustLib.instance.api
+      .crateApiGroupContextBInviteContextSignAsLeaf(that: this, msg: msg);
+
+  Uint8List signChallenge({
+    required List<int> nonce,
+    required List<int> challenge,
+  }) => RustLib.instance.api.crateApiGroupContextBInviteContextSignChallenge(
+    that: this,
+    nonce: nonce,
+    challenge: challenge,
+  );
+
+  BPendingGroupContext upgrade({required List<int> publicArt}) =>
+      RustLib.instance.api.crateApiGroupContextBInviteContextUpgrade(
+        that: this,
+        publicArt: publicArt,
+      );
+}
+
+@sealed
+class BPendingGroupContextImpl extends RustOpaque
+    implements BPendingGroupContext {
+  // Not to be used by end users
+  BPendingGroupContextImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  BPendingGroupContextImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_increment_strong_count_BPendingGroupContext,
+    rustArcDecrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_BPendingGroupContext,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_BPendingGroupContextPtr,
+  );
+
+  BigInt getEpoch() => RustLib.instance.api
+      .crateApiGroupContextBPendingGroupContextGetEpoch(that: this);
+
+  Uint8List getGroupInfo() => RustLib.instance.api
+      .crateApiGroupContextBPendingGroupContextGetGroupInfo(that: this);
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) intoParts() =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextIntoParts(
+        that: this,
+      );
+
+  Uint8List joinGroupAs({required BUser user}) =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextJoinGroupAs(
+        that: this,
+        user: user,
+      );
+
+  List<Uint8List> processFrame({required List<int> frame}) =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextProcessFrame(
+        that: this,
+        frame: frame,
+      );
+
+  Uint8List signChallenge({required List<int> challenge}) => RustLib
+      .instance
+      .api
+      .crateApiGroupContextBPendingGroupContextSignChallenge(
+        that: this,
+        challenge: challenge,
+      );
+
+  Uint8List signWithTk({required String groupId, required List<int> nonce}) =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextSignWithTk(
+        that: this,
+        groupId: groupId,
+        nonce: nonce,
+      );
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) toParts() =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextToParts(
+        that: this,
+      );
+
+  BGroupContext upgrade() => RustLib.instance.api
+      .crateApiGroupContextBPendingGroupContextUpgrade(that: this);
 }
 
 @sealed
@@ -3775,4 +4572,6 @@ class BUserImpl extends RustOpaque implements BUser {
     rustArcDecrementStrongCountPtr:
         RustLib.instance.api.rust_arc_decrement_strong_count_BUserPtr,
   );
+
+  String id() => RustLib.instance.api.crateApiGroupContextBUserId(that: this);
 }

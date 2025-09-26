@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:zk_notion_app/api/client.dart';
 import 'package:zk_notion_app/main.dart';
@@ -138,15 +137,15 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         secretKey: secretKey,
         payloads: [payload],
       );
-      logger.i('Finished creating unidentified member invite...');
 
       logger.i('Sending unidentified member invite frame...');
       await GroupApiClient.instance.sendFrame(
         groupId: widget.doc.id,
         frame: frame,
       );
-      logger.i('Finished sending unidentified member invite frame...');
 
+      widget.groupContext.commitState();
+      logger.i('Finished sending unidentified member invite frame...');
       final inviteLink = DeeplinkManager.instance.buildUnidentifiedGroupInvite(
         invite,
       );
@@ -201,15 +200,6 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         kind: TopBannerCases.error,
       );
     }
-  }
-
-  void _onRemoveMember(MemberScreenModel g) async {
-    // await DB.instance.deleteMember(g.member.account.actorId);
-    setState(() => widget.members.remove(g));
-
-    widget.doc.members.removeWhere(
-      (e) => e.account.actorId == g.member.account.actorId,
-    );
   }
 
   @override

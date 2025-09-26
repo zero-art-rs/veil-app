@@ -24,7 +24,6 @@ final createDocumentsTable =
     """
 CREATE TABLE $documentsTable (
   id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
   content BLOB NOT NULL,
   created_at TEXT NOT NULL,
   group_context_parts TEXT NOT NULL,

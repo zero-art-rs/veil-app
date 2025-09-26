@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/api/client.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
 import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/managers/change_manager.dart';
-import 'package:zk_notion_app/managers/sync_provider.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
@@ -124,11 +126,11 @@ class EditorPageVm extends ChangeNotifier {
     }
   }
 
-  List<ExposedCRDTPayload> processFrame(SPFrame frame) {
+  List<ExposedCRDTPayload> processFrame(SPFrame spframe) {
     List<ExposedCRDTPayload> exposedCrdtPayload = [];
 
     final rawPayloads = syncModel.groupContext.processFrame(
-      spFrame: frame.writeToBuffer(),
+      frame: spframe.frame.writeToBuffer(),
     );
 
     for (final rawPayload in rawPayloads) {
@@ -140,7 +142,7 @@ class EditorPageVm extends ChangeNotifier {
       exposedCrdtPayload.add(crdt);
     }
 
-    syncModel.document.sequenceNumber = frame.seqNum.toInt();
+    syncModel.document.sequenceNumber = spframe.seqNum.toInt();
     return exposedCrdtPayload;
   }
 
@@ -193,6 +195,7 @@ class EditorPageVm extends ChangeNotifier {
           ],
         ),
       );
+      syncModel.groupContext.commitState();
 
       logger.i(
         'Document state after merge ${syncModel.document.automergeDoc.getBlocks()}',
@@ -221,9 +224,7 @@ class EditorPageVm extends ChangeNotifier {
       throw Exception('No account, unreachable flow');
     }
 
-    final groupInfo = GroupInfo.fromBuffer(
-      syncModel.groupContext.getGroupInf(),
-    );
+    final groupInfo = syncModel.groupContext.retrieveGroupInfo();
 
     final members = groupInfo.members
         .map(
@@ -246,6 +247,8 @@ class EditorPageVm extends ChangeNotifier {
   }
 
   List<ChangeEvent> prepareChanges() {
+    final members = syncModel.groupContext.retrieveGroupInfo().members;
+
     return syncModel.document.automergeDoc
         .getChangeList()
         .indexed
@@ -255,6 +258,11 @@ class EditorPageVm extends ChangeNotifier {
             actorIdHex: e.$2.actorIdHex(),
             changeHashHex: e.$2.changeHash(),
             date: e.$2.timestamp(),
+            name:
+                members
+                    .firstWhereOrNull((elem) => elem.id == e.$2.actorIdHex())
+                    ?.name ??
+                e.$2.actorIdHex(),
             isInitial: e.$1 == 0,
           ),
         )

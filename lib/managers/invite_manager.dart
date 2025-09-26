@@ -2,19 +2,19 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:zk_notion_app/api/client.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
 import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
 
 class InviteManager {
   final accountStorage = AccountStorage.instance;
 
   static final InviteManager instance = InviteManager();
 
-  Future<(BGroupContext, Document)> processJoin(String base64Invite) async {
+  Future<(BPendingGroupContext, Document)> join(String base64Invite) async {
     final account = await accountStorage.getAccount();
 
     if (account == null) {
@@ -24,75 +24,65 @@ class InviteManager {
     final inviteBytes = base64Decode(base64Invite);
     final invite = Invite.fromBuffer(inviteBytes);
 
-    final user = BUser(id: account.actorId, name: account.name);
-
     switch (invite.invite.whichInvite()) {
       case InviteTbs_Invite.identifiedInvite:
-        destructIdentifiedInvite(
-          invite: inviteBytes,
-          identitySecretKey: [],
-          spkSecretKey: [],
-        );
+        // destructIdentifiedInvite(
+        //   invite: inviteBytes,
+        //   identitySecretKey: [],
+        //   spkSecretKey: [],
+        // );
 
         throw Exception('Unimplemented flow');
       case InviteTbs_Invite.unidentifiedInvite:
         return await _processUnidentifiedInvite(
           inviteBytes,
           Uint8List.fromList(account.keypair.rawPrivateKey),
-          user,
         );
       case InviteTbs_Invite.notSet:
         throw Exception('Invalid invite type');
     }
   }
 
-  Future<(BGroupContext, Document)> _processUnidentifiedInvite(
+  Future<(BPendingGroupContext, Document)> _processUnidentifiedInvite(
     Uint8List inviteBytes,
     Uint8List secretKey,
-    BUser user,
   ) async {
-    final (leafSecret, stageKey, epoch, groupInfoBytes) =
-        destructUnidentifiedInvite(invite: inviteBytes);
+    final inviteContext = BInviteContext(
+      identitySecretKey: secretKey,
+      spkSecretKey: [],
+      invite: inviteBytes,
+    );
 
-    final groupInfo = GroupInfo.fromBuffer(groupInfoBytes);
-    final challenge = await GroupApiClient.instance.getChallenge(groupInfo.id);
+    final groupId = inviteContext.groupId();
+    final challenge = await GroupApiClient.instance.getChallenge(groupId);
 
     final challengeBytes = base64Decode(challenge);
-
-    final signature = signChallenge(
-      leafSecret: leafSecret,
-      chatId: groupInfo.id,
+    final signature = inviteContext.signChallenge(
       nonce: [0],
       challenge: challengeBytes,
-      epoch: epoch,
     );
 
     final artBase64 = await GroupApiClient.instance.fetchArtStructure(
-      groupId: groupInfo.id,
-      epoch: epoch.toInt(),
+      groupId: groupId,
+      epoch: inviteContext.epoch().toInt(),
       signature: base64UrlEncode(signature),
       nonce: base64UrlEncode([0]),
       challenge: base64UrlEncode(challengeBytes),
       proofMode: ProofMode.useLeafKey,
-      publicKey: base64UrlEncode(publicKeyFromSecretKey(secretKey: leafSecret)),
+      publicKey: base64UrlEncode(inviteContext.leafPublicKey()),
     );
 
-    final art = base64Decode(artBase64);
-
-    final groupContext = createGroupFromUnidentifiedInvite(
-      identitySecretKey: secretKey,
-      art: art,
-      invite: inviteBytes,
+    final pendingGroupContext = inviteContext.upgrade(
+      publicArt: base64Decode(artBase64),
     );
 
     final document = Document(
-      id: groupInfo.id,
-      title: 'TEMP TITLE',
+      id: groupId,
       automergeDoc: BAutoCommit(),
+      groupContextParts: pendingGroupContext.asParts(),
       createdAt: DateTime.now(),
-      groupContextParts: groupContext.asParts(),
     );
 
-    return (groupContext, document);
+    return (pendingGroupContext, document);
   }
 }

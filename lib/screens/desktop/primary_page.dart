@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
+import 'package:zk_notion_app/protos/zero_art.pb.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
 import 'package:zk_notion_app/screens/contacts_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
@@ -29,63 +31,10 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
     _vm.init();
   }
 
-  void _updateDocumentModal(
-    BuildContext context,
-    PrimaryPageViewModel vm,
-    Document doc,
-  ) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Update ${doc.title}'),
-          content: SizedBox(
-            width: 320,
-            child: TextField(
-              controller: vm.textEditingController,
-              decoration: InputDecoration(label: Text('Input document title')),
-            ),
-          ),
-          actions: <Widget>[
-            Row(
-              spacing: 16,
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('Cancel'),
-                  ),
-                ),
-
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () async {
-                      await vm.updateDocumentName(
-                        context: context,
-                        id: doc.id,
-                        title: vm.textEditingController.text,
-                      );
-                      if (!context.mounted) return;
-                      Navigator.of(context).pop();
-                    },
-                    child: Text('Update'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _areYouSureToDeleteDocumentModal(
     BuildContext context,
     PrimaryPageViewModel vm,
-    Document doc,
+    GroupInfo groupInfo,
   ) {
     showDialog(
       context: context,
@@ -96,7 +45,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           content: Text(
-            'Are you sure you want to delete ${doc.title}?',
+            'Are you sure you want to delete ${groupInfo.name}?',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           actions: <Widget>[
@@ -116,7 +65,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   child: FilledButton(
                     onPressed: () async {
                       try {
-                        await vm.removeDocument(context, doc.id);
+                        await vm.removeDocument(context, groupInfo.id);
                       } catch (err) {
                         logger.e('Failed to remove document: $err');
 
@@ -219,7 +168,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
               ...vm.syncModels.indexed.map(
                 (doc) => SideNavItem(
                   icon: Icons.description_outlined,
-                  label: doc.$2.document.title,
+                  label: doc.$2.groupContext.retrieveGroupInfo().name,
                   onTap: () => vm.setSelectedPage(
                     EditorPage(key: doc.$2.document.key, syncModel: doc.$2),
                   ),
@@ -228,16 +177,13 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                     itemBuilder: (context) {
                       return [
                         PopupMenuItem(
+                          enabled: false,
                           value: 0,
                           child: Row(
                             spacing: 16,
                             children: [Icon(Icons.edit), Text('Edit')],
                           ),
-                          onTap: () => _updateDocumentModal(
-                            context,
-                            vm,
-                            doc.$2.document,
-                          ),
+                          onTap: () => {},
                         ),
                         PopupMenuItem(
                           value: 1,
@@ -248,7 +194,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                           onTap: () => _areYouSureToDeleteDocumentModal(
                             context,
                             vm,
-                            doc.$2.document,
+                            doc.$2.groupContext.retrieveGroupInfo(),
                           ),
                         ),
                       ];

@@ -181,7 +181,6 @@ class DB {
         .map(
           (doc) => Document(
             id: doc.id,
-            title: doc.title,
             automergeDoc: BAutoCommit.fromBytes(bytes: doc.content),
             createdAt: doc.createdAt,
             groupContextParts: GroupContextParts.fromJsonString(
@@ -209,7 +208,6 @@ class DB {
 
     return Document(
       id: doc.id,
-      title: doc.title,
       automergeDoc: BAutoCommit.fromBytes(bytes: doc.content),
       createdAt: doc.createdAt,
       groupContextParts: GroupContextParts.fromJsonString(
@@ -221,7 +219,7 @@ class DB {
   Future<void> insertDocument({required Document document}) async {
     final sqlDoc = SQLDocument(
       id: document.id,
-      title: document.title,
+
       content: document.automergeDoc.save(),
       createdAt: document.createdAt,
       groupContextParts: document.groupContextParts.toJsonString(),
@@ -231,7 +229,6 @@ class DB {
     await _insert(
       documentsTable,
       sqlDoc.toJson(),
-      conflictAlgorithm: ConflictAlgorithm.ignore,
     );
   }
 
