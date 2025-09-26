@@ -126,21 +126,28 @@ impl BInviteContext {
         })
     }
 
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn group_id(&self) -> String {
+        self.invite_context.group_id().to_string()
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn epoch(&self) -> u64 {
+        self.invite_context.epoch()
+    }
+
     // Additional impls
     #[flutter_rust_bridge::frb(sync)]
     pub fn sign_challenge(
         &self,
-        chat_id: String,
         nonce: Vec<u8>,
         challenge: Vec<u8>,
-        epoch: u64,
     ) -> Result<Vec<u8>> {
-        let chat_uuid = Uuid::from_str(&chat_id)?;
         let mut msg = Vec::new();
-        msg.extend_from_slice(chat_uuid.as_bytes());
+        msg.extend_from_slice(self.invite_context.group_id().as_bytes());
         msg.extend(&nonce);
         msg.extend(&challenge);
-        msg.extend(epoch.to_be_bytes());
+        msg.extend(self.invite_context.epoch().to_be_bytes());
 
         let signature = self
             .invite_context
