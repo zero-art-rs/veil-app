@@ -286,6 +286,15 @@ impl BPendingGroupContext {
         let group_info: zero_art_proto::GroupInfo = self.pending_group_context.group_info().clone().into();
         group_info.encode_to_vec()
     }
+    
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn sign_challenge(&self, challenge: Vec<u8>) -> Result<Vec<u8>> {
+        println!("Challenge: {:?}", challenge);
+        println!("Hashed challenge: {:?}", Sha3_256::digest(&challenge));
+        self.pending_group_context
+            .sign_with_tk(&Sha3_256::digest(challenge))
+            .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))
+    }
 }
 
 pub struct BGroupContext {
