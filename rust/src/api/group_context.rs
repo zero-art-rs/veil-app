@@ -206,6 +206,65 @@ impl BPendingGroupContext {
             group_context: self.pending_group_context.upgrade(),
         }
     }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn from_parts(
+        identity_secret_key: Vec<u8>,
+        leaf_secret: Vec<u8>,
+        art: Vec<u8>,
+        stk: Vec<u8>,
+        epoch: u64,
+        group_info: Vec<u8>,
+        is_last_sender: bool,
+    ) -> Result<Self> {
+        let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let leaf_secret = ScalarField::deserialize_compressed(&leaf_secret[..])
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let stk: [u8; 32] = stk.try_into().map_err(|_| anyhow!("failed to parse stk"))?;
+        let group_info: models::group_info::GroupInfo =
+            zero_art_proto::GroupInfo::decode(&group_info[..])
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
+                .try_into()
+                .map_err(|_| anyhow!("failed to parse stk"))?;
+        let art: PublicART<CortadoAffine> = PublicART::deserialize(&art)
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let state =
+            GroupState::from_parts(leaf_secret, art, stk, epoch, group_info, is_last_sender)
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+        Ok(Self {
+            pending_group_context: PendingGroupContext::from_state(identity_secret_key, state)
+                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
+        })
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn into_parts(self) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, u64, Vec<u8>, bool)> {
+        Ok(self.to_parts()?)
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn to_parts(&self) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, u64, Vec<u8>, bool)> {
+        let state = self.pending_group_context.to_state();
+        let (leaf_secret, public_art, stk, epoch, group_info, is_last_sender) = state.to_parts();
+
+        let leaf_secret = serialize(leaf_secret)
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let public_art = public_art
+            .serialize()
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let group_info = group_info.encode_to_vec();
+
+        Ok((
+            leaf_secret,
+            public_art,
+            stk.to_vec(),
+            epoch,
+            group_info,
+            is_last_sender,
+        ))
+    }
 }
 
 pub struct BGroupContext {
