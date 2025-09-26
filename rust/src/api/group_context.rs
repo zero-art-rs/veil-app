@@ -214,6 +214,27 @@ pub struct BGroupContext {
 
 impl BGroupContext {
     #[flutter_rust_bridge::frb(sync)]
+    pub fn new(
+        identity_secret_key: Vec<u8>,
+        user: BUser,
+        group_info: BGroupInfo,
+    ) -> Result<(Self, Vec<u8>)> {
+        let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+        let mut group_info = group_info.group_info;
+        group_info.members_mut().insert_user(user.user);
+
+        let (group_context, frame) = GroupContext::new(identity_secret_key, group_info)
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let frame = frame
+            .encode_to_vec()
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+
+        Ok((Self { group_context }, frame))
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
     pub fn from_parts(
         identity_secret_key: Vec<u8>,
         leaf_secret: Vec<u8>,
@@ -431,6 +452,11 @@ impl BGroupContext {
         let group_info: zero_art_proto::GroupInfo = self.group_context.group_info().clone().into();
         group_info.encode_to_vec()
     }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn commit_state(&mut self) {
+        self.group_context.commit_state();
+    }
 }
 
 pub struct BSecretsFactory {
@@ -485,25 +511,4 @@ pub fn public_key_from_secret_key(secret_key: Vec<u8>) -> Result<Vec<u8>> {
         .map_err(|e| anyhow!("failed to serialize: {}", e.to_string()))?;
 
     Ok(public_key_bytes)
-}
-
-#[flutter_rust_bridge::frb(sync)]
-pub fn create_group(
-    identity_secret_key: Vec<u8>,
-    user: BUser,
-    group_info: BGroupInfo,
-) -> Result<(BGroupContext, Vec<u8>)> {
-    let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
-        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
-
-    let mut group_info = group_info.group_info;
-    group_info.members_mut().insert_user(user.user);
-
-    let (group_context, frame) = GroupContext::new(identity_secret_key, group_info)
-        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
-    let frame = frame
-        .encode_to_vec()
-        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
-
-    Ok((BGroupContext { group_context }, frame))
 }
