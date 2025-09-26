@@ -136,13 +136,15 @@ impl BInviteContext {
         self.invite_context.epoch()
     }
 
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn leaf_public_key(&self) -> Result<Vec<u8>> {
+        Ok(serialize(self.invite_context.leaf_public_key())
+            .map_err(|e| anyhow!("failed to sign msg as leaf, error: {}", e))?)
+    }
+
     // Additional impls
     #[flutter_rust_bridge::frb(sync)]
-    pub fn sign_challenge(
-        &self,
-        nonce: Vec<u8>,
-        challenge: Vec<u8>,
-    ) -> Result<Vec<u8>> {
+    pub fn sign_challenge(&self, nonce: Vec<u8>, challenge: Vec<u8>) -> Result<Vec<u8>> {
         let mut msg = Vec::new();
         msg.extend_from_slice(self.invite_context.group_id().as_bytes());
         msg.extend(&nonce);
@@ -490,10 +492,7 @@ pub fn create_group(
     identity_secret_key: Vec<u8>,
     user: BUser,
     group_info: BGroupInfo,
-) -> Result<(
-    BGroupContext,
-    Vec<u8>
-)> {
+) -> Result<(BGroupContext, Vec<u8>)> {
     let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
