@@ -492,7 +492,7 @@ dependencies = [
 [[package]]
 name = "awesome-client-sdk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zk-messenger/awesome-client-sdk.git?branch=refactoring#23474642da51a5392dab2c4f3d533a686009000b"
+source = "git+ssh://git@github.com/zk-messenger/awesome-client-sdk.git?branch=refactoring#7c3e009501ff3753173abbf71d15fc2a79a38b1f"
 dependencies = [
  "aes-gcm",
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",

@@ -64,6 +64,16 @@ impl BGroupInfo {
             ),
         }
     }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn id(&self) -> String {
+        self.group_info.id().to_string()
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn name(&self) -> String {
+        self.group_info.name().to_string()
+    }
 }
 
 pub struct BInviteContext {
@@ -264,6 +274,17 @@ impl BPendingGroupContext {
             group_info,
             is_last_sender,
         ))
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn get_epoch(&self) -> u64 {
+        self.pending_group_context.epoch()
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn get_group_info(&self) -> Vec<u8> {
+        let group_info: zero_art_proto::GroupInfo = self.pending_group_context.group_info().clone().into();
+        group_info.encode_to_vec()
     }
 }
 
@@ -486,7 +507,7 @@ impl BGroupContext {
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    pub fn get_group_inf(&self) -> Vec<u8> {
+    pub fn get_group_info(&self) -> Vec<u8> {
         let group_info: zero_art_proto::GroupInfo = self.group_context.group_info().clone().into();
         group_info.encode_to_vec()
     }
