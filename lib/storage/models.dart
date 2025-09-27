@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
+import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/storage/sqlite/consts.dart';
 import 'package:zk_notion_app/utils/group_context_factory.dart';
 import 'package:zk_notion_app/utils/secret_factory.dart';
@@ -80,7 +81,7 @@ class Document {
     required this.groupContextParts,
     this.sequenceNumber = 0,
   });
-  
+
   void setDocument(BAutoCommit doc) {
     automergeDoc = doc;
   }
@@ -122,11 +123,15 @@ class Account {
   final Keypair keypair;
 
   Account({required this.name, required this.actorId, required this.keypair});
-  factory Account.withName(String name) => Account(
-    name: name,
-    actorId: generateActorId(),
-    keypair: Keypair.generate(),
-  );
+  factory Account.withName(String name) {
+    final keypair = Keypair.generate();
+
+    return Account(
+      name: name,
+      actorId: hashPublicKey(pk: keypair.rawPublicKey),
+      keypair: Keypair.generate(),
+    );
+  }
 
   factory Account.fromJson(Map<String, dynamic> json) {
     return Account(

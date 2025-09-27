@@ -34,7 +34,7 @@ Future<void> main() async {
   try {
     await AccountStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
-    DB.instance.removeAll();
+    // DB.instance.removeAll();
     logger.d('Db path: ${await getDatabasesPath()}');
     await SyncProvider.instance.init();
   } catch (e) {

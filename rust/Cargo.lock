@@ -492,7 +492,7 @@ dependencies = [
 [[package]]
 name = "awesome-client-sdk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zk-messenger/awesome-client-sdk.git?branch=refactoring#c0e5bf37cdd00969104709bac957796b3a5dd3b9"
+source = "git+ssh://git@github.com/zk-messenger/awesome-client-sdk.git?branch=refactoring#e8e13cee7c5a7a11c52394c215542a8bfec539bb"
 dependencies = [
  "aes-gcm",
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
@@ -2192,6 +2192,7 @@ dependencies = [
  "crypto",
  "flutter_rust_bridge",
  "graphviz-rust",
+ "hex",
  "prost",
  "prost-types",
  "sha2",

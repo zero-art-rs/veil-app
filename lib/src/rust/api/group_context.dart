@@ -7,6 +7,9 @@ import '../frb_generated.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+String hashPublicKey({required List<int> pk}) =>
+    RustLib.instance.api.crateApiGroupContextHashPublicKey(pk: pk);
+
 Uint8List publicKeyFromSecretKey({required List<int> secretKey}) => RustLib
     .instance
     .api
@@ -166,6 +169,8 @@ abstract class BSecretsFactory implements RustOpaqueInterface {
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BUser>>
 abstract class BUser implements RustOpaqueInterface {
   String id();
+
+  String name();
 
   factory BUser({required String name, required List<int> publicKey}) => RustLib
       .instance

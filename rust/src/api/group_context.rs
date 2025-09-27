@@ -26,7 +26,18 @@ pub struct BUser {
     user: models::group_info::User,
 }
 
+#[flutter_rust_bridge::frb(sync)]
+pub fn hash_public_key(pk: Vec<u8>) -> String {
+    hex::encode(&Sha3_256::digest(pk)[..16])
+}
+
+
 impl BUser {
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn name(&self) -> String {
+        self.user.name().to_string()
+    }
+
     #[flutter_rust_bridge::frb(sync)]
     pub fn new(name: String, public_key: Vec<u8>) -> Result<Self> {
         Ok(Self {

@@ -241,6 +241,7 @@ class EditorPageVm extends ChangeNotifier {
             isYou: account.actorId == e.id,
           ),
         )
+        .where((e) => e.member.account.name != 'Invited')
         .toList();
 
     return members;
