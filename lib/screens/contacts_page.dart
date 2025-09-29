@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
+import 'package:veil/main.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
 
 class Contact {
   final String name;

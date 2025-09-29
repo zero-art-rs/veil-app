@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:zk_notion_app/storage/app_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'package:veil/storage/app_storage.dart';
+import 'package:veil/storage/models.dart';
 
 class AccountStorage {
   final _storage = AppStorage.shared;

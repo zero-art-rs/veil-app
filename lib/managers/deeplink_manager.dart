@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:hex/hex.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'package:veil/storage/models.dart';
 
 class DocumentDeepLink {
   String inviteData;

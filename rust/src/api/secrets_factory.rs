@@ -3,7 +3,7 @@ use ark_ff::UniformRand;
 use ark_std::rand::{SeedableRng, rngs::StdRng, thread_rng};
 use cortado::{self, CortadoAffine, Fr as ScalarField};
 
-pub struct SecretsFactory {
+pub(crate) struct SecretsFactory {
     rng: StdRng,
 }
 
@@ -16,17 +16,17 @@ impl Default for SecretsFactory {
 }
 
 impl SecretsFactory {
-    pub fn new(seed: [u8; 32]) -> Self {
+    pub(crate) fn new(seed: [u8; 32]) -> Self {
         Self {
             rng: StdRng::from_seed(seed),
         }
     }
 
-    pub fn generate_secret(&mut self) -> ScalarField {
+    pub(crate) fn generate_secret(&mut self) -> ScalarField {
         ScalarField::rand(&mut self.rng)
     }
 
-    pub fn generate_secret_with_public_key(&mut self) -> (CortadoAffine, ScalarField) {
+    pub(crate) fn generate_secret_with_public_key(&mut self) -> (CortadoAffine, ScalarField) {
         let secret_key = self.generate_secret();
         let public_key = (CortadoAffine::generator() * secret_key).into_affine();
 

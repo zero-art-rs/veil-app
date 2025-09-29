@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
-import 'package:zk_notion_app/extensions/group_context.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
-import 'package:zk_notion_app/screens/doc_members.dart';
-import 'package:zk_notion_app/screens/history_page.dart';
-import 'package:zk_notion_app/widgets/square_rounded_btn.dart';
-import 'package:zk_notion_app/widgets/sync_widget.dart';
+import 'package:veil/extensions/group_context.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/screens/doc_members.dart';
+import 'package:veil/screens/history_page.dart';
+import 'package:veil/widgets/square_rounded_btn.dart';
+import 'package:veil/widgets/sync_widget.dart';
 import 'editor_page_vm.dart';
-import 'package:zk_notion_app/utils/platform.dart';
+import 'package:veil/utils/platform.dart';
 
 class EditorPage extends StatelessWidget {
   final SyncProviderModel syncModel;
@@ -76,7 +76,7 @@ class _EditorPageView extends StatelessWidget {
             ],
             selected: <EditorModes>{vm.selectedMode},
             onSelectionChanged: (newSelection) async {
-              vm.selectMode(newSelection.first);
+              await vm.selectMode(newSelection.first);
             },
           ),
 

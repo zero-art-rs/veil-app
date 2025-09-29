@@ -1,4 +1,4 @@
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/automerge.dart';
 
 class EditorAutomergeUtils {
   static EditorAutomergeUtils instance = EditorAutomergeUtils();

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/deeplink_manager.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/screens/contacts_page.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/models.dart' as m;
-import 'package:zk_notion_app/utils/secret_factory.dart';
-import 'package:zk_notion_app/widgets/banner.dart';
-import 'package:zk_notion_app/utils/platform.dart';
+import 'package:veil/api/client.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/deeplink_manager.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/screens/contacts_page.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/models.dart' as m;
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/secret_factory.dart';
+import 'package:veil/widgets/banner.dart';
+import 'package:veil/utils/platform.dart';
 
 class MemberScreenModel {
   final m.DocumentMember member;
@@ -148,6 +150,11 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       logger.i('Finished sending unidentified member invite frame...');
       final inviteLink = DeeplinkManager.instance.buildUnidentifiedGroupInvite(
         invite,
+      );
+
+      await DB.instance.updateDocument(
+        doc: widget.doc,
+        parts: widget.groupContext.asParts(),
       );
 
       return inviteLink;

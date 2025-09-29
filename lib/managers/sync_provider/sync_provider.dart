@@ -3,17 +3,17 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:rxdart/subjects.dart';
-import 'package:zk_notion_app/api/centrifuge.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/change_manager.dart';
-import 'package:zk_notion_app/managers/sync_provider/pending_sync_model.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
+import 'package:veil/api/centrifuge.dart';
+import 'package:veil/api/client.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/change_manager.dart';
+import 'package:veil/managers/sync_provider/pending_sync_model.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/group_context_factory.dart';
 
 class SyncProvider {
   final _centrifugo = CentrifugeProvider.instance;

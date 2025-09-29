@@ -7,6 +7,8 @@ import '../frb_generated.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+void initTracing() => RustLib.instance.api.crateApiGroupContextInitTracing();
+
 String hashPublicKey({required List<int> pk}) =>
     RustLib.instance.api.crateApiGroupContextHashPublicKey(pk: pk);
 
@@ -24,6 +26,9 @@ Uint8List publicKeyFromSecretKey({required List<int> secretKey}) => RustLib
   user: user,
   groupInfo: groupInfo,
 );
+
+String hashPublcihKey({required List<int> pk}) =>
+    RustLib.instance.api.crateApiGroupContextHashPublcihKey(pk: pk);
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupContext>>
 abstract class BGroupContext implements RustOpaqueInterface {

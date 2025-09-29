@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:zk_notion_app/managers/deeplink_manager.dart';
-import 'package:zk_notion_app/screens/contacts_page.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/platform.dart';
+import 'package:veil/managers/deeplink_manager.dart';
+import 'package:veil/screens/contacts_page.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/platform.dart';
 
 import '../main.dart';
 

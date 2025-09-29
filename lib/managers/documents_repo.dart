@@ -1,6 +1,6 @@
 import 'package:rxdart/subjects.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
 
 class DocumentsRepo {
   static final DocumentsRepo instance = DocumentsRepo();

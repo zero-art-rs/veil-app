@@ -1,18 +1,18 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/v4.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/extensions/group_context.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
-import 'package:zk_notion_app/screens/account_page.dart';
-import 'package:zk_notion_app/screens/editor/editor_page.dart';
-import 'package:zk_notion_app/screens/history_page.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
-import 'package:zk_notion_app/widgets/banner.dart';
+import 'package:veil/api/client.dart';
+import 'package:veil/extensions/group_context.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/managers/sync_provider/sync_provider.dart';
+import 'package:veil/screens/account_page.dart';
+import 'package:veil/screens/editor/editor_page.dart';
+import 'package:veil/screens/history_page.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/widgets/banner.dart';
 
 import '../../main.dart';
 

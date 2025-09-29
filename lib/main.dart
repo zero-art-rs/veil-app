@@ -4,28 +4,30 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:zk_notion_app/assets/util.dart';
-import 'package:zk_notion_app/managers/deeplink_manager.dart';
-import 'package:zk_notion_app/managers/invite_manager.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
-import 'package:zk_notion_app/screens/desktop/primary_page.dart';
-import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
-import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
-import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
-import 'package:zk_notion_app/screens/tab_bar.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/src/rust/frb_generated.dart';
-import 'package:zk_notion_app/assets/theme.dart';
+import 'package:veil/assets/util.dart';
+import 'package:veil/managers/deeplink_manager.dart';
+import 'package:veil/managers/invite_manager.dart';
+import 'package:veil/managers/sync_provider/sync_provider.dart';
+import 'package:veil/screens/desktop/primary_page.dart';
+import 'package:veil/screens/desktop/primary_page_vm.dart';
+import 'package:veil/screens/docs_page/docs_page.dart';
+import 'package:veil/screens/docs_page/docs_page_vm.dart';
+import 'package:veil/screens/tab_bar.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/src/rust/frb_generated.dart';
+import 'package:veil/assets/theme.dart';
 import 'package:logger/logger.dart';
 import 'package:app_links/app_links.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/widgets/banner.dart';
-import 'package:zk_notion_app/utils/platform.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/widgets/banner.dart';
+import 'package:veil/utils/platform.dart';
+import 'package:veil/widgets/future_dialog.dart';
 
 Future<void> main() async {
   await RustLib.init();
+  initTracing();
 
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -91,7 +93,7 @@ class _MyAppState extends State<MyApp> {
           if (documentDeepLink != null && mounted) {
             _showDocumentInvitationPopUp(
               navigatorKey.currentContext!,
-              documentDeepLink,
+              documentDeepLink.inviteData,
             );
             return;
           }
@@ -108,48 +110,17 @@ class _MyAppState extends State<MyApp> {
 
   void _showDocumentInvitationPopUp(
     BuildContext context,
-    DocumentDeepLink doc,
-  ) {
-    final th = Theme.of(context).textTheme;
-
-    showDialog(
+    String inviteData,
+  ) async {
+    await showFutureDialog(
+      title: 'Invitation',
       context: context,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.description, size: 92),
-            const SizedBox(height: 32),
-            Text(
-              'You have been invited to the document, do you want to join?',
-              style: th.bodyLarge,
-            ),
-          ],
-        ),
-        actions: [
-          const SizedBox(height: 24),
-          Row(
-            spacing: 16.0,
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel'),
-                ),
-              ),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    // TODO: add handle loader and errors ui
-                    await _acceptInvite(context, doc.inviteData);
-                  },
-                  child: Text('Join'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+      work: () async => await _acceptInvite(context, inviteData),
+      applyText: 'Join',
+      cancelText: 'Cancel',
+      message: 'You have been invited to join the document.',
+      successTitle: 'Success',
+      successMessage: 'You have joined the document.',
     );
   }
 
@@ -170,11 +141,6 @@ class _MyAppState extends State<MyApp> {
       pendingGroupContext,
       user: BUser(name: account.name, publicKey: account.keypair.rawPublicKey),
     );
-
-    // pendingGroupContext.signWithTk(groupId: groupId, nonce: nonce)
-    // pendingGroupContext.processFrame(frame: frame) - polling
-    // final frame pendingGroupContext.joinGroupAs(user: user)
-    // sendframe -> if 200 pendingGroupContext.upgrade() else go to polling and repeat
 
     if (!context.mounted) return;
     Navigator.pop(context);

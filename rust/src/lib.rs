@@ -324,6 +324,9 @@ pub(crate) mod test {
         println!("automerge_1 content {:?}", automerge_1.get_blocks());
         println!("automerge_2 content {:?}", automerge_2.get_blocks());
 
+        println!("automerge_1 change list: {:?}", automerge_1.get_change_list());
+        println!("automerge_2 change list: {:?}", automerge_2.get_change_list());
+
         Ok(())
     }
 }

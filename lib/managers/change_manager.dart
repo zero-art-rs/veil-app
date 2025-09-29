@@ -1,6 +1,6 @@
 import 'package:fixnum/fixnum.dart';
 import 'package:rxdart/subjects.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
+import 'package:veil/protos/zero_art.pb.dart';
 
 class SyncChange {
   Map<int, SPFrame> frames;

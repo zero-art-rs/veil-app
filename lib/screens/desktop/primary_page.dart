@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:zk_notion_app/extensions/group_context.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/screens/account_page.dart';
-import 'package:zk_notion_app/screens/contacts_page.dart';
-import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
-import 'package:zk_notion_app/screens/editor/editor_page.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/widgets/banner.dart';
-import 'package:zk_notion_app/widgets/sidebar.dart';
+import 'package:veil/extensions/group_context.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/screens/account_page.dart';
+import 'package:veil/screens/contacts_page.dart';
+import 'package:veil/screens/desktop/primary_page_vm.dart';
+import 'package:veil/screens/editor/editor_page.dart';
+import 'package:veil/widgets/banner.dart';
+import 'package:veil/widgets/sidebar.dart';
 
 import '../../main.dart';
 

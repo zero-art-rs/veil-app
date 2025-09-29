@@ -1,13 +1,13 @@
 import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/models/account.dart';
-import 'package:zk_notion_app/storage/sqlite/consts.dart';
-import 'package:zk_notion_app/storage/sqlite/models/document.dart';
-import 'package:zk_notion_app/storage/sqlite/schemes.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/models/account.dart';
+import 'package:veil/storage/sqlite/consts.dart';
+import 'package:veil/storage/sqlite/models/document.dart';
+import 'package:veil/storage/sqlite/schemes.dart';
+import 'package:veil/utils/group_context_factory.dart';
 
 const _dbName = 'veil.db';
 
@@ -226,10 +226,7 @@ class DB {
       sequenceNumber: document.sequenceNumber,
     );
 
-    await _insert(
-      documentsTable,
-      sqlDoc.toJson(),
-    );
+    await _insert(documentsTable, sqlDoc.toJson());
   }
 
   Future<void> updateDocumentTitle({

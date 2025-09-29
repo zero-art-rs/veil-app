@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/widgets/banner.dart';
-import 'package:zk_notion_app/widgets/user_widget.dart';
+import 'package:veil/main.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/widgets/banner.dart';
+import 'package:veil/widgets/user_widget.dart';
 
 class QRScannerPage extends StatefulWidget {
   const QRScannerPage({super.key});

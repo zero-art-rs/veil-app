@@ -1,4 +1,4 @@
-import 'package:zk_notion_app/storage/sqlite/consts.dart';
+import 'package:veil/storage/sqlite/consts.dart';
 
 final createContactsTable =
     """

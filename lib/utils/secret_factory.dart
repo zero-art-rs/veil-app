@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
+import 'package:veil/src/rust/api/group_context.dart';
 
 class SecretManager {
   static final SecretManager intance = SecretManager();

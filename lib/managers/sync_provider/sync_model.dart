@@ -2,14 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/managers/change_manager.dart';
-import 'package:zk_notion_app/managers/sync_provider/pending_sync_model.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/utils/payload.dart';
+import 'package:veil/api/client.dart';
+import 'package:veil/managers/change_manager.dart';
+import 'package:veil/managers/sync_provider/pending_sync_model.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/utils/payload.dart';
 
 import '../../main.dart';
 

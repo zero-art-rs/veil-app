@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/extensions/group_context.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'package:veil/api/client.dart';
+import 'package:veil/extensions/group_context.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models.dart';
 
 class InviteManager {
   final accountStorage = AccountStorage.instance;

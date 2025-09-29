@@ -4,20 +4,20 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/extensions/group_context.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/change_manager.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/screens/doc_members.dart';
-import 'package:zk_notion_app/screens/history_page.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/editor_automerge.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
-import 'package:zk_notion_app/utils/payload.dart';
+import 'package:veil/api/client.dart';
+import 'package:veil/extensions/group_context.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/change_manager.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/screens/doc_members.dart';
+import 'package:veil/screens/history_page.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/editor_automerge.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/payload.dart';
 
 enum EditorModes { edit, view }
 
@@ -62,9 +62,9 @@ class EditorPageVm extends ChangeNotifier {
       if (selectedMode == EditorModes.edit) {
         logger.i('Received document update, buffering it');
         _crdtPayloadList.addAll(crdtPayloads);
-      } 
-      
-      if (selectedMode != EditorModes.edit && crdtPayloads.isNotEmpty) { 
+      }
+
+      if (selectedMode != EditorModes.edit && crdtPayloads.isNotEmpty) {
         isSinking = true;
         notifyListeners();
 
@@ -76,7 +76,7 @@ class EditorPageVm extends ChangeNotifier {
         logger.i(
           'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
         );
-        
+
         isSinking = false;
         notifyListeners();
       }
@@ -105,7 +105,7 @@ class EditorPageVm extends ChangeNotifier {
     isSinking = false;
 
     logger.i(
-      'Init document state  ${syncModel.document.automergeDoc.getBlocks()}',
+      'Init document state ${syncModel.document.automergeDoc.getBlocks()}',
     );
 
     notifyListeners();
@@ -154,7 +154,7 @@ class EditorPageVm extends ChangeNotifier {
     notifyListeners();
   }
 
-  void selectMode(EditorModes mode) async {
+  Future<void> selectMode(EditorModes mode) async {
     selectedMode = mode;
 
     if (selectedMode != EditorModes.edit) {
@@ -201,6 +201,11 @@ class EditorPageVm extends ChangeNotifier {
       );
       syncModel.groupContext.commitState();
 
+      await DB.instance.updateDocument(
+        doc: syncModel.document,
+        parts: syncModel.groupContext.asParts(),
+      );
+
       logger.i(
         'Document state after changing mode ${syncModel.document.automergeDoc.getBlocks()}',
       );
@@ -212,6 +217,8 @@ class EditorPageVm extends ChangeNotifier {
         mdEditor.text = EditorAutomergeUtils.instance.toDoc(
           syncModel.document.automergeDoc,
         );
+
+        _crdtPayloadList.clear();
       } else {
         logger.i('No buffered changes, no local changes, nothing to sync');
       }

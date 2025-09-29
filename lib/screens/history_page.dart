@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/screens/difference_page.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'package:veil/screens/difference_page.dart';
+import 'package:veil/storage/models.dart';
 
 class HistoryPage extends StatelessWidget {
   const HistoryPage({

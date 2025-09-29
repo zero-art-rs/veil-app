@@ -1,10 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/sqlite/consts.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
-import 'package:zk_notion_app/utils/secret_factory.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/secret_factory.dart';
 
 class ExternalAccount {
   final String actorId;
@@ -129,7 +128,7 @@ class Account {
     return Account(
       name: name,
       actorId: hashPublicKey(pk: keypair.rawPublicKey),
-      keypair: Keypair.generate(),
+      keypair: keypair,
     );
   }
 

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
+import 'package:veil/protos/zero_art.pb.dart';
 
 enum ProofMode { useRootKey, useLeafKey }
 
