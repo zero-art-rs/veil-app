@@ -1,13 +1,19 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:zk_notion_app/assets/util.dart';
 import 'package:zk_notion_app/managers/deeplink_manager.dart';
+import 'package:zk_notion_app/managers/invite_manager.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page.dart';
 import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
+import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
+import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
 import 'package:zk_notion_app/screens/tab_bar.dart';
+import 'package:zk_notion_app/src/rust/api/group_context.dart';
 import 'package:zk_notion_app/src/rust/frb_generated.dart';
 import 'package:zk_notion_app/assets/theme.dart';
 import 'package:logger/logger.dart';
@@ -15,26 +21,34 @@ import 'package:app_links/app_links.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/widgets/banner.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
 Future<void> main() async {
   await RustLib.init();
+
   WidgetsFlutterBinding.ensureInitialized();
+
   try {
+    await AccountStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
-    final account = await AccountStorage.instance.getOrSetupAccount();
-    await DB.instance.setupAccountIfNeeded(
-      ExternalAccount.fromAccount(account),
-    );
-    logger.i('Db path: ${await getDatabasesPath()}');
+    // DB.instance.removeAll();
+    logger.d('Db path: ${await getDatabasesPath()}');
+    await SyncProvider.instance.init();
   } catch (e) {
-    logger.e('DB error: $e');
+    logger.e('Launch app error: $e');
   }
   runApp(MyApp());
 }
 
-var logger = Logger(printer: PrettyPrinter());
+var logger = Logger(
+  filter: kDebugMode ? DevelopmentFilter() : ProductionFilter(),
+  printer: PrettyPrinter(
+    noBoxingByDefault: true,
+    dateTimeFormat: DateTimeFormat.dateAndTime,
+  ),
+  level: Level.all,
+);
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatefulWidget {
@@ -51,7 +65,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _handleInitialUri();
     _listenUriChanges();
   }
 
@@ -60,31 +73,6 @@ class _MyAppState extends State<MyApp> {
     logger.d('My app dispose called');
     _sub?.cancel();
     super.dispose();
-  }
-
-  Future<void> _handleInitialUri() async {
-    if (!PlatformUtils.isApple) return;
-    try {
-      final initialUri = await _appLinks.getInitialLink();
-
-      final (documentDeepLink, contactDeepLink) = DeeplinkManager.instance
-          .retrieveDeepLink(initialUri);
-
-      if (contactDeepLink != null && mounted) {
-        _showContactPopUp(navigatorKey.currentContext!, contactDeepLink);
-        return;
-      }
-
-      if (documentDeepLink != null && mounted) {
-        _showDocumentInvitationPopUp(
-          navigatorKey.currentContext!,
-          documentDeepLink,
-        );
-        return;
-      }
-    } catch (err) {
-      logger.e('Failed to get initial link: $err');
-    }
   }
 
   void _listenUriChanges() {
@@ -151,7 +139,10 @@ class _MyAppState extends State<MyApp> {
               ),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    // TODO: add handle loader and errors ui
+                    await _acceptInvite(context, doc.inviteData);
+                  },
                   child: Text('Join'),
                 ),
               ),
@@ -160,6 +151,33 @@ class _MyAppState extends State<MyApp> {
         ],
       ),
     );
+  }
+
+  Future<void> _acceptInvite(BuildContext context, String inviteData) async {
+    final account = await AccountStorage.instance.getAccount();
+
+    if (account == null) {
+      throw Exception('No account, unreachable flow');
+    }
+
+    final (pendingGroupContext, document) = await InviteManager.instance.join(
+      inviteData,
+    );
+
+    // make pending add
+    await SyncProvider.instance.addFromInvite(
+      document,
+      pendingGroupContext,
+      user: BUser(name: account.name, publicKey: account.keypair.rawPublicKey),
+    );
+
+    // pendingGroupContext.signWithTk(groupId: groupId, nonce: nonce)
+    // pendingGroupContext.processFrame(frame: frame) - polling
+    // final frame pendingGroupContext.joinGroupAs(user: user)
+    // sendframe -> if 200 pendingGroupContext.upgrade() else go to polling and repeat
+
+    if (!context.mounted) return;
+    Navigator.pop(context);
   }
 
   void _showContactPopUp(BuildContext context, ExternalAccount account) {
@@ -176,50 +194,50 @@ class _MyAppState extends State<MyApp> {
                 borderRadius: BorderRadius.circular(12),
                 border: BoxBorder.all(color: Colors.grey, width: 0.3),
               ),
-              child: Row(
-                spacing: 16,
-                children: [
-                  Icon(Icons.person, size: 108),
-                  Container(
-                    width: 1,
-                    height: 124,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: BoxBorder.all(color: Colors.grey, width: 0.3),
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Name', style: th.labelLarge),
+                    Text(
+                      account.name,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
 
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Name', style: th.labelLarge),
-                        Text(account.name, style: th.bodyMedium, maxLines: 1),
+                    SizedBox(height: 12),
 
-                        Text('Actor ID', style: th.labelLarge),
-                        Text(
-                          account.actorId,
-                          style: th.bodyMedium,
-                          maxLines: 1,
-                        ),
-
-                        Text('Public Key', style: th.labelLarge),
-                        Text(
-                          account.publicKey,
-                          style: th.bodyMedium,
-                          maxLines: 1,
-                        ),
-                      ],
+                    Text('Actor ID', style: th.labelLarge),
+                    Text(
+                      account.actorId,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+
+                    SizedBox(height: 12),
+
+                    Text('Public Key', style: th.labelLarge),
+                    Text(
+                      account.publicKey,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ),
 
             const SizedBox(height: 32),
-            Text('Add this account to your contacts?', style: th.bodyLarge),
+            Text(
+              'Add this account to your contacts?',
+              style: th.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
         actions: [
@@ -282,20 +300,28 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = View.of(context).platformDispatcher.platformBrightness;
     TextTheme textTheme = createTextTheme(context, "Roboto", "Urbanist");
     MaterialTheme theme = MaterialTheme(textTheme);
 
     return MaterialApp(
       localizationsDelegates: const [],
-      theme: brightness == Brightness.light ? theme.light() : theme.dark(),
+      theme: theme.dark(),
       themeMode: ThemeMode.dark,
-      home: PlatformUtils.isDesktop
-          ? ChangeNotifierProvider(
-              create: (_) => PrimaryPageViewModel(),
-              child: DesktopPrimaryPage(),
-            )
-          : const AppBottomTabBar(),
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => PrimaryPageViewModel(),
+            child: DesktopPrimaryPage(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => DocsPageViewModel()..sink(),
+            child: DocsPage(),
+          ),
+        ],
+        child: PlatformUtils.isDesktop
+            ? DesktopPrimaryPage()
+            : AppBottomTabBar(),
+      ),
       navigatorKey: navigatorKey,
     );
   }

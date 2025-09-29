@@ -1,18 +1,16 @@
-import 'package:super_editor/super_editor.dart';
-import 'package:super_editor_markdown/super_editor_markdown.dart';
 import 'package:zk_notion_app/src/rust/api/automerge.dart';
 
 class EditorAutomergeUtils {
   static EditorAutomergeUtils instance = EditorAutomergeUtils();
 
-  MutableDocument toDoc(BAutoCommit autocommit) {
+  String toDoc(BAutoCommit autocommit) {
     final blocks = autocommit.getBlocks();
     final md = blocks.join('\n');
-    return deserializeMarkdownToDocument(md);
+    return md;
   }
 
-  fromDoc(MutableDocument doc, BAutoCommit automerge) {
-    final blocks = _parseDoc(doc);
+  void fromDoc(String md, BAutoCommit automerge) {
+    final blocks = md.split('\n').toList();
     final length = automerge.blocksLength().toInt();
 
     for (final (index, block) in blocks.indexed) {
@@ -35,10 +33,5 @@ class EditorAutomergeUtils {
     for (int i = length - 1; i >= start; i--) {
       automerge.deleteBlock(index: BigInt.from(i));
     }
-  }
-
-  List<String> _parseDoc(MutableDocument doc) {
-    final md = serializeDocumentToMarkdown(doc);
-    return md.split('\n').toList();
   }
 }

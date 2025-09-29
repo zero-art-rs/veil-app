@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -60,7 +59,7 @@ class _AccountPageState extends State<AccountPage> {
         _nameCtrl = TextEditingController(text: _currentAccount!.name);
         _actorCtrl = TextEditingController(text: _currentAccount!.actorId);
         _pubkeyCtrl = TextEditingController(
-          text: _currentAccount!.keypair.publicKey,
+          text: _currentAccount!.keypair.publicKeyHex,
         );
       });
     } catch (err) {
@@ -90,7 +89,7 @@ class _AccountPageState extends State<AccountPage> {
     _futureQR = _qrData(newAccount);
 
     setState(() {
-      _pubkeyCtrl.text = newAccount.keypair.publicKey;
+      _pubkeyCtrl.text = newAccount.keypair.publicKeyHex;
       _actorCtrl.text = newAccount.actorId;
       _currentAccount = newAccount;
       _saving = false;
@@ -117,7 +116,7 @@ class _AccountPageState extends State<AccountPage> {
             color: cs.surface,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
-              BoxShadow(blurRadius: 20, color: Colors.black.withOpacity(0.3)),
+              BoxShadow(blurRadius: 20, color: Colors.black.withAlpha(30)),
             ],
           ),
           child: Column(
@@ -232,6 +231,14 @@ class _AccountPageState extends State<AccountPage> {
                 MaterialPageRoute(builder: (context) => ContactsScreen()),
               ),
             ),
+
+          if (!isDesktop)
+            IconButton(
+              icon: const Icon(Icons.ios_share),
+              tooltip: 'Share account',
+              onPressed: _showShareModal,
+            ),
+
           if (isDesktop)
             IconButton(
               icon: const Icon(Icons.ios_share_rounded),

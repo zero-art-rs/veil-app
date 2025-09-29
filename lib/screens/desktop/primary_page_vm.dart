@@ -1,17 +1,24 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/v4.dart';
+import 'package:zk_notion_app/api/client.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
-import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
+import 'package:zk_notion_app/src/rust/api/automerge.dart';
 import 'package:zk_notion_app/storage/account_storage.dart';
 import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/utils/group_context_factory.dart';
+import 'package:zk_notion_app/widgets/banner.dart';
 
 import '../../main.dart';
 
 class PrimaryPageViewModel extends ChangeNotifier {
   final _accStorage = AccountStorage();
+  final _syncProvider = SyncProvider.instance;
 
   int _selectedIndex = 0;
   int get selectedIndex => _selectedIndex;
@@ -19,47 +26,54 @@ class PrimaryPageViewModel extends ChangeNotifier {
   Widget _selectedPage = AccountPage();
   Widget get selectedPage => _selectedPage;
 
-  List<Document> _docs = [];
-  List<Document> get docs => _docs;
+  List<SyncProviderModel> _syncModels = [];
+  List<SyncProviderModel> get syncModels => _syncModels;
 
   final TextEditingController textEditingController = TextEditingController();
 
   static const constantTabs = 5;
 
   void init() async {
-    try {
-      _docs = await DB.instance.getDocumentList();
-    } catch (err) {
-      logger.e('Failed to get documents: $err');
-    }
-    notifyListeners();
+    _syncProvider.subject.listen((event) {
+      _syncModels = event;
+      notifyListeners();
+    });
   }
 
   void setSelectedIndex(int index) {
     _selectedIndex = index;
-    logger.d('Selected index: $_selectedIndex');
     notifyListeners();
   }
 
-  Future<void> updateDocumentName(
-    BuildContext context,
-    Document document,
-  ) async {
-    try {
-      final updatedDoc = await DB.instance.updateDocumentTitle(document);
-      final index = _docs.indexWhere((e) => e.id == updatedDoc.id);
-      _docs[index] = document;
-      textEditingController.clear();
-      setSelectedPage(EditorPage(key: _docs[index].key, doc: _docs[index]));
-    } catch (err) {
-      logger.e('Failed to update document name: $err');
-      if (!context.mounted) return;
-      TopBanner.show(
-        context: context,
-        message: 'Failed to update document name',
-        kind: TopBannerCases.error,
-      );
-    }
+  Future<void> updateDocumentName({
+    required BuildContext context,
+    required String title,
+    required String id,
+  }) async {
+    // try {
+    //   await DB.instance.updateDocumentTitle(id: id, title: title);
+    //   final index = _syncModels.indexWhere((e) => e.id == id);
+    //   _syncModels[index] = Document(
+    //     id: _syncModels[index].id,
+    //     title: title,
+    //     automergeDoc: _syncModels[index].automergeDoc,
+    //     members: _syncModels[index].members,
+    //     createdAt: _syncModels[index].createdAt,
+    //     groupContextParts: _syncModels[index].groupContextParts,
+    //   );
+    //   textEditingController.clear();
+    //   setSelectedPage(
+    //     EditorPage(key: _syncModels[index].key, doc: _syncModels[index]),
+    //   );
+    // } catch (err) {
+    //   logger.e('Failed to update document name: $err');
+    //   if (!context.mounted) return;
+    //   TopBanner.show(
+    //     context: context,
+    //     message: 'Failed to update document name',
+    //     kind: TopBannerCases.error,
+    //   );
+    // }
   }
 
   Future<void> createDocument(BuildContext context) async {
@@ -73,17 +87,27 @@ class PrimaryPageViewModel extends ChangeNotifier {
         throw Exception('To create a document, you must have account');
       }
 
-      final doc = await DB.instance.insertNewDocument(
-        title: resTitle,
-        owner: ExternalAccount.fromAccount(owner),
+      final docID = UuidV4().generate();
+      final content = BAutoCommit();
+
+      final (groupContext, frame) = GroupContextFactory.createGroupContext(
+        groupName: resTitle,
+        groupID: docID,
+        owner: owner,
       );
 
-      textEditingController.clear();
-      _docs.add(doc);
+      final document = Document(
+        id: docID,
+        createdAt: DateTime.now(),
+        automergeDoc: content,
+        groupContextParts: groupContext.asParts(),
+      );
 
-      final index = _docs.length - 1;
-      setSelectedIndex(constantTabs + index);
-      setSelectedPage(EditorPage(key: _docs[index].key, doc: _docs[index]));
+      await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+
+      await _syncProvider.add(document, groupContext, insertToDb: true);
+
+      textEditingController.clear();
 
       notifyListeners();
     } catch (err) {
@@ -104,24 +128,33 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
   Future<void> removeDocument(BuildContext context, String id) async {
     try {
-      await DB.instance.deleteDocument(id);
-
-      final index = _docs.indexWhere((element) => element.id == id);
+      final index = _syncModels.indexWhere(
+        (element) => element.document.id == id,
+      );
       if (index == -1) throw FormatException('Document not found');
 
-      _docs.removeWhere((element) => element.id == id);
+      await _syncProvider.remove(id);
+      _syncModels.removeWhere((element) => element.document.id == id);
 
-      if (_docs.isEmpty) {
+      if (_syncModels.isEmpty) {
         setSelectedIndex(0);
         setSelectedPage(AccountPage());
       } else if (index > 0) {
         setSelectedIndex(constantTabs + index - 1);
         setSelectedPage(
-          EditorPage(key: _docs[index - 1].key, doc: _docs[index - 1]),
+          EditorPage(
+            key: _syncModels[index - 1].document.key,
+            syncModel: _syncModels[index - 1],
+          ),
         );
       } else {
         setSelectedIndex(constantTabs + 1);
-        setSelectedPage(EditorPage(key: _docs.first.key, doc: _docs.first));
+        setSelectedPage(
+          EditorPage(
+            key: _syncModels.first.document.key,
+            syncModel: _syncModels.first,
+          ),
+        );
       }
 
       notifyListeners();
@@ -137,22 +170,11 @@ class PrimaryPageViewModel extends ChangeNotifier {
     }
   }
 
-  Future<List<MemberScreenModel>> prepareMembers() async {
-    final account = await _accStorage.getAccount();
-    return _docs[selectedIndex - constantTabs].members
-        .map(
-          (e) => MemberScreenModel(
-            member: e,
-            isYou: e.account.actorId == account?.actorId,
-          ),
-        )
-        .toList();
-  }
-
   (List<ChangeEvent>, Document) prepareChanges() {
-    final doc = _docs[selectedIndex - constantTabs];
+    final syncModel = _syncModels[selectedIndex - constantTabs];
+    final members = syncModel.groupContext.retrieveGroupInfo().members;
 
-    final changes = doc.automergeDoc
+    final changes = syncModel.document.automergeDoc
         .getChangeList()
         .indexed
         .map(
@@ -161,6 +183,11 @@ class PrimaryPageViewModel extends ChangeNotifier {
             actorIdHex: e.$2.actorIdHex(),
             changeHashHex: e.$2.changeHash(),
             date: e.$2.timestamp(),
+            name:
+                members
+                    .firstWhereOrNull((elem) => elem.id == e.$2.actorIdHex())
+                    ?.name ??
+                e.$2.actorIdHex(),
             isInitial: e.$1 == 0,
           ),
         )
@@ -168,6 +195,6 @@ class PrimaryPageViewModel extends ChangeNotifier {
         .reversed
         .toList();
 
-    return (changes, doc);
+    return (changes, syncModel.document);
   }
 }

@@ -1,213 +1,202 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:super_editor/super_editor.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/screens/editor/overrides/helpers.dart';
-import 'package:zk_notion_app/screens/editor/overrides/keyboard_actions.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
+import 'package:popover/popover.dart';
+import 'package:provider/provider.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
 import 'package:zk_notion_app/screens/doc_members.dart';
 import 'package:zk_notion_app/screens/history_page.dart';
-import 'package:zk_notion_app/storage/models.dart' as models;
-import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/editor_automerge.dart';
+import 'package:zk_notion_app/widgets/square_rounded_btn.dart';
+import 'package:zk_notion_app/widgets/sync_widget.dart';
+import 'editor_page_vm.dart';
 import 'package:zk_notion_app/utils/platform.dart';
 
-class _EditorPageState extends State<EditorPage> {
-  final _composer = MutableDocumentComposer();
-  late Editor _editor = createDefaultDocumentEditorOverriden(
-    document: MutableDocument.empty(),
-    composer: _composer,
-  );
-
-  late final Timer _saveTicker;
-  final _focus = FocusNode(debugLabel: 'editor');
-
-  @override
-  void initState() {
-    super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    final account = await widget._accStorage.getAccount();
-
-    if (account == null) {
-      logger.f('Account is null, unreachable flow!');
-      return;
-    }
-
-    widget.doc.automergeDoc.setActorId(uuid: account.actorId);
-    widget.doc.automergeDoc.setupBlockLabel();
-
-    final blocks = widget.doc.automergeDoc.getBlocks();
-    if (blocks.isNotEmpty) {
-      _editor = createDefaultDocumentEditorOverriden(
-        document: EditorAutomergeUtils.instance.toDoc(widget.doc.automergeDoc),
-        composer: _composer,
-      );
-    }
-
-    _setupCommitTicker();
-
-    if (mounted) setState(() {});
-  }
-
-  _setupCommitTicker() {
-    _saveTicker = Timer.periodic(const Duration(seconds: 3), (timer) {
-      _commit();
-    });
-  }
-
-  _commit() {
-    EditorAutomergeUtils.instance.fromDoc(
-      _editor.document,
-      widget.doc.automergeDoc,
-    );
-    widget.doc.automergeDoc.commit();
-  }
-
-  Future<List<MemberScreenModel>> _prepareMembers() async {
-    final account = await widget._accStorage.getAccount();
-    return widget.doc.members
-        .map(
-          (e) => MemberScreenModel(
-            member: e,
-            isYou: e.account.actorId == account?.actorId,
-          ),
-        )
-        .toList();
-  }
-
-  Widget _memberListButton(BuildContext context) {
-    if (widget.isMemberListAccessible) {
-      return IconButton(
-        icon: const Icon(Icons.group),
-        onPressed: () async {
-          final members = await _prepareMembers();
-
-          if (context.mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    DocumentMemberListScreen(members: members, doc: widget.doc),
-              ),
-            );
-          }
-        },
-      );
-    } else {
-      return Container();
-    }
-  }
-
-  Widget _historyButton(BuildContext context) {
-    if (!widget.isHistoryAccessible) {
-      return Container();
-    } else {
-      return IconButton(
-        icon: const Icon(Icons.history),
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) {
-              _commit();
-
-              final items = widget.doc.automergeDoc
-                  .getChangeList()
-                  .indexed
-                  .map(
-                    (e) => ChangeEvent(
-                      title: 'Change',
-                      actorIdHex: e.$2.actorIdHex(),
-                      changeHashHex: e.$2.changeHash(),
-                      date: e.$2.timestamp(),
-                      isInitial: e.$1 == 0,
-                    ),
-                  )
-                  .toList()
-                  .reversed
-                  .toList();
-
-              return HistoryPage(items: items, doc: widget.doc);
-            },
-          ),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final th = Theme.of(context).textTheme;
-    final isDesktop = PlatformUtils.isDesktop;
-
-    final style = th.titleLarge!.apply(color: cs.surface);
-
-    return Scaffold(
-      backgroundColor: cs.onSurface,
-      appBar: AppBar(
-        title: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(widget.doc.title, style: style),
-        ),
-        backgroundColor: cs.onSurface,
-        foregroundColor: Colors.black,
-        actions: isDesktop
-            ? [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  margin: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: cs.tertiaryContainer,
-                  ),
-                  child: Text(
-                    widget.readOnly ? 'Read mode' : 'Editable mode',
-                    style: th.bodyLarge,
-                  ),
-                ),
-              ]
-            : [_memberListButton(context), _historyButton(context)],
-      ),
-      body: SuperEditor(
-        focusNode: _focus,
-        editor: _editor,
-        keyboardActions: actions,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _saveTicker.cancel();
-    _commit();
-    DB.instance.updateDocumentContent(widget.doc);
-    logger.d('Deinit editor screen');
-    super.dispose();
-  }
-}
-
-class EditorPage extends StatefulWidget {
-  final models.Document doc;
-  final _accStorage = AccountStorage();
+class EditorPage extends StatelessWidget {
+  final SyncProviderModel syncModel;
   final bool isMemberListAccessible;
   final bool isHistoryAccessible;
   final bool readOnly;
 
-  EditorPage({
+  const EditorPage({
     super.key,
-    required this.doc,
+    required this.syncModel,
     this.isMemberListAccessible = true,
     this.isHistoryAccessible = true,
     this.readOnly = false,
   });
 
   @override
-  State<EditorPage> createState() => _EditorPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<EditorPageVm>(
+      create: (_) => EditorPageVm(syncModel)..init(),
+      child: _EditorPageView(
+        isMemberListAccessible: isMemberListAccessible,
+        isHistoryAccessible: isHistoryAccessible,
+        readOnly: readOnly,
+      ),
+    );
+  }
+}
+
+class _EditorPageView extends StatelessWidget {
+  final bool isMemberListAccessible;
+  final bool isHistoryAccessible;
+  final bool readOnly;
+
+  const _EditorPageView({
+    required this.isMemberListAccessible,
+    required this.isHistoryAccessible,
+    required this.readOnly,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<EditorPageVm>();
+    final cs = Theme.of(context).colorScheme;
+    final isDesktop = PlatformUtils.isDesktop;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(vm.syncModel.groupContext.retrieveGroupInfo().name),
+        ),
+        actions: [
+          SegmentedButton<EditorModes>(
+            showSelectedIcon: false,
+            segments: const <ButtonSegment<EditorModes>>[
+              ButtonSegment<EditorModes>(
+                value: EditorModes.view,
+                label: Icon(Icons.menu_book),
+              ),
+              ButtonSegment<EditorModes>(
+                value: EditorModes.edit,
+                label: Icon(Icons.edit),
+              ),
+            ],
+            selected: <EditorModes>{vm.selectedMode},
+            onSelectionChanged: (newSelection) async {
+              vm.selectMode(newSelection.first);
+            },
+          ),
+
+          if (vm.isSinking) SyncCircleView(),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (vm.selectedMode == EditorModes.edit)
+                Expanded(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: vm.mdEditor,
+                          decoration: const InputDecoration(
+                            hintText: "Start writing...",
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(16),
+                          ),
+                          keyboardType: TextInputType.multiline,
+                          maxLines: null,
+                          onChanged: (_) => vm.editMD(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              if (vm.selectedMode == EditorModes.edit && isDesktop)
+                Container(width: 1, height: double.infinity, color: cs.outline),
+
+              if (!(!isDesktop && vm.selectedMode == EditorModes.edit))
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SingleChildScrollView(
+                      child: GptMarkdown(vm.mdEditor.text),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ModalSquareRoundedButton(
+                iconData: Icons.group_outlined,
+                onPressed: (ctx) async {
+                  final members = await vm.prepareMembers();
+                  if (!context.mounted) return;
+                  if (isDesktop) {
+                    showPopover(
+                      context: ctx,
+                      width: 360,
+                      height: 680,
+                      bodyBuilder: (_) => Navigator(
+                        onGenerateRoute: (_) => MaterialPageRoute(
+                          builder: (_) => DocumentMemberListScreen(
+                            members: members,
+                            doc: vm.syncModel.document,
+                            groupContext: vm.syncModel.groupContext,
+                          ),
+                        ),
+                      ),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DocumentMemberListScreen(
+                          members: members,
+                          doc: vm.syncModel.document,
+                          groupContext: vm.syncModel.groupContext,
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+              ModalSquareRoundedButton(
+                iconData: Icons.history_sharp,
+                onPressed: (ctx) {
+                  final changes = vm.prepareChanges();
+
+                  if (isDesktop) {
+                    showPopover(
+                      context: ctx,
+                      width: 360,
+                      height: 680,
+                      bodyBuilder: (_) => Navigator(
+                        onGenerateRoute: (_) => MaterialPageRoute(
+                          builder: (_) => HistoryPage(
+                            items: changes,
+                            doc: vm.syncModel.document,
+                          ),
+                        ),
+                      ),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HistoryPage(
+                          items: changes,
+                          doc: vm.syncModel.document,
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,62 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:zk_notion_app/extensions/group_context.dart';
 import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
+import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
+import 'package:zk_notion_app/protos/zero_art.pb.dart';
+import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
 import 'package:zk_notion_app/screens/editor/editor_page.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
+import 'package:zk_notion_app/widgets/banner.dart';
+import 'package:zk_notion_app/widgets/ays_modal.dart';
 
-class _StateDocsPage extends State<DocsPage> {
-  final _accStorage = AccountStorage();
-  List<Document> docs = [];
-  final _textFieldController = TextEditingController();
+enum _DocAction { edit, delete, share }
 
-  createDoc(String title) async {
-    final resTitle = title.isEmpty ? 'Document' : title;
+class DocsPage extends StatelessWidget {
+  const DocsPage({super.key});
 
-    try {
-      final owner = await _accStorage.getAccount();
+  void _createDocumentModal(BuildContext context) {
+    final controller = TextEditingController(text: '');
+    final vm = context.read<DocsPageViewModel>();
 
-      if (owner == null) {
-        throw 'To create a document, you must have account';
-      }
-
-      final doc = await DB.instance.transaction((db) async {
-        return await db.insertNewDocument(
-          title: resTitle,
-          owner: ExternalAccount.fromAccount(owner),
-        );
-      });
-
-      setState(() {
-        _textFieldController.clear();
-        docs.add(doc);
-      });
-    } catch (err) {
-      logger.e('Failed to create document: $err');
-    }
-  }
-
-  Future<void> _deleteDoc(String id) async {
-    try {
-      await DB.instance.deleteDocument(id);
-    } catch (err) {
-      logger.e('Failed to delete document: $err');
-    }
-
-    setState(() => docs.removeWhere((element) => element.id == id));
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    DB.instance.getDocumentList().then((value) {
-      setState(() => docs = value);
-    });
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text('Create a document'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            label: Text('Input document title'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await vm.createDoc(controller.text);
+                if (!context.mounted) return;
+                Navigator.pop(context);
+              } catch (err) {
+                logger.e('Failed to create document: $err');
+                TopBanner.show(
+                  context: context,
+                  message: 'Failed to create document',
+                );
+              }
+            },
+            child: Text('Create'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<DocsPageViewModel>();
+    final th = Theme.of(context).textTheme;
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 12,
@@ -64,90 +66,90 @@ class _StateDocsPage extends State<DocsPage> {
           spacing: 8,
           children: [
             const Icon(Icons.description_outlined),
-            Text('Docs', style: Theme.of(context).textTheme.titleLarge),
+            Text('Docs', style: th.titleLarge),
           ],
         ),
       ),
-      backgroundColor: Theme.of(context).colorScheme.surface,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showDialog(
-          context: context,
-          builder: (BuildContext context) => AlertDialog(
-            title: Text('Create a document'),
-            content: TextField(
-              controller: _textFieldController,
-              decoration: InputDecoration(label: Text('Input document title')),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, 'Cancel'),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  createDoc(_textFieldController.text);
-                  _textFieldController.clear();
-                  Navigator.pop(context, 'Create');
-                },
-                child: const Text('Create'),
-              ),
-            ],
-          ),
-        ),
-        icon: const Icon(Icons.add),
-        label: const Text('Create document'),
+        onPressed: () => _createDocumentModal(context),
+        label: const Icon(Icons.add),
       ),
-      body: docs.isEmpty
-          ? _NodocumentsYet()
+      body: vm.syncModels.isEmpty
+          ? const _NodocumentsYet()
           : GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: 280,
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 childAspectRatio: 1,
               ),
-              itemCount: docs.length,
+              itemCount: vm.syncModels.length,
               itemBuilder: (context, i) => _DocCard(
-                doc: docs[i],
-                onDelete: () async => await _deleteDoc(docs[i].id),
+                doc: vm.syncModels[i],
+                onDelete: () => aysModal(
+                  context: context,
+                  title: 'Delete document',
+                  content:
+                      'Are you sure to delete ${vm.syncModels[i].groupContext.retrieveGroupInfo().name}?',
+                  callback: () async {
+                    try {
+                      await vm.deleteDoc(vm.syncModels[i].document);
+                    } catch (err) {
+                      if (!context.mounted) return;
+                      TopBanner.show(
+                        context: context,
+                        message: 'Failed to delete document',
+                      );
+                      logger.e('Failed to delete document: $err');
+                    }
+                  },
+                ),
+                onEdit: () => {},
               ),
             ),
     );
   }
 }
 
-class DocsPage extends StatefulWidget {
-  const DocsPage({super.key});
-
+class _NodocumentsYet extends StatelessWidget {
+  const _NodocumentsYet();
   @override
-  State<StatefulWidget> createState() {
-    return _StateDocsPage();
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(
+        "No documents currently",
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
+          color: Colors.grey,
+        ),
+      ),
+    );
   }
 }
 
-enum _DocAction { edit, delete }
-
 class _DocCard extends StatelessWidget {
   const _DocCard({required this.doc, this.onEdit, this.onDelete});
-
-  final Document doc;
+  final SyncProviderModel doc;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+
+  GroupInfo get groupInfo => doc.groupContext.retrieveGroupInfo();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Material(
       shadowColor: Colors.black,
-      color: theme.colorScheme.surface,
+      color: theme.colorScheme.surface.withAlpha(25),
       borderRadius: BorderRadius.circular(10),
       clipBehavior: Clip.antiAlias,
       elevation: 1.5,
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => EditorPage(doc: doc)),
+          MaterialPageRoute(builder: (context) => EditorPage(syncModel: doc)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -192,30 +194,16 @@ class _DocCard extends StatelessWidget {
                           onSelected: (value) {
                             switch (value) {
                               case _DocAction.edit:
-                                if (onEdit != null) return onEdit!();
-                                Navigator.pushNamed(
-                                  context,
-                                  '/editor',
-                                  arguments: {'doc': doc},
-                                );
-                                break;
+                                onEdit?.call();
                               case _DocAction.delete:
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Document was deleted'),
-                                  ),
-                                );
-                                if (onDelete != null) return onDelete!();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Document was deleted'),
-                                  ),
-                                );
+                                onDelete?.call();
+                              case _DocAction.share:
                                 break;
                             }
                           },
                           itemBuilder: (context) => [
                             PopupMenuItem(
+                              enabled: false,
                               value: _DocAction.delete,
                               child: ListTile(
                                 leading: const Icon(Icons.ios_share_outlined),
@@ -226,6 +214,7 @@ class _DocCard extends StatelessWidget {
                             ),
                             const PopupMenuDivider(),
                             PopupMenuItem(
+                              enabled: false,
                               value: _DocAction.edit,
                               child: ListTile(
                                 leading: const Icon(Icons.edit),
@@ -260,14 +249,14 @@ class _DocCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doc.title,
+                      groupInfo.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      doc.ownerName(),
+                      doc.groupContext.getOwner().name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall,
@@ -277,24 +266,6 @@ class _DocCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NodocumentsYet extends StatelessWidget {
-  const _NodocumentsYet();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        "No documents currently",
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
-          color: Colors.grey,
         ),
       ),
     );

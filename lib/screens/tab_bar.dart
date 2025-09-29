@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zk_notion_app/screens/account_page.dart';
-import 'package:zk_notion_app/screens/docs_page.dart';
+import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
 import 'package:zk_notion_app/screens/qr_scanner_page.dart';
 
 class AppBottomTabBar extends StatefulWidget {

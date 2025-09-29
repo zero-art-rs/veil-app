@@ -8,7 +8,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:zk_notion_app/main.dart';
 import 'package:zk_notion_app/storage/models.dart';
 import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/utils/banner.dart';
+import 'package:zk_notion_app/widgets/banner.dart';
 import 'package:zk_notion_app/widgets/user_widget.dart';
 
 class QRScannerPage extends StatefulWidget {

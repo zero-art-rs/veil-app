@@ -1,16 +1,21 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:hex/hex.dart';
 import 'package:zk_notion_app/storage/models.dart';
 
 class DocumentDeepLink {
-  String documentID;
+  String inviteData;
 
-  DocumentDeepLink({required this.documentID});
+  DocumentDeepLink({required this.inviteData});
 }
 
 class DeeplinkManager {
+  final baseUrl = 'https://veil.distributedlab.com';
   final _actorIDKey = 'aid';
   final _nameKey = 'name';
   final _publicKeyKey = 'pk';
-  final _documentIDKey = 'doc';
+  final _unidentifiedInviteKey = 'unidentified-invite';
 
   static final instance = DeeplinkManager();
 
@@ -28,7 +33,7 @@ class DeeplinkManager {
 
     final contact = ExternalAccount(
       name: deepLink.pathSegments[5],
-      publicKey: deepLink.pathSegments[3],
+      rawPublicKey: HEX.decode(deepLink.pathSegments[3]),
       actorId: deepLink.pathSegments[1],
     );
 
@@ -40,10 +45,12 @@ class DeeplinkManager {
 
     final deepLinkString = deepLink.toString();
 
-    final isDocumentDeepLink = deepLinkString.contains(_documentIDKey);
+    final isDocumentDeepLink = deepLinkString.contains(_unidentifiedInviteKey);
     if (!isDocumentDeepLink) return null;
 
-    return DocumentDeepLink(documentID: deepLink.pathSegments[1]);
+    final base64InviteData = deepLink.pathSegments[1];
+
+    return DocumentDeepLink(inviteData: base64InviteData);
   }
 
   (DocumentDeepLink?, ExternalAccount?) retrieveDeepLink(Uri? deepLink) {
@@ -54,6 +61,11 @@ class DeeplinkManager {
   }
 
   String buildContactDeepLink(ExternalAccount contact) {
-    return 'https://zk-notion.distributedlab.com/aid/${contact.actorId}/pk/${contact.publicKey}/name/${contact.name}';
+    return '$baseUrl/aid/${contact.actorId}/pk/${contact.rawPublicKey}/name/${contact.name}';
+  }
+
+  String buildUnidentifiedGroupInvite(Uint8List invite) {
+    final base64Inivte = base64UrlEncode(invite);
+    return '$baseUrl/unidentified-invite/$base64Inivte';
   }
 }
