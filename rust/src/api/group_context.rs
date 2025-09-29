@@ -6,8 +6,8 @@ use awesome_client_sdk::{
     group_context::{GroupContext, GroupState, InviteContext, PendingGroupContext},
     models::{
         self,
-        frame::{Frame, FrameTbs},
-        group_info::{GroupMembers, User},
+        frame::Frame,
+        group_info::GroupMembers,
         invite::{Invite, Invitee},
         payload::Payload,
     },
@@ -16,10 +16,9 @@ use awesome_client_sdk::{
     zero_art_proto,
 };
 use cortado::{self, CortadoAffine, Fr as ScalarField};
-use crypto::schnorr;
 use prost::Message;
 use sha3::{Digest, Sha3_256};
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 use uuid::Uuid;
 
 pub struct BUser {
@@ -30,7 +29,6 @@ pub struct BUser {
 pub fn hash_public_key(pk: Vec<u8>) -> String {
     hex::encode(&Sha3_256::digest(pk)[..16])
 }
-
 
 impl BUser {
     #[flutter_rust_bridge::frb(sync)]
@@ -294,10 +292,11 @@ impl BPendingGroupContext {
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn get_group_info(&self) -> Vec<u8> {
-        let group_info: zero_art_proto::GroupInfo = self.pending_group_context.group_info().clone().into();
+        let group_info: zero_art_proto::GroupInfo =
+            self.pending_group_context.group_info().clone().into();
         group_info.encode_to_vec()
     }
-    
+
     #[flutter_rust_bridge::frb(sync)]
     pub fn sign_challenge(&self, challenge: Vec<u8>) -> Result<Vec<u8>> {
         println!("Challenge: {:?}", challenge);

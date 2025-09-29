@@ -75,7 +75,7 @@ class _EditorPageView extends StatelessWidget {
               ),
             ],
             selected: <EditorModes>{vm.selectedMode},
-            onSelectionChanged: (newSelection) {
+            onSelectionChanged: (newSelection) async {
               vm.selectMode(newSelection.first);
             },
           ),

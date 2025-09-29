@@ -23,61 +23,7 @@ pub(crate) mod test {
         self,
         automerge::{generate_actor_id, BAutoCommit},
     };
-
-    #[test]
-    fn bautomerge_flow() -> anyhow::Result<()> {
-        let mut autocommit = api::automerge::BAutoCommit::new();
-
-        autocommit.insert_block(0, "hello".to_string())?;
-        autocommit.insert_block(1, "world".to_string())?;
-        autocommit.insert_block(2, "!!!!".to_string())?;
-        autocommit.save_incremental();
-
-        println!(
-            "Block with index {}: {}",
-            0,
-            autocommit.get_block(0).unwrap()
-        );
-        println!(
-            "Block with index {}: {}",
-            1,
-            autocommit.get_block(1).unwrap()
-        );
-        println!(
-            "Block with index {}: {}",
-            2,
-            autocommit.get_block(2).unwrap()
-        );
-
-        println!("Delete block at index 2");
-        autocommit.delete_block(2)?;
-
-        println!(
-            "Block with index {}: {}",
-            0,
-            autocommit.get_block(0).unwrap()
-        );
-
-        println!("Update block at index 0");
-        autocommit.update_block(0, "hlloe".to_string())?;
-
-        println!(
-            "Block with index {}: {}",
-            0,
-            autocommit.get_block(0).unwrap()
-        );
-
-        println!("Save changes");
-        autocommit.save_incremental();
-
-        println!("All blocks:");
-        for (i, block) in autocommit.get_blocks()?.iter().enumerate() {
-            println!("Block with index {}: {}", i, block);
-        }
-
-        Ok(())
-    }
-
+    
     #[test]
     fn insert_overrides() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
@@ -109,20 +55,6 @@ pub(crate) mod test {
     }
 
     #[test]
-    fn duplicate_block() -> anyhow::Result<()> {
-        let mut automerge = api::automerge::BAutoCommit::new();
-
-        automerge.insert_block(0, '1'.to_string())?;
-        automerge.insert_block(0, '2'.to_string())?;
-
-        let block = automerge.get_block(0)?;
-
-        assert!(block == '2'.to_string());
-
-        Ok(())
-    }
-
-    #[test]
     fn test_timestamp() -> anyhow::Result<()> {
         let mut automerge = AutoCommit::new();
 
@@ -146,7 +78,6 @@ pub(crate) mod test {
     #[test]
     fn test_btimestamp() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
-        automerge.setup_block_label()?;
         automerge.insert_block(0, "hello".to_string())?;
         automerge.commit();
 
@@ -169,10 +100,6 @@ pub(crate) mod test {
     #[test]
     fn block_list_test() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
-        assert!(automerge.block_list_exist().unwrap() == false);
-
-        automerge.setup_block_label().unwrap();
-        assert!(automerge.block_list_exist().unwrap());
 
         automerge.commit();
 
@@ -190,7 +117,6 @@ pub(crate) mod test {
     #[test]
     fn test_fork_at_change_hash() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
-        automerge.setup_block_label().unwrap();
 
         automerge.insert_block(0, '1'.to_string())?;
         automerge.commit();
@@ -213,7 +139,6 @@ pub(crate) mod test {
     #[test]
     fn test_diff() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
-        automerge.setup_block_label().unwrap();
 
         automerge.insert_block(0, '1'.to_string())?;
         automerge.insert_block(1, "323231231".to_string())?;
@@ -234,7 +159,6 @@ pub(crate) mod test {
     #[test]
     fn test_changes() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
-        automerge.setup_block_label().unwrap();
         automerge.commit();
 
         automerge.insert_block(0, '1'.to_string())?;
@@ -254,8 +178,6 @@ pub(crate) mod test {
 
         let mut bautomerge = api::automerge::BAutoCommit::new();
         bautomerge.set_actor_id(actor_1)?;
-
-        bautomerge.setup_block_label()?;
 
         bautomerge.insert_block(0, "hello".to_string())?;
         bautomerge.insert_block(1, '5'.to_string())?;
@@ -291,7 +213,6 @@ pub(crate) mod test {
 
         let mut automerge = api::automerge::BAutoCommit::new();
         automerge.set_actor_id(actor_id)?;
-        automerge.setup_block_label()?;
 
         automerge.insert_block(0, '1'.to_string())?;
         automerge.insert_block(1, '5'.to_string())?;
@@ -346,7 +267,6 @@ pub(crate) mod test {
         println!("actor 1 {:?}", actor_id);
 
         let mut automerge_1 = api::automerge::BAutoCommit::new();
-        automerge_1.setup_block_label()?;
         automerge_1.set_actor_id(actor_id)?;
 
         automerge_1.insert_block(0, "10".to_string())?;
@@ -364,6 +284,45 @@ pub(crate) mod test {
 
         let changes = autocommit.get_change_list();
         println!("{:?}", changes);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_conflict_on_block() -> anyhow::Result<()> {
+        let actor_id_1 = generate_actor_id();
+        let actor_id_2 = generate_actor_id();
+
+        println!("actor 1 {:?}", actor_id_1);
+
+        let mut automerge_1 = api::automerge::BAutoCommit::new();
+        automerge_1.set_actor_id(actor_id_1)?;
+
+        automerge_1.insert_block(0, "1".to_string())?;
+        automerge_1.insert_block(1, "2".to_string())?;
+        automerge_1.commit();
+
+        let mut automerge_2 = api::automerge::BAutoCommit::from_bytes(automerge_1.save())?;
+        automerge_2.set_actor_id(actor_id_2)?;
+
+        automerge_2.insert_block(2, "hello world".to_string())?;
+        automerge_2.commit();
+        // sync state between
+        automerge_1.load_incremental(automerge_2.save_incremental())?;
+
+        automerge_1.update_block(2, "hello world 2".to_string())?;
+        automerge_1.insert_block(3, "block 3".to_string())?;
+
+        automerge_2.update_block(2, "ewkfergfjkenwrgkjnergjkn".to_string())?;
+        automerge_2.commit();
+
+        automerge_1.commit();
+        automerge_1.load_incremental(automerge_2.save_incremental())?;
+
+        automerge_2.load_incremental(automerge_1.save_incremental())?;
+
+        println!("automerge_1 content {:?}", automerge_1.get_blocks());
+        println!("automerge_2 content {:?}", automerge_2.get_blocks());
 
         Ok(())
     }

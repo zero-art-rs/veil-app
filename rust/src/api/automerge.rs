@@ -6,7 +6,7 @@ use std::{
 use anyhow::{anyhow, bail};
 use automerge::{
     transaction::{CommitOptions, Transactable},
-    ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc,
+    ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc, Value,
 };
 use sha2::Digest;
 
@@ -46,9 +46,15 @@ pub struct BAutoCommit {
 impl BAutoCommit {
     #[flutter_rust_bridge::frb(sync)]
     pub fn new() -> BAutoCommit {
-        BAutoCommit {
+        let mut automerge = BAutoCommit {
             autocommit: AutoCommit::new(),
-        }
+        };
+
+        automerge
+            .setup_block_label()
+            .expect("Should setup block label");
+
+        automerge
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -83,72 +89,32 @@ impl BAutoCommit {
     /// If index is duplicate it will add new value at this index and previous value will be moved to next index
     #[flutter_rust_bridge::frb(sync)]
     pub fn insert_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
-        let obj_id = match self.autocommit.insert_object(
-            self.blocks_list_id(),
-            index,
-            automerge::ObjType::Text,
-        ) {
+        match self
+            .autocommit
+            .insert(self.blocks_list_id(), index, text.as_str())
+        {
             Ok(id) => id,
             Err(err) => bail!("Failed to insert block object: {}", err),
         };
 
-        let Err(err) = self.autocommit.splice_text(obj_id, 0, 0, &text) else {
-            return Ok(());
-        };
-
-        bail!("Failed to put root object: {}", err);
-    }
-
-    #[flutter_rust_bridge::frb(sync)]
-    pub fn get_block(&self, index: usize) -> anyhow::Result<String> {
-        let Some(obj) = self
-            .autocommit
-            .get(self.blocks_list_id(), index)
-            .map_err(|err| {
-                anyhow::anyhow!("Failed to get block with index {}, error: {}", index, err)
-            })?
-        else {
-            bail!("No such block with index {}", index);
-        };
-
-        match self.autocommit.object_type(&obj.1) {
-            Ok(ObjType::Text) => (),
-            Err(err) => bail!("Failed to get block object type: {}", err),
-            _ => bail!("Invalid block object type"),
-        };
-
-        let text = self
-            .autocommit
-            .text(obj.1)
-            .map_err(|err| anyhow::anyhow!("Failed to get text block: {}", err))?;
-
-        Ok(text)
+        Ok(())
     }
 
     #[flutter_rust_bridge::frb(sync)]
     /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
-    pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<bool> {
-        let obj_id = match self.autocommit.get(self.blocks_list_id(), index) {
-            Ok(Some(id)) => id.1,
-            Err(err) => bail!("Failed to get block with index {}, error: {}", index, err),
-            _ => bail!("No such block with index {}", index),
-        };
+    pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
+        let block_list_id = self.blocks_list_id();
 
-        let block = self.get_block(index)?;
-        let block_hash = sha2::Sha256::digest(&block);
+        // let block = self.get_block(index)?;
+        // let block_hash = sha2::Sha256::digest(&block);
 
-        if block_hash == sha2::Sha256::digest(&text) {
-            return Ok(false);
-        }
+        // if block_hash == sha2::Sha256::digest(&text) {
+        // return Ok(false);
+        // }
 
-        let Err(err) = self
-            .autocommit
-            .splice_text(obj_id, 0, block.len() as isize, &text)
-        else {
-            return Ok(true);
-        };
+        self.autocommit.put(block_list_id, index, text.as_str())?;
 
-        bail!("Failed to update block: {}", err);
+        Ok(())
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -167,11 +133,6 @@ impl BAutoCommit {
             .load_incremental(&bytes)
             .map_err(|e| anyhow!("Failed to load incremental: {}", e))
     }
-
-    // pub fn patch(&mut self) {
-    // let patchlog = PatchLog::active(automerge::patches::TextRepresentation::String(automerge::TextEncoding::Utf8CodeUnit));
-    // self.autocommit.make_patches(&mut patchlog);
-    // }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn empty_change(&mut self) {
@@ -193,13 +154,16 @@ impl BAutoCommit {
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn get_blocks(&self) -> anyhow::Result<Vec<String>> {
-        let mut block_array = vec![];
+        let mut blocks = vec![];
+        for (value, _) in self.autocommit.values(&self.blocks_list_id()) {
+            let string = value.to_string();
 
-        for index in 0..self.blocks_length() {
-            block_array.push(self.get_block(index)?);
+            let formatted_string = string.chars().skip(1).take(string.chars().count() - 2).collect::<String>();
+
+            blocks.push(formatted_string);
         }
 
-        Ok(block_array)
+        Ok(blocks)
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -240,8 +204,8 @@ impl BAutoCommit {
 
     /// This function setups list of message blocks.
     /// If it is exist it will be skipped
-    #[flutter_rust_bridge::frb(sync)]
-    pub fn setup_block_label(&mut self) -> anyhow::Result<()> {
+    // #[flutter_rust_bridge::frb(sync)]
+    fn setup_block_label(&mut self) -> anyhow::Result<()> {
         if self.block_list_exist()? {
             return Ok(());
         }
@@ -265,7 +229,7 @@ impl BAutoCommit {
             .1
     }
 
-    pub fn block_list_exist(&self) -> anyhow::Result<bool> {
+    fn block_list_exist(&self) -> anyhow::Result<bool> {
         let label = self
             .autocommit
             .get(automerge::ROOT, BLOCKS_LABEL)
