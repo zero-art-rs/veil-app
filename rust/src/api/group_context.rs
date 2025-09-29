@@ -22,6 +22,15 @@ use uuid::Uuid;
 
 use crate::api::secrets_factory;
 
+use tracing_subscriber;
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn init_tracing() {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE) // щоб бачили trace/debug/info
+        .try_init();
+}
+
 pub struct BUser {
     user: models::group_info::User,
 }
