@@ -52,36 +52,44 @@ class EditorPageVm extends ChangeNotifier {
     _subscription = _changeManager.stream(syncModel.document.id).listen((
       spFrame,
     ) async {
-      final crdtPayloads = processFrame(spFrame);
+      final (crdtPayloads, fromCurrentUser) = processFrame(spFrame);
+
+      if (fromCurrentUser) {
+        logger.i('Received frame sent by current user, omitting...');
+        return;
+      }
 
       if (selectedMode == EditorModes.edit) {
         logger.i('Received document update, buffering it');
         _crdtPayloadList.addAll(crdtPayloads);
-      } else {
+      } 
+      
+      if (selectedMode != EditorModes.edit && crdtPayloads.isNotEmpty) { 
         isSinking = true;
         notifyListeners();
-        syncDocument(crdtPayloads);
 
+        syncDocument(crdtPayloads);
         mdEditor.text = EditorAutomergeUtils.instance.toDoc(
           syncModel.document.automergeDoc,
-        );
-
-        await DB.instance.updateDocument(
-          doc: syncModel.document,
-          parts: syncModel.groupContext.asParts(),
         );
 
         logger.i(
           'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
         );
+        
         isSinking = false;
         notifyListeners();
       }
+
+      await DB.instance.updateDocument(
+        doc: syncModel.document,
+        parts: syncModel.groupContext.asParts(),
+      );
     });
 
     final frames = _changeManager.getFrames(syncModel.document.id);
     for (final frame in frames.values) {
-      final exposedCrdtPayload = processFrame(frame);
+      final (exposedCrdtPayload, _) = processFrame(frame);
       syncDocument(exposedCrdtPayload);
     }
 
@@ -116,12 +124,18 @@ class EditorPageVm extends ChangeNotifier {
     }
   }
 
-  List<ExposedCRDTPayload> processFrame(SPFrame spframe) {
+  (List<ExposedCRDTPayload> payloads, bool fromCurrentUser) processFrame(
+    SPFrame spframe,
+  ) {
     List<ExposedCRDTPayload> exposedCrdtPayload = [];
 
     final rawPayloads = syncModel.groupContext.processFrame(
       frame: spframe.frame.writeToBuffer(),
     );
+
+    if (rawPayloads.isEmpty) {
+      return ([], true);
+    }
 
     for (final rawPayload in rawPayloads) {
       final payload = Payload.fromBuffer(rawPayload);
@@ -133,7 +147,7 @@ class EditorPageVm extends ChangeNotifier {
     }
 
     syncModel.document.sequenceNumber = spframe.seqNum.toInt();
-    return exposedCrdtPayload;
+    return (exposedCrdtPayload, false);
   }
 
   void editMD() {
