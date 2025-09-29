@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use art::types::PublicART;
-use awesome_client_sdk::{
+use zrt_art::types::PublicART;
+use zrt_client_sdk::{
     group_context::{GroupContext, GroupState, InviteContext, PendingGroupContext},
     models::{
         self,
@@ -11,7 +11,6 @@ use awesome_client_sdk::{
         invite::{Invite, Invitee},
         payload::Payload,
     },
-    secrets_factory,
     utils::{deserialize, serialize},
     zero_art_proto,
 };
@@ -20,6 +19,8 @@ use prost::Message;
 use sha3::{Digest, Sha3_256};
 use std::str::FromStr;
 use uuid::Uuid;
+
+use crate::api::secrets_factory;
 
 pub struct BUser {
     user: models::group_info::User,
@@ -610,4 +611,9 @@ pub fn create_group(
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
     Ok((BGroupContext { group_context }, frame))
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn hash_publcih_key(pk: Vec<u8>) -> String {
+    hex::encode(&Sha3_256::digest(pk)[..16])
 }
