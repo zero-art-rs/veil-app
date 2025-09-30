@@ -1,6 +1,7 @@
+use aes_gcm::{aead::{Aead, Nonce}, Aes256Gcm, Key, KeyInit};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::UniformRand;
-use ark_std::rand::{SeedableRng, rngs::StdRng, thread_rng};
+use ark_std::rand::{rngs::StdRng, thread_rng, RngCore, SeedableRng};
 use cortado::{self, CortadoAffine, Fr as ScalarField};
 
 pub(crate) struct SecretsFactory {
@@ -34,6 +35,37 @@ impl SecretsFactory {
         println!("SecretsFactory: Generated secret key: {:?}", secret_key);
 
         (public_key, secret_key)
+    }
+
+    pub(crate) fn encrypt(&mut self, plaintext: &[u8]) -> Result<(Vec<u8>, Vec<u8>), aes_gcm::Error> {
+        let mut okm = [0u8; 32 + 12];
+        self.rng.fill_bytes(&mut okm);
+
+        let (key, nonce) = (&okm[..32], &okm[32..]);
+        let key = Key::<Aes256Gcm>::from_slice(key);
+        let nonce = Nonce::<Aes256Gcm>::from_slice(&nonce);
+        let cipher = Aes256Gcm::new(key);
+
+        let ciphertext = cipher
+            .encrypt(
+                nonce,
+                plaintext
+            )?;
+        Ok((ciphertext, okm.to_vec()))
+    }
+
+    pub(crate) fn decrypt(&self, ciphertext: &[u8], okm: &[u8]) -> Result<Vec<u8>, aes_gcm::Error> {
+        let (key, nonce) = (&okm[..32], &okm[32..]);
+        let key = Key::<Aes256Gcm>::from_slice(key);
+        let nonce = Nonce::<Aes256Gcm>::from_slice(&nonce);
+        let cipher = Aes256Gcm::new(key);        
+
+        let plaintext = cipher
+            .decrypt(
+                nonce,
+                ciphertext
+            )?;
+        Ok(plaintext)
     }
 }
 
