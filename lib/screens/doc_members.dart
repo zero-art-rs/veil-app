@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:veil/api/client.dart';
+import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/deeplink_manager.dart';
 import 'package:veil/protos/zero_art.pb.dart';
@@ -165,18 +165,15 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
   Future<void> _inviteContactMember(m.ExternalAccount member) async {
     try {
-      // LOGIC
+      final payload = Payload(
+        crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+      ).writeToBuffer();
 
-      // setState(() {
-      //   widget.doc.members.add(
-      //     m.DocumentMember(account: member, isOwner: false),
-      //   );
-      //   widget.members.add(
-      //     MemberScreenModel(
-      //       member: m.DocumentMember(account: member, isOwner: false),
-      //     ),
-      //   );
-      // });
+      final (frame, invite) = widget.groupContext.addIdentifiedMember(
+        identityPublicKey: identityPublicKey,
+        spkPublicKey: [],
+        payloads: [payload],
+      );
 
       if (!mounted) return;
       Navigator.pop(context);

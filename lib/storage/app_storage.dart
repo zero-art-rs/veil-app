@@ -27,6 +27,10 @@ class AppStorage {
     return _storage.write(key: key, value: value);
   }
 
+  Future<void> remove({required String key}) {
+    return _storage.delete(key: key);
+  }
+
   Future<void> setArray(String key, List<Map<String, dynamic>> values) async {
     final jsonString = jsonEncode(values);
     await _storage.write(key: key, value: jsonString);

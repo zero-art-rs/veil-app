@@ -14,8 +14,6 @@ final createContactsSpksTable =
 CREATE TABLE $contactsSpksTable (
   contact_id TEXT NOT NULL,
   public_key BLOB NOT NULL,
-  signature BLOB NOT NULL,
-  expires_at TEXT NOT NULL,
   PRIMARY KEY(contact_id, public_key),
   FOREIGN KEY (contact_id) REFERENCES $contactsTable(actor_id) ON DELETE CASCADE
 )""";

@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -360837519;
+  int get rustContentHash => -1581761114;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -374,6 +374,17 @@ abstract class RustLibApi extends BaseApi {
 
   Uint8List crateApiGroupContextPublicKeyFromSecretKey({
     required List<int> secretKey,
+  });
+
+  Uint8List crateApiGroupContextSchnorrSign({
+    required List<int> sk,
+    required List<int> message,
+  });
+
+  bool crateApiGroupContextSchnorrVerify({
+    required List<int> pk,
+    required List<int> message,
+    required List<int> signature,
   });
 
   RustArcIncrementStrongCountFnType
@@ -2737,6 +2748,68 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "public_key_from_secret_key",
         argNames: ["secretKey"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextSchnorrSign({
+    required List<int> sk,
+    required List<int> message,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(sk, serializer);
+          sse_encode_list_prim_u_8_loose(message, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 73)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextSchnorrSignConstMeta,
+        argValues: [sk, message],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextSchnorrSignConstMeta =>
+      const TaskConstMeta(
+        debugName: "schnorr_sign",
+        argNames: ["sk", "message"],
+      );
+
+  @override
+  bool crateApiGroupContextSchnorrVerify({
+    required List<int> pk,
+    required List<int> message,
+    required List<int> signature,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(pk, serializer);
+          sse_encode_list_prim_u_8_loose(message, serializer);
+          sse_encode_list_prim_u_8_loose(signature, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 74)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextSchnorrVerifyConstMeta,
+        argValues: [pk, message, signature],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextSchnorrVerifyConstMeta =>
+      const TaskConstMeta(
+        debugName: "schnorr_verify",
+        argNames: ["pk", "message", "signature"],
       );
 
   RustArcIncrementStrongCountFnType

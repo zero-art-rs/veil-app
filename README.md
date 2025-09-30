@@ -17,3 +17,15 @@ protoc \
   lib/protos/*.proto \
   google/protobuf/timestamp.proto
 ```
+
+share contact
+# gen spk 
+# sign(sk, spk);
+# encrypt();
+# gen uuid
+# send be
+
+# uuid, enc_key (shared_key)
+# decrypt
+# verify (indentity_pk, spk, signature)
+# if ok -> add to db

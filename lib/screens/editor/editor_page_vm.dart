@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:veil/api/client.dart';
+import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/change_manager.dart';
@@ -23,7 +23,7 @@ enum EditorModes { edit, view }
 
 class EditorPageVm extends ChangeNotifier {
   final mdEditor = TextEditingController();
-  final _accStorage = AccountStorage();
+  final _accStorage = AppSecureStorage();
   final _changeManager = ChangeManager.instance;
 
   final SyncProviderModel syncModel;

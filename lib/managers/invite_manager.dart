@@ -1,18 +1,31 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:veil/api/client.dart';
+import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
+import 'package:veil/managers/sharing/spk_provider.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
 
 class InviteManager {
-  final accountStorage = AccountStorage.instance;
+  final accountStorage = AppSecureStorage.instance;
 
   static final InviteManager instance = InviteManager();
+
+  // Future<void> sendIdentifiedInvite(Document doc, List<int> secretKey) async {
+  //   final spkList = SpkProvider.instance.prepareSpkList(secretKey: secretKey);
+
+  //   for (final spk in spkList) {
+  //     await KeychainStorage.instance.setSpk(spk.publicKey, spk.privateKey);
+  //   }
+
+  // }
+
+  // Future<void> sendUnidentifiedInvite(Document doc) async {}
 
   Future<(BPendingGroupContext, Document)> join(String base64Invite) async {
     final account = await accountStorage.getAccount();

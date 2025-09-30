@@ -12,6 +12,22 @@ void initTracing() => RustLib.instance.api.crateApiGroupContextInitTracing();
 String hashPublicKey({required List<int> pk}) =>
     RustLib.instance.api.crateApiGroupContextHashPublicKey(pk: pk);
 
+Uint8List schnorrSign({required List<int> sk, required List<int> message}) =>
+    RustLib.instance.api.crateApiGroupContextSchnorrSign(
+      sk: sk,
+      message: message,
+    );
+
+bool schnorrVerify({
+  required List<int> pk,
+  required List<int> message,
+  required List<int> signature,
+}) => RustLib.instance.api.crateApiGroupContextSchnorrVerify(
+  pk: pk,
+  message: message,
+  signature: signature,
+);
+
 Uint8List publicKeyFromSecretKey({required List<int> secretKey}) => RustLib
     .instance
     .api

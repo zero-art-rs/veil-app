@@ -23,7 +23,7 @@ pub(crate) mod test {
         self,
         automerge::{generate_actor_id, BAutoCommit},
     };
-    
+
     #[test]
     fn insert_overrides() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
@@ -324,8 +324,14 @@ pub(crate) mod test {
         println!("automerge_1 content {:?}", automerge_1.get_blocks());
         println!("automerge_2 content {:?}", automerge_2.get_blocks());
 
-        println!("automerge_1 change list: {:?}", automerge_1.get_change_list());
-        println!("automerge_2 change list: {:?}", automerge_2.get_change_list());
+        println!(
+            "automerge_1 change list: {:?}",
+            automerge_1.get_change_list()
+        );
+        println!(
+            "automerge_2 change list: {:?}",
+            automerge_2.get_change_list()
+        );
 
         Ok(())
     }

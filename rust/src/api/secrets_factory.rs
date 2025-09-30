@@ -1,4 +1,7 @@
-use aes_gcm::{aead::{Aead, Nonce}, Aes256Gcm, Key, KeyInit};
+use aes_gcm::{
+    aead::{Aead, Nonce},
+    Aes256Gcm, Key, KeyInit,
+};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::UniformRand;
 use ark_std::rand::{rngs::StdRng, thread_rng, RngCore, SeedableRng};
@@ -37,7 +40,10 @@ impl SecretsFactory {
         (public_key, secret_key)
     }
 
-    pub(crate) fn encrypt(&mut self, plaintext: &[u8]) -> Result<(Vec<u8>, Vec<u8>), aes_gcm::Error> {
+    pub(crate) fn encrypt(
+        &mut self,
+        plaintext: &[u8],
+    ) -> Result<(Vec<u8>, Vec<u8>), aes_gcm::Error> {
         let mut okm = [0u8; 32 + 12];
         self.rng.fill_bytes(&mut okm);
 
@@ -46,11 +52,7 @@ impl SecretsFactory {
         let nonce = Nonce::<Aes256Gcm>::from_slice(&nonce);
         let cipher = Aes256Gcm::new(key);
 
-        let ciphertext = cipher
-            .encrypt(
-                nonce,
-                plaintext
-            )?;
+        let ciphertext = cipher.encrypt(nonce, plaintext)?;
         Ok((ciphertext, okm.to_vec()))
     }
 
@@ -58,13 +60,9 @@ impl SecretsFactory {
         let (key, nonce) = (&okm[..32], &okm[32..]);
         let key = Key::<Aes256Gcm>::from_slice(key);
         let nonce = Nonce::<Aes256Gcm>::from_slice(&nonce);
-        let cipher = Aes256Gcm::new(key);        
+        let cipher = Aes256Gcm::new(key);
 
-        let plaintext = cipher
-            .decrypt(
-                nonce,
-                ciphertext
-            )?;
+        let plaintext = cipher.decrypt(nonce, ciphertext)?;
         Ok(plaintext)
     }
 }
@@ -83,17 +81,21 @@ mod tests {
 
         for i in 0..10000 {
             let (public_key, secret_key) = secrets_factory.generate_secret_with_public_key();
-            
-            let mut public_key_bytes = Vec::new();
-            public_key.serialize_compressed(&mut public_key_bytes).unwrap();
 
-            let public_key_2 = CortadoAffine::deserialize_compressed(&public_key_bytes[..]).unwrap();
+            let mut public_key_bytes = Vec::new();
+            public_key
+                .serialize_compressed(&mut public_key_bytes)
+                .unwrap();
+
+            let public_key_2 =
+                CortadoAffine::deserialize_compressed(&public_key_bytes[..]).unwrap();
 
             assert_eq!(public_key, public_key_2);
 
-            
             let mut secret_key_bytes = Vec::new();
-            secret_key.serialize_compressed(&mut secret_key_bytes).unwrap();
+            secret_key
+                .serialize_compressed(&mut secret_key_bytes)
+                .unwrap();
 
             let secret_key_2 = ScalarField::deserialize_compressed(&secret_key_bytes[..]).unwrap();
 

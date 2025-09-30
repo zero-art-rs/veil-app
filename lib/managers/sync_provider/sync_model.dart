@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:veil/api/client.dart';
+import 'package:veil/api/group_api_client.dart';
 import 'package:veil/managers/change_manager.dart';
 import 'package:veil/managers/sync_provider/pending_sync_model.dart';
 import 'package:veil/protos/zero_art.pb.dart';

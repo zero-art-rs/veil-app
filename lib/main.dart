@@ -32,7 +32,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await AccountStorage.instance.setAccountIfNeeded();
+    await AppSecureStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
     // DB.instance.removeAll();
     logger.d('Db path: ${await getDatabasesPath()}');
@@ -125,7 +125,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _acceptInvite(BuildContext context, String inviteData) async {
-    final account = await AccountStorage.instance.getAccount();
+    final account = await AppSecureStorage.instance.getAccount();
 
     if (account == null) {
       throw Exception('No account, unreachable flow');

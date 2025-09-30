@@ -10,34 +10,36 @@ class DocumentDeepLink {
   DocumentDeepLink({required this.inviteData});
 }
 
+class ContactDeepLink {
+  String encryptionKey;
+  String blobId;
+
+  ContactDeepLink({required this.encryptionKey, required this.blobId});
+}
+
 class DeeplinkManager {
   final baseUrl = 'https://veil.distributedlab.com';
-  final _actorIDKey = 'aid';
-  final _nameKey = 'name';
-  final _publicKeyKey = 'pk';
+  final blobIdKey = 'aid';
+  final _encryptionKey = 'pk';
   final _unidentifiedInviteKey = 'unidentified-invite';
 
   static final instance = DeeplinkManager();
 
-  ExternalAccount? retrieveContactDeepLink(Uri? deepLink) {
+  ContactDeepLink? retrieveContactDeepLink(Uri? deepLink) {
     if (deepLink == null) return null;
 
     final deepLinkString = deepLink.toString();
 
     final isContactDeepLink =
-        deepLinkString.contains(_actorIDKey) &&
-        deepLinkString.contains(_publicKeyKey) &&
-        deepLinkString.contains(_nameKey);
+        deepLinkString.contains(blobIdKey) &&
+        deepLinkString.contains(_encryptionKey);
 
     if (!isContactDeepLink) return null;
 
-    final contact = ExternalAccount(
-      name: deepLink.pathSegments[5],
-      rawPublicKey: HEX.decode(deepLink.pathSegments[3]),
-      actorId: deepLink.pathSegments[1],
+    return ContactDeepLink(
+      encryptionKey: deepLinkString[3],
+      blobId: deepLinkString[1],
     );
-
-    return contact;
   }
 
   DocumentDeepLink? retrieveDocumentDeepLink(Uri? deepLink) {
@@ -53,15 +55,15 @@ class DeeplinkManager {
     return DocumentDeepLink(inviteData: base64InviteData);
   }
 
-  (DocumentDeepLink?, ExternalAccount?) retrieveDeepLink(Uri? deepLink) {
+  (DocumentDeepLink?, ContactDeepLink?) retrieveDeepLink(Uri? deepLink) {
     return (
       retrieveDocumentDeepLink(deepLink),
       retrieveContactDeepLink(deepLink),
     );
   }
 
-  String buildContactDeepLink(ExternalAccount contact) {
-    return '$baseUrl/aid/${contact.actorId}/pk/${contact.rawPublicKey}/name/${contact.name}';
+  String buildContactDeepLink(String blobId, String encryptionKey) {
+    return '$baseUrl/blob/$blobId/ekey/$encryptionKey';
   }
 
   String buildUnidentifiedGroupInvite(Uint8List invite) {

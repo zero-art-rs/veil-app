@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/v4.dart';
-import 'package:veil/api/client.dart';
+import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
@@ -17,7 +17,7 @@ import 'package:veil/widgets/banner.dart';
 import '../../main.dart';
 
 class PrimaryPageViewModel extends ChangeNotifier {
-  final _accStorage = AccountStorage();
+  final _accStorage = AppSecureStorage();
   final _syncProvider = SyncProvider.instance;
 
   int _selectedIndex = 0;

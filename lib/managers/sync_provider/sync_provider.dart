@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:rxdart/subjects.dart';
 import 'package:veil/api/centrifuge.dart';
-import 'package:veil/api/client.dart';
+import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/change_manager.dart';
 import 'package:veil/managers/sync_provider/pending_sync_model.dart';
@@ -19,7 +19,7 @@ class SyncProvider {
   final _centrifugo = CentrifugeProvider.instance;
   final _db = DB.instance;
   final _api = GroupApiClient.instance;
-  final _accountStorage = AccountStorage.instance;
+  final _accountStorage = AppSecureStorage.instance;
   final _changeManager = ChangeManager.instance;
 
   Account? _acc;
