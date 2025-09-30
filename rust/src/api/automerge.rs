@@ -158,7 +158,11 @@ impl BAutoCommit {
         for (value, _) in self.autocommit.values(&self.blocks_list_id()) {
             let string = value.to_string();
 
-            let formatted_string = string.chars().skip(1).take(string.chars().count() - 2).collect::<String>();
+            let formatted_string = string
+                .chars()
+                .skip(1)
+                .take(string.chars().count() - 2)
+                .collect::<String>();
 
             blocks.push(formatted_string);
         }

@@ -1,6 +1,11 @@
 use anyhow::{anyhow, Result};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use cortado::{self, CortadoAffine, Fr as ScalarField};
+use prost::Message;
+use sha3::{Digest, Sha3_256};
+use std::str::FromStr;
+use uuid::Uuid;
 use zrt_art::types::PublicART;
 use zrt_client_sdk::{
     group_context::{GroupContext, GroupState, InviteContext, PendingGroupContext},
@@ -14,11 +19,7 @@ use zrt_client_sdk::{
     utils::{deserialize, serialize},
     zero_art_proto,
 };
-use cortado::{self, CortadoAffine, Fr as ScalarField};
-use prost::Message;
-use sha3::{Digest, Sha3_256};
-use std::str::FromStr;
-use uuid::Uuid;
+use zrt_crypto::schnorr;
 
 use crate::api::secrets_factory;
 
@@ -587,12 +588,18 @@ impl BSecretsFactory {
     }
     #[flutter_rust_bridge::frb(sync)]
     pub fn encrypt(&mut self, plaintext: Vec<u8>) -> Result<(Vec<u8>, Vec<u8>)> {
-        Ok(self.secrets_factory.encrypt(&plaintext).map_err(|e| anyhow!("failed to encrypt: {}", e.to_string()))?)
+        Ok(self
+            .secrets_factory
+            .encrypt(&plaintext)
+            .map_err(|e| anyhow!("failed to encrypt: {}", e.to_string()))?)
     }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn decrypt(&mut self, ciphertext: Vec<u8>, okm: Vec<u8>) -> Result<Vec<u8>> {
-        Ok(self.secrets_factory.decrypt(&ciphertext, &okm).map_err(|e| anyhow!("failed to decrypt: {}", e.to_string()))?)
+        Ok(self
+            .secrets_factory
+            .decrypt(&ciphertext, &okm)
+            .map_err(|e| anyhow!("failed to decrypt: {}", e.to_string()))?)
     }
 }
 
@@ -634,4 +641,29 @@ pub fn create_group(
 #[flutter_rust_bridge::frb(sync)]
 pub fn hash_publcih_key(pk: Vec<u8>) -> String {
     hex::encode(&Sha3_256::digest(pk)[..16])
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn schnorr_sign(sk: Vec<u8>, message: Vec<u8>) -> Result<Vec<u8>> {
+    let secret_key: ScalarField =
+        deserialize(&sk).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    let public_key = (CortadoAffine::generator() * secret_key).into_affine();
+    schnorr::sign(
+        &vec![secret_key],
+        &vec![public_key],
+        &Sha3_256::digest(&message),
+    )
+    .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))
+}
+
+#[flutter_rust_bridge::frb(sync)]
+pub fn schnorr_verify(pk: Vec<u8>, message: Vec<u8>, signature: Vec<u8>) -> Result<bool> {
+    let public_key: CortadoAffine =
+        deserialize(&pk).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    let result = schnorr::verify(&signature, &vec![public_key], &Sha3_256::digest(&message));
+
+    match result {
+        Err(_) => Ok(false),
+        Ok(_) => Ok(true),
+    }
 }
