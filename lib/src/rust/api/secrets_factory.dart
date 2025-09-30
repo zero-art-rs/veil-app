@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `generate_secret_with_public_key`, `generate_secret`, `new`
+// These functions are ignored because they are not marked as `pub`: `decrypt`, `encrypt`, `generate_secret_with_public_key`, `generate_secret`, `new`
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SecretsFactory>>
 abstract class SecretsFactory implements RustOpaqueInterface {

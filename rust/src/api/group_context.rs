@@ -586,11 +586,13 @@ impl BSecretsFactory {
         Ok((public_key_bytes, secret_key_bytes))
     }
     #[flutter_rust_bridge::frb(sync)]
+    /// Returns cipher text and encryption key
     pub fn encrypt(&mut self, plaintext: Vec<u8>) -> Result<(Vec<u8>, Vec<u8>)> {
         Ok(self.secrets_factory.encrypt(&plaintext).map_err(|e| anyhow!("failed to encrypt: {}", e.to_string()))?)
     }
 
     #[flutter_rust_bridge::frb(sync)]
+    /// Applies cipher text and encryption key, return plain text
     pub fn decrypt(&mut self, ciphertext: Vec<u8>, okm: Vec<u8>) -> Result<Vec<u8>> {
         Ok(self.secrets_factory.decrypt(&ciphertext, &okm).map_err(|e| anyhow!("failed to decrypt: {}", e.to_string()))?)
     }

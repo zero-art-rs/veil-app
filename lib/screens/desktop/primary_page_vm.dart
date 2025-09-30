@@ -96,6 +96,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
         owner: owner,
       );
 
+      logger.i(frame);
+
       final document = Document(
         id: docID,
         createdAt: DateTime.now(),

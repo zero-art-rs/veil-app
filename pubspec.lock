@@ -783,13 +783,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.0"
-  rust_lib_zk_notion_app:
-    dependency: "direct main"
-    description:
-      path: rust_builder
-      relative: true
-    source: path
-    version: "0.0.1"
   rxdart:
     dependency: "direct main"
     description:
@@ -1067,6 +1060,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  veil_rust:
+    dependency: "direct main"
+    description:
+      path: rust_builder
+      relative: true
+    source: path
+    version: "0.0.1"
   video_player:
     dependency: transitive
     description:

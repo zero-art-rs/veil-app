@@ -1,5 +1,5 @@
 [package]
-name = "rust_lib_zk_notion_app"
+name = "veil_rust"
 version = "0.1.0"
 edition = "2021"
 

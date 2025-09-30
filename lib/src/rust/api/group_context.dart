@@ -163,6 +163,12 @@ abstract class BPendingGroupContext implements RustOpaqueInterface {
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BSecretsFactory>>
 abstract class BSecretsFactory implements RustOpaqueInterface {
+  /// Applies cipher text and encryption key, return plain text
+  Uint8List decrypt({required List<int> ciphertext, required List<int> okm});
+
+  /// Returns cipher text and encryption key
+  (Uint8List, Uint8List) encrypt({required List<int> plaintext});
+
   Uint8List generateSecret();
 
   (Uint8List, Uint8List) generateSecretWithPublicKey();

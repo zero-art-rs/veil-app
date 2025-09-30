@@ -10,7 +10,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
-  rust_lib_zk_notion_app
+  veil_rust
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

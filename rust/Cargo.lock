@@ -2101,37 +2101,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caf4aa5b0f434c91fe5c7f1ecb6a5ece2130b02ad2a590589dda5146df959001"
 
 [[package]]
-name = "rust_lib_zk_notion_app"
-version = "0.1.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
- "ark-ff 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ark-serialize 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
- "ark-std",
- "automerge",
- "base64",
- "bulletproofs 5.0.0",
- "chrono",
- "cortado",
- "flutter_rust_bridge",
- "graphviz-rust",
- "hex",
- "prost",
- "prost-types",
- "sha2",
- "sha3",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "zrt-art",
- "zrt-client-sdk",
- "zrt-crypto",
- "zrt-zk",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2583,6 +2552,37 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
+
+[[package]]
+name = "veil_rust"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
+ "ark-ff 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ark-serialize 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
+ "ark-std",
+ "automerge",
+ "base64",
+ "bulletproofs 5.0.0",
+ "chrono",
+ "cortado",
+ "flutter_rust_bridge",
+ "graphviz-rust",
+ "hex",
+ "prost",
+ "prost-types",
+ "sha2",
+ "sha3",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "zrt-art",
+ "zrt-client-sdk",
+ "zrt-crypto",
+ "zrt-zk",
+]
 
 [[package]]
 name = "version_check"
