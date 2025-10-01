@@ -23,7 +23,6 @@ import 'package:veil/assets/theme.dart';
 import 'package:logger/logger.dart';
 import 'package:app_links/app_links.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/future_dialog.dart';
@@ -37,10 +36,10 @@ Future<void> main() async {
   try {
     await AppSecureStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
+    await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
     // DB.instance.removeAll();
     logger.d('Db path: ${await getDatabasesPath()}');
-    await SyncProvider.instance.init();
   } catch (e) {
     logger.e('Launch app error: $e');
   }

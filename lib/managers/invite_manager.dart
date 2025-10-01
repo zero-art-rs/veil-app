@@ -37,7 +37,7 @@ class InviteManager {
       spkSecretKey = await DB.instance.getOwnSpkSecret(spkPublicKey) ?? [];
     }
   
-    logger.i('SPK public key: ${base64Encode(spkPublicKey!)}');
+    logger.i('SPK public key: ${base64Encode(spkPublicKey ?? [])}');
     logger.i('SPK secret key: ${base64Encode(spkSecretKey)}');
 
     final inviteContext = BInviteContext(

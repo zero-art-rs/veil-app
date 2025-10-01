@@ -28,6 +28,7 @@ class SyncPendingProviderModel {
   void listenCentrifugo(Stream<SSEModel> stream) {
     listener = stream.listen(
       (event) {
+        logger.i('Centrifugo event: ${event.data}');
         if (event.data == null || event.data!.isEmpty) return;
         final rawJson = json.decode(event.data!);
         if (rawJson['pub'] == null) return;

@@ -186,7 +186,20 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         payloads: [payload],
       );
 
+      await GroupApiClient.instance.sendFrame(
+        groupId: widget.doc.id,
+        frame: frame,
+      );
+
+      widget.groupContext.commitState();
+
+      logger.i('Finished sending unidentified member invite frame...');
       final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+      await DB.instance.updateDocument(
+        doc: widget.doc,
+        parts: widget.groupContext.asParts(),
+      );
 
       if (spkPublicKey != null) {
         await ContactsManager.instance.removeSpk(
