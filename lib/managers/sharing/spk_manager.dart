@@ -5,7 +5,6 @@ import 'package:veil/api/spk_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/sharing/spk_provider.dart';
 import 'package:veil/src/rust/api/group_context.dart';
-import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/secret_factory.dart';

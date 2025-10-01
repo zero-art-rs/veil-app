@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
+import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sharing/spk_provider.dart';
@@ -159,8 +161,10 @@ class DB {
     final rawOwnSpk = await _query(
       spksTable,
       where: 'public_key = ? AND contact_id = ?',
-      whereArgs: [publicKey, 'owner'],
+      whereArgs: [base64Encode(publicKey), 'owner'],
     );
+
+    // logger.i('rawOwnSpk: ${base64Encode(rawOwnSpk)}');
 
     if (rawOwnSpk.firstOrNull == null) {
       return null;
@@ -174,7 +178,7 @@ class DB {
     await _delete(
       spksTable,
       where: 'public_key = ?',
-      whereArgs: [Uint8List.fromList(publicKey)],
+      whereArgs: [base64Encode(publicKey)],
     );
   }
 
@@ -196,7 +200,11 @@ class DB {
     );
 
     await transaction((db) async {
-      await db._insert(accountsTable, sqlAccount.toJson());
+      await db._insert(
+        accountsTable,
+        sqlAccount.toJson(),
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
 
       for (final spk in sqlspks) {
         await db._insert(spksTable, spk.toMap());
@@ -206,6 +214,38 @@ class DB {
     return Contact(
       account: spk.account,
       spks: spk.spks.map((e) => e.publicKey).toList(),
+    );
+  }
+
+  Future<Contact> getContact(String actorId) async {
+    final rawAccount = await _query(
+      accountsTable,
+      where: 'actor_id != ? AND actor_id = ?',
+      whereArgs: ['owner', actorId],
+    );
+
+    if (rawAccount.firstOrNull == null) {
+      throw Exception('Contact not found');
+    }
+
+    final sqlAccount = SQLAccount.fromJson(rawAccount.first);
+    final externalAccount = ExternalAccount(
+      actorId: sqlAccount.actorId,
+      rawPublicKey: sqlAccount.publicKey,
+      name: sqlAccount.name,
+    );
+
+    final rawSpks = await _query(
+      spksTable,
+      where: 'contact_id = ?',
+      whereArgs: [externalAccount.actorId],
+    );
+
+    final sqlSpks = rawSpks.map((e) => SQLSpk.fromJson(e)).toList();
+
+    return Contact(
+      account: externalAccount,
+      spks: sqlSpks.map((e) => e.publicKey).toList(),
     );
   }
 

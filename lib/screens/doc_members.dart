@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';

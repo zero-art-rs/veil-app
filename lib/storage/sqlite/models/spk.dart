@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 class SQLSpk {
@@ -5,25 +6,23 @@ class SQLSpk {
   final Uint8List? privateKey;
   final Uint8List publicKey;
 
-  SQLSpk({
-    required this.contactId,
-    this.privateKey,
-    required this.publicKey,
-  });
+  SQLSpk({required this.contactId, this.privateKey, required this.publicKey});
 
   factory SQLSpk.fromJson(Map<String, Object?> json) {
+    final privateKey = json['private_key'] as String?;
+
     return SQLSpk(
       contactId: json['contact_id'] as String,
-      privateKey: json['private_key'] as Uint8List?,
-      publicKey: json['public_key'] as Uint8List,
+      privateKey: privateKey == null ? null : base64Decode(privateKey),
+      publicKey: base64Decode(json['public_key'] as String),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'contact_id': contactId,
-      'private_key': privateKey,
-      'public_key': publicKey,
+      'private_key': privateKey == null ? null : base64Encode(privateKey!),
+      'public_key': base64Encode(publicKey),
     };
   }
 }

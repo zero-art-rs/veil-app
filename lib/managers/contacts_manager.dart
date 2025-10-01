@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/storage/models.dart';
@@ -28,10 +29,20 @@ class ContactsManager {
   }
 
   Future<void> addContact(SpkShareData spkShare) async {
-    final contact = await DB.instance.insertContact(spkShare);
+    final insertedContact = await DB.instance.insertContact(spkShare);
+    final contact = await DB.instance.getContact(
+      insertedContact.account.actorId,
+    );
 
-    current.add(contact);
-    _subject.add(current);
+    final index = current.indexWhere(
+      (e) => e.account.actorId == contact.account.actorId,
+    );
+
+    if (index == -1) {
+      current.add(contact);
+    } else {
+      current[index] = contact;
+    }
   }
 
   Future<void> removeContact(String id) async {

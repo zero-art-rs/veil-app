@@ -6,7 +6,7 @@ class QrUtils {
   static final instance = QrUtils();
 
   String buildShareContactData(SharedSpkRevealData payload) {
-    return payload.toJson().toString();
+    return jsonEncode(payload.toJson());
   }
 
   SharedSpkRevealData parseShareContactData(String data) {

@@ -29,9 +29,15 @@ Future<void> showFutureDialog<T>({
   Size dialogSize = const Size(320, 160),
   List<Widget> Function(BuildContext context, VoidCallback runWork)?
   initialButtons,
-  List<Widget> Function(BuildContext context, T result)? successButtons,
+  List<Widget> Function(
+    BuildContext context,
+    T result,
+    VoidCallback closeWithOk,
+  )?
+  successButtons,
   List<Widget> Function(BuildContext context, FutureDialogError error)?
   errorButtons,
+  VoidCallback? onSuccessOk,
 }) async {
   await showDialog(
     context: context,
@@ -55,6 +61,7 @@ Future<void> showFutureDialog<T>({
         initialButtons: initialButtons,
         successButtons: successButtons,
         errorButtons: errorButtons,
+        onSuccessOk: onSuccessOk,
       );
     },
   );
@@ -77,9 +84,15 @@ class _FutureDialog<T> extends StatefulWidget {
   final Size dialogSize;
   final List<Widget> Function(BuildContext context, VoidCallback runWork)?
   initialButtons;
-  final List<Widget> Function(BuildContext context, T result)? successButtons;
+  final List<Widget> Function(
+    BuildContext context,
+    T result,
+    VoidCallback closeWithOk,
+  )?
+  successButtons;
   final List<Widget> Function(BuildContext context, FutureDialogError error)?
   errorButtons;
+  final VoidCallback? onSuccessOk;
 
   const _FutureDialog({
     required this.work,
@@ -99,6 +112,7 @@ class _FutureDialog<T> extends StatefulWidget {
     this.initialButtons,
     this.successButtons,
     this.errorButtons,
+    this.onSuccessOk,
   });
 
   @override
@@ -124,7 +138,6 @@ class _FutureDialogState<T> extends State<_FutureDialog<T>> {
       _error = null;
       _result = null;
     });
-
     try {
       final result = await widget.work();
       if (!mounted) return;
@@ -141,6 +154,11 @@ class _FutureDialogState<T> extends State<_FutureDialog<T>> {
             : FutureDialogError(widget.errorTitle, e.toString());
       });
     }
+  }
+
+  void _closeWithOk() {
+    widget.onSuccessOk?.call();
+    Navigator.pop(context);
   }
 
   @override
@@ -202,11 +220,15 @@ class _FutureDialogState<T> extends State<_FutureDialog<T>> {
           Row(
             spacing: 12,
             children:
-                widget.successButtons?.call(context, _result as T) ??
+                widget.successButtons?.call(
+                  context,
+                  _result as T,
+                  _closeWithOk,
+                ) ??
                 [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _closeWithOk,
                       child: Text(widget.okText),
                     ),
                   ),

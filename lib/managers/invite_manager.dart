@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
-import 'package:veil/managers/sharing/spk_provider.dart';
+import 'package:veil/main.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
@@ -37,6 +36,9 @@ class InviteManager {
     if (spkPublicKey != null) {
       spkSecretKey = await DB.instance.getOwnSpkSecret(spkPublicKey) ?? [];
     }
+  
+    logger.i('SPK public key: ${base64Encode(spkPublicKey!)}');
+    logger.i('SPK secret key: ${base64Encode(spkSecretKey)}');
 
     final inviteContext = BInviteContext(
       identitySecretKey: account.keypair.rawPrivateKey,
