@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hex/hex.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/managers/sharing/spk_manager.dart';
 
 class DocumentDeepLink {
   String inviteData;
@@ -10,35 +9,28 @@ class DocumentDeepLink {
   DocumentDeepLink({required this.inviteData});
 }
 
-class ContactDeepLink {
-  String encryptionKey;
-  String blobId;
-
-  ContactDeepLink({required this.encryptionKey, required this.blobId});
-}
-
 class DeeplinkManager {
   final baseUrl = 'https://veil.distributedlab.com';
-  final blobIdKey = 'aid';
-  final _encryptionKey = 'pk';
-  final _unidentifiedInviteKey = 'unidentified-invite';
+  final blobIdKey = 'bid';
+  final _encryptionKeyKey = 'ekey';
+  final _inviteKey = 'invite';
 
   static final instance = DeeplinkManager();
 
-  ContactDeepLink? retrieveContactDeepLink(Uri? deepLink) {
+  SharedSpkRevealData? retrieveContactDeepLink(Uri? deepLink) {
     if (deepLink == null) return null;
 
     final deepLinkString = deepLink.toString();
 
     final isContactDeepLink =
         deepLinkString.contains(blobIdKey) &&
-        deepLinkString.contains(_encryptionKey);
+        deepLinkString.contains(_encryptionKeyKey);
 
     if (!isContactDeepLink) return null;
 
-    return ContactDeepLink(
-      encryptionKey: deepLinkString[3],
-      blobId: deepLinkString[1],
+    return SharedSpkRevealData(
+      encryptionKey: base64Decode(deepLink.pathSegments[3]),
+      blobId: deepLink.pathSegments[1],
     );
   }
 
@@ -47,7 +39,7 @@ class DeeplinkManager {
 
     final deepLinkString = deepLink.toString();
 
-    final isDocumentDeepLink = deepLinkString.contains(_unidentifiedInviteKey);
+    final isDocumentDeepLink = deepLinkString.contains(_inviteKey);
     if (!isDocumentDeepLink) return null;
 
     final base64InviteData = deepLink.pathSegments[1];
@@ -55,19 +47,19 @@ class DeeplinkManager {
     return DocumentDeepLink(inviteData: base64InviteData);
   }
 
-  (DocumentDeepLink?, ContactDeepLink?) retrieveDeepLink(Uri? deepLink) {
+  (DocumentDeepLink?, SharedSpkRevealData?) retrieveDeepLink(Uri? deepLink) {
     return (
       retrieveDocumentDeepLink(deepLink),
       retrieveContactDeepLink(deepLink),
     );
   }
 
-  String buildContactDeepLink(String blobId, String encryptionKey) {
-    return '$baseUrl/blob/$blobId/ekey/$encryptionKey';
+  String buildContactDeepLink(SharedSpkRevealData payload) {
+    return '$baseUrl/$blobIdKey/${payload.blobId}/$_encryptionKeyKey/${base64UrlEncode(payload.encryptionKey)}';
   }
 
-  String buildUnidentifiedGroupInvite(Uint8List invite) {
+  String buildInvite(Uint8List invite) {
     final base64Inivte = base64UrlEncode(invite);
-    return '$baseUrl/unidentified-invite/$base64Inivte';
+    return '$baseUrl/invite/$base64Inivte';
   }
 }

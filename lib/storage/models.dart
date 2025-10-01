@@ -34,7 +34,7 @@ class ExternalAccount {
     return ExternalAccount(
       actorId: json['actorId'],
       name: json['name'],
-      rawPublicKey: json['publicKey'],
+      rawPublicKey: List<int>.from(json['publicKey']),
     );
   }
 }

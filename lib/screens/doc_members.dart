@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
-import 'package:veil/managers/deeplink_manager.dart';
+import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart' as m;
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/utils/secret_factory.dart';
-import 'package:veil/widgets/banner.dart';
 import 'package:veil/utils/platform.dart';
 
 class MemberScreenModel {
@@ -40,6 +42,8 @@ class DocumentMemberListScreen extends StatefulWidget {
 }
 
 class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
+  final _secureStorage = AppSecureStorage.instance;
+
   void _onAddMember(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -75,7 +79,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
             return AlertDialog(
               title: !snapshot.hasData
                   ? Text("Constructing invite link...")
-                  : Text('Copy untrusted link'),
+                  : Text('Copy link'),
               content: SizedBox(
                 width: 480,
                 child: !snapshot.hasData
@@ -148,9 +152,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
       widget.groupContext.commitState();
       logger.i('Finished sending unidentified member invite frame...');
-      final inviteLink = DeeplinkManager.instance.buildUnidentifiedGroupInvite(
-        invite,
-      );
+      final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
       await DB.instance.updateDocument(
         doc: widget.doc,
@@ -163,47 +165,41 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     showInviteDialog(inviteLink);
   }
 
-  Future<void> _inviteContactMember(m.ExternalAccount member) async {
-    try {
+  Future<void> _inviteContactMember(Contact contact) async {
+    final future = Future(() async {
+      final firstSpk = contact.spks.firstOrNull;
+      final spkPublicKey = firstSpk != null
+          ? Uint8List.fromList(firstSpk)
+          : null;
+
+      final account = await _secureStorage.getAccount();
+      if (account == null) {
+        throw Exception('No account, unreachable flow');
+      }
+
       final payload = Payload(
         crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
       ).writeToBuffer();
 
       final (frame, invite) = widget.groupContext.addIdentifiedMember(
-        identityPublicKey: identityPublicKey,
-        spkPublicKey: [],
+        identityPublicKey: account.keypair.rawPublicKey,
+        spkPublicKey: spkPublicKey,
         payloads: [payload],
       );
 
-      if (!mounted) return;
-      Navigator.pop(context);
-    } on DatabaseException catch (e) {
-      if (e.isUniqueConstraintError()) {
-        if (!mounted) return;
+      final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
-        TopBanner.show(
-          context: context,
-          message: 'Member already exists',
-          kind: TopBannerCases.info,
-        );
-      } else {
-        logger.e('Failed to add member: $e');
-        if (!mounted) return;
-        TopBanner.show(
-          context: context,
-          message: 'Failed to add member, try again',
-          kind: TopBannerCases.error,
+      if (spkPublicKey != null) {
+        await ContactsManager.instance.removeSpk(
+          contact.account.actorId,
+          spkPublicKey.toList(),
         );
       }
-    } catch (err) {
-      logger.e('Failed to add member: $err');
-      if (!mounted) return;
-      TopBanner.show(
-        context: context,
-        message: 'Unexpected error, try again',
-        kind: TopBannerCases.error,
-      );
-    }
+
+      return inviteLink;
+    });
+
+    showInviteDialog(future);
   }
 
   @override
@@ -280,16 +276,15 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         spacing: 8,
         children: [
-          // TODO: - Uncomment when contact spks will be supported
-          // FloatingActionButton(
-          //   onPressed: () => _onAddMember(context),
-          //   tooltip: 'Invite member',
-          //   child: const Icon(Icons.person_add_alt_1_outlined),
-          // ),
+          FloatingActionButton(
+            onPressed: () => _onAddMember(context),
+            tooltip: 'Invite member',
+            child: const Icon(Icons.person_add_alt_1_outlined),
+          ),
           FloatingActionButton(
             onPressed: () => _inviteUndentifiedMember(context),
             tooltip: 'Invite undentified member',
-            child: const Icon(Icons.person_add_alt_1_outlined),
+            child: const Icon(Symbols.domino_mask),
           ),
         ],
       ),

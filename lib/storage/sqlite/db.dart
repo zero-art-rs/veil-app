@@ -1,22 +1,26 @@
 import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
+import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sharing/spk_manager.dart';
+import 'package:veil/managers/sharing/spk_provider.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/models/account.dart';
 import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/storage/sqlite/models/document.dart';
+import 'package:veil/storage/sqlite/models/spk.dart';
 import 'package:veil/storage/sqlite/schemes.dart';
 import 'package:veil/utils/group_context_factory.dart';
 
 const _dbName = 'veil.db';
 
 class DB {
-  static final instance = DB._internal();
-  DB._internal();
-
+  static final instance = DB();
   late Database _connection;
   Transaction? _tx;
+
+  DB();
 
   Future<void> open({String? inMemoryPath}) async {
     _connection = await openDatabase(
@@ -28,8 +32,16 @@ class DB {
       },
       onCreate: (db, version) async {
         await db.execute(createContactsTable);
-        await db.execute(createContactsSpksTable);
+        await db.execute(createSpksTable);
         await db.execute(createDocumentsTable);
+
+        final ownerAccount = SQLAccount(
+          actorId: 'owner',
+          publicKey: Uint8List(0),
+          name: 'owner',
+        );
+
+        await db.insert(accountsTable, ownerAccount.toJson());
       },
     );
   }
@@ -121,43 +133,96 @@ class DB {
 
   Future<void> removeAll() {
     return transaction((db) async {
-      await db._delete(contactsTable);
-      await db._delete(contactsSpksTable);
+      await db._delete(accountsTable);
+      await db._delete(accountsTable);
       await db._delete(documentsTable);
     });
   }
 
-  Future<void> insertContact(
-    ExternalAccount account, {
+  Future<void> insertOwnedSpks(List<SpkSendModel> spks) async {
+    final sqlspks = spks.map(
+      (e) => SQLSpk(
+        privateKey: Uint8List.fromList(e.privateKey),
+        publicKey: Uint8List.fromList(e.publicKey),
+        contactId: 'owner',
+      ),
+    );
+
+    await transaction((db) async {
+      for (final spk in sqlspks) {
+        await db._insert(spksTable, spk.toMap());
+      }
+    });
+  }
+
+  Future<List<int>?> getOwnSpkSecret(List<int> publicKey) async {
+    final rawOwnSpk = await _query(
+      spksTable,
+      where: 'public_key = ? AND contact_id = ?',
+      whereArgs: [publicKey, 'owner'],
+    );
+
+    if (rawOwnSpk.firstOrNull == null) {
+      return null;
+    }
+
+    final sqlSpk = SQLSpk.fromJson(rawOwnSpk.first);
+    return sqlSpk.privateKey;
+  }
+
+  Future<void> removeSpk(List<int> publicKey) async {
+    await _delete(
+      spksTable,
+      where: 'public_key = ?',
+      whereArgs: [Uint8List.fromList(publicKey)],
+    );
+  }
+
+  Future<Contact> insertContact(
+    SpkShareData spk, {
     ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.rollback,
   }) async {
     final sqlAccount = SQLAccount(
-      actorId: account.actorId,
-      publicKey: Uint8List.fromList(account.rawPublicKey),
-      name: account.name,
-      kind: AccountKind.contact.name,
+      actorId: spk.account.actorId,
+      publicKey: Uint8List.fromList(spk.account.rawPublicKey),
+      name: spk.account.name,
     );
 
-    await _insert(
-      contactsTable,
-      sqlAccount.toJson(),
-      conflictAlgorithm: conflictAlgorithm,
+    final sqlspks = spk.spks.map(
+      (e) => SQLSpk(
+        publicKey: Uint8List.fromList(e.publicKey),
+        contactId: spk.account.actorId,
+      ),
+    );
+
+    await transaction((db) async {
+      await db._insert(accountsTable, sqlAccount.toJson());
+
+      for (final spk in sqlspks) {
+        await db._insert(spksTable, spk.toMap());
+      }
+    });
+
+    return Contact(
+      account: spk.account,
+      spks: spk.spks.map((e) => e.publicKey).toList(),
     );
   }
 
   Future<void> deleteContact({required String actorId}) async {
-    await _delete(contactsTable, where: 'actor_id = ?', whereArgs: [actorId]);
+    await _delete(accountsTable, where: 'actor_id = ?', whereArgs: [actorId]);
   }
 
-  Future<List<ExternalAccount>> getContactList() async {
+  Future<List<Contact>> getContactList() async {
     final rawAccounts = await _query(
-      contactsTable,
-      whereArgs: [AccountKind.contact.name],
+      accountsTable,
+      where: 'actor_id != ?',
+      whereArgs: ['owner'],
     );
 
     final sqlAccounts = rawAccounts.map((e) => SQLAccount.fromJson(e)).toList();
 
-    return sqlAccounts
+    final externalAccounts = sqlAccounts
         .map(
           (e) => ExternalAccount(
             actorId: e.actorId,
@@ -166,6 +231,26 @@ class DB {
           ),
         )
         .toList();
+
+    final List<Contact> contacts = [];
+    for (final account in externalAccounts) {
+      final rawSpks = await _query(
+        spksTable,
+        where: 'contact_id = ?',
+        whereArgs: [account.actorId],
+      );
+
+      final sqlSpks = rawSpks.map((e) => SQLSpk.fromJson(e)).toList();
+
+      contacts.add(
+        Contact(
+          account: account,
+          spks: sqlSpks.map((e) => e.publicKey).toList(),
+        ),
+      );
+    }
+
+    return contacts;
   }
 
   Future<List<Document>> getDocumentList() async {
@@ -254,15 +339,6 @@ class DB {
       },
       where: 'id = ?',
       whereArgs: [doc.id],
-    );
-  }
-
-  Future<void> updateAccount(ExternalAccount account) async {
-    await _update(
-      contactsTable,
-      {'name': account.name},
-      where: 'actor_id = ?',
-      whereArgs: [account.actorId, AccountKind.user.name],
     );
   }
 

@@ -4,11 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:veil/main.dart';
 import 'package:veil/storage/models.dart';
-import 'package:veil/storage/sqlite/db.dart';
-import 'package:veil/widgets/banner.dart';
 import 'package:veil/widgets/user_widget.dart';
 
 class QRScannerPage extends StatefulWidget {
@@ -77,41 +74,41 @@ class _QRScannerPageState extends State<QRScannerPage> {
   }
 
   _addContact(ExternalAccount account, BuildContext context) async {
-    final navigator = Navigator.of(context);
+    // final navigator = Navigator.of(context);
 
-    try {
-      await DB.instance.insertContact(account);
+    // try {
+    //   await DB.instance.insertContact(account);
 
-      if (context.mounted) {
-        TopBanner.show(
-          context: context,
-          message: 'Contact added',
-          kind: TopBannerCases.success,
-        );
-      }
+    //   if (context.mounted) {
+    //     TopBanner.show(
+    //       context: context,
+    //       message: 'Contact added',
+    //       kind: TopBannerCases.success,
+    //     );
+    //   }
 
-      _processing = false;
-      navigator.pop();
-    } on DatabaseException catch (err) {
-      logger.e('Failed to add contact: $err');
+    //   _processing = false;
+    //   navigator.pop();
+    // } on DatabaseException catch (err) {
+    //   logger.e('Failed to add contact: $err');
 
-      if (context.mounted) {
-        if (err.isUniqueConstraintError()) {
-          _showErrorDialog(context, 'Contact already exists', () {});
-        } else {
-          _showErrorDialog(context, 'Unexpected error, try again', () {});
-        }
-      }
+    //   if (context.mounted) {
+    //     if (err.isUniqueConstraintError()) {
+    //       _showErrorDialog(context, 'Contact already exists', () {});
+    //     } else {
+    //       _showErrorDialog(context, 'Unexpected error, try again', () {});
+    //     }
+    //   }
 
-      _processing = false;
-    } catch (err) {
-      logger.e('Failed to add contact: $err');
+    //   _processing = false;
+    // } catch (err) {
+    //   logger.e('Failed to add contact: $err');
 
-      if (context.mounted) {
-        _showErrorDialog(context, 'Unexpected error, try again', () {});
-      }
-    }
-    _processing = false;
+    //   if (context.mounted) {
+    //     _showErrorDialog(context, 'Unexpected error, try again', () {});
+    //   }
+    // }
+    // _processing = false;
   }
 
   void _onDetect(BarcodeCapture capture) {

@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:veil/assets/util.dart';
-import 'package:veil/managers/deeplink_manager.dart';
+import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/invite_manager.dart';
+import 'package:veil/managers/sharing/deeplink_manager.dart';
+import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/screens/desktop/primary_page.dart';
 import 'package:veil/screens/desktop/primary_page_vm.dart';
@@ -21,7 +25,6 @@ import 'package:app_links/app_links.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
-import 'package:veil/widgets/banner.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/future_dialog.dart';
 
@@ -34,6 +37,7 @@ Future<void> main() async {
   try {
     await AppSecureStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
+    await ContactsManager.instance.setup();
     // DB.instance.removeAll();
     logger.d('Db path: ${await getDatabasesPath()}');
     await SyncProvider.instance.init();
@@ -82,7 +86,7 @@ class _MyAppState extends State<MyApp> {
     try {
       _sub = _appLinks.uriLinkStream.listen(
         (Uri? uri) {
-          final (documentDeepLink, contactDeepLink) = DeeplinkManager()
+          final (documentDeepLink, contactDeepLink) = DeeplinkManager.instance
               .retrieveDeepLink(uri);
 
           if (contactDeepLink != null && mounted) {
@@ -115,12 +119,24 @@ class _MyAppState extends State<MyApp> {
     await showFutureDialog(
       title: 'Invitation',
       context: context,
-      work: () async => await _acceptInvite(context, inviteData),
+      work: () async {
+        try {
+          await _acceptInvite(context, inviteData);
+        } catch (err) {
+          logger.e('Failed to join document: $err');
+          if (err is DioException) {
+            if (err.response?.statusCode == 401) {
+              throw FutureDialogError('Error', 'No document found');
+            }
+          }
+
+          throw FutureDialogError('Error', 'Failed to join document');
+        }
+      },
       applyText: 'Join',
       cancelText: 'Cancel',
       message: 'You have been invited to join the document.',
       successTitle: 'Success',
-      successMessage: 'You have joined the document.',
     );
   }
 
@@ -135,7 +151,6 @@ class _MyAppState extends State<MyApp> {
       inviteData,
     );
 
-    // make pending add
     await SyncProvider.instance.addFromInvite(
       document,
       pendingGroupContext,
@@ -146,49 +161,74 @@ class _MyAppState extends State<MyApp> {
     Navigator.pop(context);
   }
 
-  void _showContactPopUp(BuildContext context, ExternalAccount account) {
-    final th = Theme.of(context).textTheme;
-
-    showDialog(
+  void _showContactPopUp(
+    BuildContext context,
+    SharedSpkRevealData payload,
+  ) async {
+    await showFutureDialog<SpkShareData>(
+      autoStart: true,
+      successTitle: 'Contact info',
       context: context,
-      builder: (context) => AlertDialog(
-        content: Column(
+      dialogSize: Size(480, 240),
+      work: () async {
+        try {
+          final spk = await SpkManager.instance.getSpk(payload);
+          await ContactsManager.instance.addContact(spk);
+          return spk;
+        } catch (err) {
+          logger.e('Failed to get spk: $err');
+
+          if (err is DioException) {
+            if (err.response?.statusCode == 404) {
+              throw FutureDialogError('Error', 'Contact share link expired');
+            }
+          }
+
+          throw FutureDialogError(
+            'Error',
+            'Failed to receive info about contact',
+          );
+        }
+      },
+      successBuilder: (spk) {
+        final th = Theme.of(context).textTheme;
+
+        return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                border: BoxBorder.all(color: Colors.grey, width: 0.3),
+                border: Border.all(color: Colors.grey, width: 0.3),
               ),
               child: Padding(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Name', style: th.labelLarge),
                     Text(
-                      account.name,
+                      spk.account.name,
                       style: th.bodyMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
                     Text('Actor ID', style: th.labelLarge),
                     Text(
-                      account.actorId,
+                      spk.account.actorId,
                       style: th.bodyMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
                     Text('Public Key', style: th.labelLarge),
                     Text(
-                      account.publicKey,
+                      spk.account.publicKey,
                       style: th.bodyMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -200,67 +240,13 @@ class _MyAppState extends State<MyApp> {
 
             const SizedBox(height: 32),
             Text(
-              'Add this account to your contacts?',
+              'Added to your contacts',
               style: th.bodyLarge,
               textAlign: TextAlign.center,
             ),
           ],
-        ),
-        actions: [
-          const SizedBox(height: 24),
-          Row(
-            spacing: 16.0,
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel'),
-                ),
-              ),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    try {
-                      await DB.instance.insertContact(account);
-                    } on DatabaseException catch (e) {
-                      if (!context.mounted) return;
-
-                      if (e.isUniqueConstraintError()) {
-                        TopBanner.show(
-                          context: context,
-                          message: 'Account already in your contacts',
-                          kind: TopBannerCases.info,
-                        );
-                      } else {
-                        TopBanner.show(
-                          context: context,
-                          message: 'Unexpected error, try again',
-                          kind: TopBannerCases.error,
-                        );
-
-                        logger.e('Failed to add contact: $e');
-                      }
-                    } catch (e) {
-                      if (!context.mounted) return;
-
-                      logger.e('Failed to add contact: $e');
-                      TopBanner.show(
-                        context: context,
-                        message: 'Something went wrong, try again',
-                        kind: TopBannerCases.error,
-                      );
-                    }
-
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                  },
-                  child: Text('Add'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

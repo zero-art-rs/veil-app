@@ -16,17 +16,6 @@ class InviteManager {
 
   static final InviteManager instance = InviteManager();
 
-  // Future<void> sendIdentifiedInvite(Document doc, List<int> secretKey) async {
-  //   final spkList = SpkProvider.instance.prepareSpkList(secretKey: secretKey);
-
-  //   for (final spk in spkList) {
-  //     await KeychainStorage.instance.setSpk(spk.publicKey, spk.privateKey);
-  //   }
-
-  // }
-
-  // Future<void> sendUnidentifiedInvite(Document doc) async {}
-
   Future<(BPendingGroupContext, Document)> join(String base64Invite) async {
     final account = await accountStorage.getAccount();
 
@@ -37,32 +26,21 @@ class InviteManager {
     final inviteBytes = base64Decode(base64Invite);
     final invite = Invite.fromBuffer(inviteBytes);
 
-    switch (invite.invite.whichInvite()) {
-      case InviteTbs_Invite.identifiedInvite:
-        // destructIdentifiedInvite(
-        //   invite: inviteBytes,
-        //   identitySecretKey: [],
-        //   spkSecretKey: [],
-        // );
+    final spkPublicKey = switch (invite.invite.whichInvite()) {
+      InviteTbs_Invite.identifiedInvite =>
+        invite.invite.identifiedInvite.spkPublicKey,
+      InviteTbs_Invite.unidentifiedInvite => null,
+      InviteTbs_Invite.notSet => null,
+    };
 
-        throw Exception('Unimplemented flow');
-      case InviteTbs_Invite.unidentifiedInvite:
-        return await _processUnidentifiedInvite(
-          inviteBytes,
-          Uint8List.fromList(account.keypair.rawPrivateKey),
-        );
-      case InviteTbs_Invite.notSet:
-        throw Exception('Invalid invite type');
+    List<int> spkSecretKey = [];
+    if (spkPublicKey != null) {
+      spkSecretKey = await DB.instance.getOwnSpkSecret(spkPublicKey) ?? [];
     }
-  }
 
-  Future<(BPendingGroupContext, Document)> _processUnidentifiedInvite(
-    Uint8List inviteBytes,
-    Uint8List secretKey,
-  ) async {
     final inviteContext = BInviteContext(
-      identitySecretKey: secretKey,
-      spkSecretKey: [],
+      identitySecretKey: account.keypair.rawPrivateKey,
+      spkSecretKey: spkSecretKey,
       invite: inviteBytes,
     );
 
@@ -95,6 +73,10 @@ class InviteManager {
       groupContextParts: pendingGroupContext.asParts(),
       createdAt: DateTime.now(),
     );
+
+    if (spkPublicKey != null) {
+      await DB.instance.removeSpk(spkPublicKey);
+    }
 
     return (pendingGroupContext, document);
   }

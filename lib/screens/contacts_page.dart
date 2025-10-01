@@ -1,16 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:veil/main.dart';
-import 'package:veil/storage/models.dart';
-import 'package:veil/storage/sqlite/db.dart';
-
-class Contact {
-  final String name;
-  final String actorId;
-  const Contact({required this.name, required this.actorId});
-}
+import 'package:veil/managers/contacts_manager.dart';
 
 class _ContactsScreenState extends State<ContactsScreen> {
-  late List<ExternalAccount> contacts = [];
+  final _contactsManager = ContactsManager.instance;
+
+  List<Contact> contacts = [];
+  StreamSubscription<List<Contact>>? _subscription;
 
   @override
   void initState() {
@@ -18,23 +16,23 @@ class _ContactsScreenState extends State<ContactsScreen> {
     _init();
   }
 
-  _init() async {
-    try {
-      final contacts = await DB.instance.getContactList();
-      setState(() {
-        this.contacts = contacts;
-      });
-    } catch (err) {
-      logger.e('Failed to get contacts: $err');
-    }
+  @override
+  void dispose() {
+    super.dispose();
+    _subscription?.cancel();
   }
 
-  _removeContact(ExternalAccount account) async {
-    try {
-      await DB.instance.deleteContact(actorId: account.actorId);
+  void _init() async {
+    _subscription = _contactsManager.stream.listen((event) {
       setState(() {
-        contacts.removeWhere((contact) => contact.actorId == account.actorId);
+        contacts = event;
       });
+    });
+  }
+
+  Future<void> _removeContact(String id) async {
+    try {
+      await _contactsManager.removeContact(id);
     } catch (err) {
       logger.e('Failed to remove contact: $err');
     }
@@ -62,7 +60,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, i) => _ContactCell(
                 contact: contacts[i],
-                onRemove: _removeContact,
+                onRemove: (e) => _removeContact(e.account.actorId),
                 onPick: widget.onPick,
               ),
             ),
@@ -73,7 +71,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key, this.onPick});
 
-  final Function(ExternalAccount account)? onPick;
+  final Function(Contact account)? onPick;
 
   @override
   State<ContactsScreen> createState() => _ContactsScreenState();
@@ -85,16 +83,14 @@ class _ContactCell extends StatelessWidget {
     required this.onRemove,
     this.onPick,
   });
-  final ExternalAccount contact;
+  final Contact contact;
 
-  final Function(ExternalAccount)? onPick;
-  final Function(ExternalAccount) onRemove;
+  final Function(Contact)? onPick;
+  final Function(Contact) onRemove;
 
   _onTap() {
     if (onPick != null) {
       onPick!(contact);
-    } else {
-      // TODO: OPEN CONTACT PAGE
     }
   }
 
@@ -134,10 +130,13 @@ class _ContactCell extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(contact.name, style: theme.textTheme.titleLarge),
+                    Text(
+                      contact.account.name,
+                      style: theme.textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 6),
                     Text(
-                      contact.actorId,
+                      contact.account.actorId,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(

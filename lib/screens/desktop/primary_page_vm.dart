@@ -45,37 +45,6 @@ class PrimaryPageViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateDocumentName({
-    required BuildContext context,
-    required String title,
-    required String id,
-  }) async {
-    // try {
-    //   await DB.instance.updateDocumentTitle(id: id, title: title);
-    //   final index = _syncModels.indexWhere((e) => e.id == id);
-    //   _syncModels[index] = Document(
-    //     id: _syncModels[index].id,
-    //     title: title,
-    //     automergeDoc: _syncModels[index].automergeDoc,
-    //     members: _syncModels[index].members,
-    //     createdAt: _syncModels[index].createdAt,
-    //     groupContextParts: _syncModels[index].groupContextParts,
-    //   );
-    //   textEditingController.clear();
-    //   setSelectedPage(
-    //     EditorPage(key: _syncModels[index].key, doc: _syncModels[index]),
-    //   );
-    // } catch (err) {
-    //   logger.e('Failed to update document name: $err');
-    //   if (!context.mounted) return;
-    //   TopBanner.show(
-    //     context: context,
-    //     message: 'Failed to update document name',
-    //     kind: TopBannerCases.error,
-    //   );
-    // }
-  }
-
   Future<void> createDocument(BuildContext context) async {
     try {
       final resTitle = textEditingController.text.isEmpty
@@ -95,8 +64,6 @@ class PrimaryPageViewModel extends ChangeNotifier {
         groupID: docID,
         owner: owner,
       );
-
-      logger.i(frame);
 
       final document = Document(
         id: docID,
