@@ -8,7 +8,9 @@ use std::str::FromStr;
 use uuid::Uuid;
 use zrt_art::types::PublicART;
 use zrt_client_sdk::{
-    group_context::{GroupContext, GroupState, InviteContext, PendingGroupContext},
+    group_context::{GroupContext, PendingGroupContext},
+    group_state::GroupState,
+    invite_context::InviteContext,
     models::{
         self,
         frame::Frame,
@@ -504,18 +506,31 @@ impl BGroupContext {
         ))
     }
 
-    // #[flutter_rust_bridge::frb(sync)]
-    // pub fn remove_member(&mut self, leaf_public_key: Vec<u8>, payload: Vec<u8>) -> Result<Vec<u8>> {
-    //     let leaf_public_key = CortadoAffine::deserialize_compressed(&leaf_public_key[..])
-    //         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn remove_member(
+        &mut self,
+        user_id: String,
+        payloads: Vec<Vec<u8>>,
+    ) -> Result<(Vec<u8>, Option<BUser>)> {
+        let payloads = payloads
+            .into_iter()
+            .map(|v| {
+                Payload::decode(&v).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
+            })
+            .collect::<Result<Vec<Payload>>>()?;
 
-    //     let frame = self
-    //         .group_context
-    //         .remove_member(leaf_public_key, &payload)
-    //         .map_err(|e| anyhow!("failed to remove member: {}", e.to_string()))?;
+        let (frame, removed_member) = self
+            .group_context
+            .remove_member(&user_id, payloads)
+            .map_err(|e| anyhow!("failed to remove member: {}", e.to_string()))?;
 
-    //     Ok(frame)
-    // }
+        Ok((
+            frame
+                .encode_to_vec()
+                .map_err(|_| anyhow!("failed to deserialize"))?,
+            removed_member.map(|user| BUser { user }),
+        ))
+    }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn create_frame(&mut self, payloads: Vec<Vec<u8>>) -> Result<Vec<u8>> {
@@ -655,7 +670,7 @@ pub fn create_group(
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
     let mut group_info = group_info.group_info;
-    group_info.members_mut().insert_user(user.user);
+    group_info.members_mut().insert(user.id(), user.user);
 
     let (group_context, frame) = GroupContext::new(identity_secret_key, group_info)
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
