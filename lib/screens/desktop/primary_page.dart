@@ -7,6 +7,7 @@ import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/screens/desktop/primary_page_vm.dart';
 import 'package:veil/screens/editor/editor_page.dart';
 import 'package:veil/widgets/banner.dart';
+import 'package:veil/widgets/loader_dialog.dart';
 import 'package:veil/widgets/sidebar.dart';
 
 import '../../main.dart';
@@ -89,21 +90,40 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
     );
   }
 
-  void _showCreateDocumentModal(BuildContext context, PrimaryPageViewModel vm) {
-    showDialog(
+  Future<void> _showCreateDocumentModal(
+    BuildContext context,
+    PrimaryPageViewModel vm,
+  ) async {
+    // final result = await showLoaderDialog<String>(
+    //   context: context,
+    //   initial: const Text("Create document"),
+    //   work: () async {
+    //     await Future.delayed(const Duration(seconds: 2));
+    //     return "Done!";
+    //   },
+    // );
+
+    final style = Theme.of(context).textTheme;
+
+    await showLoaderDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Create document'),
-          content: SizedBox(
-            width: 320,
-            child: TextField(
+      initialBuilder: (context, start) => SizedBox(
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 24,
+          children: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: Text('Create document', style: style.titleLarge),
+            ),
+
+            // Spacer(),
+            TextField(
               controller: _vm.textEditingController,
               decoration: InputDecoration(label: Text('Input document title')),
             ),
-          ),
-          actions: <Widget>[
+
             Row(
               spacing: 16,
               children: [
@@ -118,9 +138,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                 Expanded(
                   child: FilledButton(
                     onPressed: () async {
-                      await vm.createDocument(context);
-                      if (!context.mounted) return;
-                      Navigator.of(context).pop();
+                      start();
                     },
                     child: Text('Create'),
                   ),
@@ -128,7 +146,10 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
               ],
             ),
           ],
-        );
+        ),
+      ),
+      work: () async {
+        await vm.createDocument(context);
       },
     );
   }
@@ -160,7 +181,8 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                 label: 'Documents',
                 trailingBuilder: () => IconButton(
                   icon: Icon(Icons.add, size: 16),
-                  onPressed: () => _showCreateDocumentModal(context, vm),
+                  onPressed: () async =>
+                      await _showCreateDocumentModal(context, vm),
                 ),
               ),
               SideNavDivider(),

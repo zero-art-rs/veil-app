@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -36,9 +35,9 @@ Future<void> main() async {
   try {
     await AppSecureStorage.instance.setAccountIfNeeded();
     await DB.instance.open();
+    // await DB.instance.removeAll();
     await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
-    // DB.instance.removeAll();
     logger.d('Db path: ${await getDatabasesPath()}');
   } catch (e) {
     logger.e('Launch app error: $e');

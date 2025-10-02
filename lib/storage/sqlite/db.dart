@@ -135,8 +135,12 @@ class DB {
 
   Future<void> removeAll() {
     return transaction((db) async {
-      await db._delete(accountsTable);
-      await db._delete(accountsTable);
+      await db._delete(
+        accountsTable,
+        where: 'actor_id != ?',
+        whereArgs: ['owner'],
+      );
+      await db._delete(spksTable);
       await db._delete(documentsTable);
     });
   }

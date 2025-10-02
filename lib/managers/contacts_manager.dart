@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/storage/models.dart';

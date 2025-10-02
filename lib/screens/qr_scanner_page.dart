@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -8,10 +7,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
-import 'package:veil/storage/models.dart';
 import 'package:veil/utils/qr.dart';
 import 'package:veil/widgets/future_dialog.dart';
-import 'package:veil/widgets/user_widget.dart';
 
 class QRScannerPage extends StatefulWidget {
   const QRScannerPage({super.key});

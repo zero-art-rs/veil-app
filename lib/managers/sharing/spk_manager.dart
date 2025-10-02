@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:uuid/v4.dart';
 import 'package:veil/api/spk_client.dart';
-import 'package:veil/main.dart';
 import 'package:veil/managers/sharing/spk_provider.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/models.dart';
