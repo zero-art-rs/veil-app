@@ -147,6 +147,11 @@ class _ContactCell extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
+              Text(
+                'Spks: ${contact.spks.length}',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(width: 12),
               _deleteButtonWidget(),
             ],
           ),

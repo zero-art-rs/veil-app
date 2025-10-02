@@ -81,12 +81,15 @@ class SyncProviderModel {
   }
 
   Future<void> synchronizeInitially() async {
-    logger.i('document.sequenceNumber ${document.sequenceNumber}');
-    logger.i('group epoch ${groupContext.getEpoch().toInt()}');
-
-    final signature = groupContext.signWithTk(groupId: document.id, nonce: [0]);
+    logger.i('initial document.sequenceNumber ${document.sequenceNumber}');
+    logger.i('initial group epoch ${groupContext.getEpoch().toInt()}');
 
     while (true) {
+      final signature = groupContext.signWithTk(
+        groupId: document.id,
+        nonce: [0],
+      );
+
       try {
         final result = await GroupApiClient.instance.getFrames(
           epoch: groupContext.getEpoch().toInt(),

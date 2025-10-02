@@ -260,6 +260,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       );
 
       if (spkPublicKey != null) {
+        logger.i('Removing spk contact spk..');
         await ContactsManager.instance.removeSpk(
           contact.account.actorId,
           spkPublicKey.toList(),

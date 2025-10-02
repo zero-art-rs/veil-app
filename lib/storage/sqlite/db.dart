@@ -206,7 +206,7 @@ class DB {
       await db._insert(
         accountsTable,
         sqlAccount.toJson(),
-        conflictAlgorithm: ConflictAlgorithm.ignore,
+        conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
       for (final spk in sqlspks) {
