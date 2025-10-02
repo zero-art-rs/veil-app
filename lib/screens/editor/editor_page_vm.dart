@@ -14,6 +14,7 @@ import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/utils/group_context_factory.dart';
@@ -23,7 +24,6 @@ enum EditorModes { edit, view }
 
 class EditorPageVm extends ChangeNotifier {
   final mdEditor = TextEditingController();
-  final _accStorage = AppSecureStorage();
   final _changeManager = ChangeManager.instance;
 
   final SyncProviderModel syncModel;
@@ -38,13 +38,9 @@ class EditorPageVm extends ChangeNotifier {
   EditorPageVm(this.syncModel);
 
   Future<void> init() async {
-    final account = await _accStorage.getAccount();
-
-    if (account == null) {
-      throw Exception('To open a document, you must have an account');
-    }
-
-    syncModel.document.automergeDoc.setActorId(uuid: account.actorId);
+    syncModel.document.automergeDoc.setActorId(
+      uuid: AccountSecureStorage.instance.account.actorId,
+    );
 
     isSinking = true;
     notifyListeners();
@@ -229,12 +225,6 @@ class EditorPageVm extends ChangeNotifier {
   }
 
   Future<List<MemberScreenModel>> prepareMembers() async {
-    final account = await _accStorage.getAccount();
-
-    if (account == null) {
-      throw Exception('No account, unreachable flow');
-    }
-
     final groupInfo = syncModel.groupContext.retrieveGroupInfo();
 
     final members = groupInfo.members
@@ -249,7 +239,8 @@ class EditorPageVm extends ChangeNotifier {
               role: e.role.value,
               roleName: e.role.name,
             ),
-            isYou: account.actorId == e.id,
+            isYou: AccountSecureStorage.instance.account.actorId == e.id,
+            isOwner: e.role.value == ownerRole,
           ),
         )
         .where((e) => e.member.account.name != 'Invited')

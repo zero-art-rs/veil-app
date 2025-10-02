@@ -242,6 +242,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  BUser
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    dynamic raw,
+  );
+
+  @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
 
   @protected
@@ -261,6 +267,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  BUser?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    dynamic raw,
+  );
 
   @protected
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
@@ -284,6 +296,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
   dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
+    dynamic raw,
+  );
+
+  @protected
+  (Uint8List, BUser?)
+  dco_decode_record_list_prim_u_8_strict_opt_box_autoadd_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_user(
     dynamic raw,
   );
 
@@ -486,6 +504,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  BUser
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
 
   @protected
@@ -507,6 +531,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  BUser?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    SseDeserializer deserializer,
+  );
 
   @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -532,6 +562,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
   sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  (Uint8List, BUser?)
+  sse_decode_record_list_prim_u_8_strict_opt_box_autoadd_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_user(
     SseDeserializer deserializer,
   );
 
@@ -769,6 +805,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    BUser self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
@@ -793,6 +836,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    BUser? self,
     SseSerializer serializer,
   );
 
@@ -826,6 +876,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
   sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
     (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_record_list_prim_u_8_strict_opt_box_autoadd_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_user(
+    (Uint8List, BUser?) self,
     SseSerializer serializer,
   );
 

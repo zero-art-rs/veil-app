@@ -19,12 +19,12 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
-  final _storage = AppSecureStorage();
+  final _storage = AccountSecureStorage();
+  final _account = AccountSecureStorage.instance.account;
 
   TextEditingController _nameCtrl = TextEditingController();
   TextEditingController _actorCtrl = TextEditingController();
   TextEditingController _pubkeyCtrl = TextEditingController();
-  late Account? _currentAccount;
 
   bool _saving = false;
 
@@ -42,20 +42,13 @@ class _AccountPageState extends State<AccountPage> {
     super.dispose();
   }
 
-  _init() async {
+  void _init() {
     try {
-      _currentAccount = await _storage.getAccount();
-      logger.d('Current account: $_currentAccount');
-
-      if (_currentAccount == null) {
-        return;
-      }
-
       setState(() {
-        _nameCtrl = TextEditingController(text: _currentAccount!.name);
-        _actorCtrl = TextEditingController(text: _currentAccount!.actorId);
+        _nameCtrl = TextEditingController(text: _account.name);
+        _actorCtrl = TextEditingController(text: _account.actorId);
         _pubkeyCtrl = TextEditingController(
-          text: _currentAccount!.keypair.publicKeyHex,
+          text: _account.keypair.publicKeyHex,
         );
       });
     } catch (err) {
@@ -64,16 +57,16 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Future<void> _onSave() async {
-    if (_nameCtrl.text.isEmpty || _currentAccount == null) {
+    if (_nameCtrl.text.isEmpty) {
       return;
     }
 
     setState(() => _saving = true);
 
     final newAccount = Account(
-      actorId: _currentAccount!.actorId,
+      actorId: _account.actorId,
       name: _nameCtrl.text,
-      keypair: _currentAccount!.keypair,
+      keypair: _account.keypair,
     );
 
     await _storage.setAccount(newAccount);
@@ -81,7 +74,6 @@ class _AccountPageState extends State<AccountPage> {
     setState(() {
       _pubkeyCtrl.text = newAccount.keypair.publicKeyHex;
       _actorCtrl.text = newAccount.actorId;
-      _currentAccount = newAccount;
       _saving = false;
     });
   }
@@ -90,12 +82,7 @@ class _AccountPageState extends State<AccountPage> {
     final th = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
 
-    if (_currentAccount == null) return;
-
-    final payload = await SpkManager.instance.createAccountSpks(
-      _currentAccount!,
-    );
-
+    final payload = await SpkManager.instance.createAccountSpks(_account);
     final deeplink = DeeplinkManager.instance.buildContactDeepLink(payload);
     final qrData = QrUtils.instance.buildShareContactData(payload);
 

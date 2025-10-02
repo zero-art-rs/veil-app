@@ -89,6 +89,11 @@ abstract class BGroupContext implements RustOpaqueInterface {
 
   List<Uint8List> processFrame({required List<int> frame});
 
+  (Uint8List, BUser?) removeMember({
+    required String userId,
+    required List<Uint8List> payloads,
+  });
+
   Uint8List signChallenge({required List<int> challenge});
 
   Uint8List signWithTk({required String groupId, required List<int> nonce});

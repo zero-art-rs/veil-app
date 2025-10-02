@@ -17,7 +17,6 @@ import 'package:veil/widgets/banner.dart';
 import '../../main.dart';
 
 class PrimaryPageViewModel extends ChangeNotifier {
-  final _accStorage = AppSecureStorage();
   final _syncProvider = SyncProvider.instance;
 
   int _selectedIndex = 0;
@@ -50,11 +49,6 @@ class PrimaryPageViewModel extends ChangeNotifier {
       final resTitle = textEditingController.text.isEmpty
           ? 'Document'
           : textEditingController.text;
-      final owner = await _accStorage.getAccount();
-
-      if (owner == null) {
-        throw Exception('To create a document, you must have account');
-      }
 
       final docID = UuidV4().generate();
       final content = BAutoCommit();
@@ -62,7 +56,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
       final (groupContext, frame) = GroupContextFactory.createGroupContext(
         groupName: resTitle,
         groupID: docID,
-        owner: owner,
+        owner: AccountSecureStorage.instance.account,
       );
 
       final document = Document(

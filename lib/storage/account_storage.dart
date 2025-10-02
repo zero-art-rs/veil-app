@@ -3,12 +3,18 @@ import 'dart:convert';
 import 'package:veil/storage/app_storage.dart';
 import 'package:veil/storage/models.dart';
 
-class AppSecureStorage {
+class AccountSecureStorage {
   final _storage = AppStorage.shared;
-  static final AppSecureStorage instance = AppSecureStorage();
+  static final AccountSecureStorage instance = AccountSecureStorage();
   static const String _accountKey = 'account';
 
-  Future<Account?> getAccount() async {
+  late Account account;
+
+  Future<void> init() async {
+    account = await _setAccountIfNeeded();
+  }
+
+  Future<Account?> _getAccount() async {
     final rawAccount = await _storage.read(key: _accountKey);
 
     if (rawAccount == null) {
@@ -20,10 +26,18 @@ class AppSecureStorage {
 
   Future<void> setAccount(Account account) async {
     await _storage.write(key: _accountKey, value: jsonEncode(account.toJson()));
+
+    final optionalAccount = await _getAccount();
+
+    if (optionalAccount == null) {
+      throw Exception('No account, unreachable flow');
+    }
+
+    this.account = optionalAccount;
   }
 
-  Future<Account> setAccountIfNeeded() async {
-    final account = await getAccount();
+  Future<Account> _setAccountIfNeeded() async {
+    final account = await _getAccount();
     if (account != null) {
       return account;
     }

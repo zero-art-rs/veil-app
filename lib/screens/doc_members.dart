@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -8,18 +9,23 @@ import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/src/rust/api/group_context.dart';
-import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart' as m;
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/utils/secret_factory.dart';
 import 'package:veil/utils/platform.dart';
+import 'package:veil/widgets/ays_modal.dart';
 
 class MemberScreenModel {
   final m.DocumentMember member;
   final bool isYou;
+  final bool isOwner;
 
-  MemberScreenModel({required this.member, this.isYou = false});
+  MemberScreenModel({
+    required this.member,
+    this.isYou = false,
+    this.isOwner = false,
+  });
 }
 
 class DocumentMemberListScreen extends StatefulWidget {
@@ -41,8 +47,6 @@ class DocumentMemberListScreen extends StatefulWidget {
 }
 
 class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
-  final _secureStorage = AppSecureStorage.instance;
-
   void _onAddMember(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -52,6 +56,14 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         );
       },
     );
+  }
+
+  get currentAccountIsOwner {
+    final owner = widget.members.firstWhereOrNull((e) {
+      return e.isOwner && e.isYou;
+    });
+
+    return owner != null;
   }
 
   void showInviteDialog(Future<String> linkFuture) async {
@@ -129,36 +141,87 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  Future<void> _inviteUndentifiedMember(BuildContext context) async {
-    final inviteLink = Future(() async {
-      final secretKey = SecretManager.intance.generateSecretKey();
-
-      final payload = Payload(
-        crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-      ).writeToBuffer();
-
-      logger.i('Creating unidentified member invite...');
-      final (frame, invite) = await widget.groupContext.addUnidentifiedMember(
-        secretKey: secretKey,
-        payloads: [payload],
+  void _removeMember(BuildContext context, m.DocumentMember user) {
+    final work = Future<void>(() async {
+      logger.i('Removing member in group context..');
+      final (frame, member) = widget.groupContext.removeMember(
+        userId: user.account.actorId,
+        payloads: [],
       );
 
-      logger.i('Sending unidentified member invite frame...');
+      logger.i('Sending remove member frame...');
       await GroupApiClient.instance.sendFrame(
         groupId: widget.doc.id,
         frame: frame,
       );
 
+      logger.i('Committing state...');
       widget.groupContext.commitState();
-      logger.i('Finished sending unidentified member invite frame...');
-      final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
+      logger.i('Member removed from document');
       await DB.instance.updateDocument(
         doc: widget.doc,
         parts: widget.groupContext.asParts(),
       );
 
-      return inviteLink;
+      setState(() {
+        widget.members.removeWhere(
+          (e) => e.member.account.actorId == user.account.actorId,
+        );
+      });
+    });
+
+    aysAsyncModal(
+      context: context,
+      title: 'Are you sure to remove ${user.account.name} from group?',
+      content: 'This action cannot be undone.',
+      callback: () async {
+        try {
+          await work;
+        } catch (e) {
+          logger.e('Failed to remove member: $e');
+          rethrow;
+        }
+      },
+    );
+  }
+
+  void _inviteUndentifiedMember(BuildContext context) {
+    final inviteLink = Future(() async {
+      try {
+        final secretKey = SecretManager.intance.generateSecretKey();
+
+        final payload = Payload(
+          crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+        ).writeToBuffer();
+
+        logger.i('Creating unidentified member invite...');
+        final (frame, invite) = await widget.groupContext.addUnidentifiedMember(
+          secretKey: secretKey,
+          payloads: [payload],
+        );
+
+        logger.i('Sending unidentified member invite frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: widget.doc.id,
+          frame: frame,
+        );
+
+        logger.i('Committing state...');
+        widget.groupContext.commitState();
+        logger.i('Unidentified member invite sent');
+        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+        await DB.instance.updateDocument(
+          doc: widget.doc,
+          parts: widget.groupContext.asParts(),
+        );
+
+        return inviteLink;
+      } catch (e) {
+        logger.e('Failed to invite member: $e');
+        rethrow;
+      }
     });
 
     showInviteDialog(inviteLink);
@@ -171,17 +234,12 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           ? Uint8List.fromList(firstSpk)
           : null;
 
-      final account = await _secureStorage.getAccount();
-      if (account == null) {
-        throw Exception('No account, unreachable flow');
-      }
-
       final payload = Payload(
         crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
       ).writeToBuffer();
 
       final (frame, invite) = widget.groupContext.addIdentifiedMember(
-        identityPublicKey: account.keypair.rawPublicKey,
+        identityPublicKey: contact.account.rawPublicKey,
         spkPublicKey: spkPublicKey,
         payloads: [payload],
       );
@@ -193,7 +251,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
       widget.groupContext.commitState();
 
-      logger.i('Finished sending unidentified member invite frame...');
+      logger.i('Member invite sent');
       final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
       await DB.instance.updateDocument(
@@ -253,17 +311,35 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
               child: const Icon(Icons.person),
             ),
             title: Row(
+              spacing: 12,
               children: [
-                Expanded(
-                  child: Text(
-                    g.member.account.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                Text(
+                  g.member.account.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+
+                if (g.isYou)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'You',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
               ],
             ),
             subtitle: Padding(
@@ -288,39 +364,50 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         spacing: 8,
         children: [
-          FloatingActionButton(
-            onPressed: () => _onAddMember(context),
-            tooltip: 'Invite member',
-            child: const Icon(Icons.person_add_alt_1_outlined),
-          ),
-          FloatingActionButton(
-            onPressed: () => _inviteUndentifiedMember(context),
-            tooltip: 'Invite undentified member',
-            child: const Icon(Symbols.domino_mask),
-          ),
+          if (currentAccountIsOwner)
+            FloatingActionButton(
+              onPressed: () => _onAddMember(context),
+              tooltip: 'Invite member',
+              child: const Icon(Icons.person_add_alt_1_outlined),
+            ),
+          if (currentAccountIsOwner)
+            FloatingActionButton(
+              onPressed: () => _inviteUndentifiedMember(context),
+              tooltip: 'Invite undentified member',
+              child: const Icon(Symbols.domino_mask),
+            ),
         ],
       ),
     );
   }
 
   Widget buildTrailing(ThemeData theme, MemberScreenModel g) {
-    if (g.isYou) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          'You',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.w600,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 12,
+      children: [
+        if (currentAccountIsOwner && !g.isYou)
+          IconButton(
+            onPressed: () => _removeMember(context, g.member),
+            icon: Icon(Icons.delete),
           ),
-        ),
-      );
-    } else {
-      return SizedBox();
-    }
+
+        if (g.isOwner)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'Owner',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }

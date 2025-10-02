@@ -11,17 +11,11 @@ import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
 
 class InviteManager {
-  final accountStorage = AppSecureStorage.instance;
+  final accountStorage = AccountSecureStorage.instance;
 
   static final InviteManager instance = InviteManager();
 
   Future<(BPendingGroupContext, Document)> join(String base64Invite) async {
-    final account = await accountStorage.getAccount();
-
-    if (account == null) {
-      throw Exception('No account, unreachable flow');
-    }
-
     final inviteBytes = base64Decode(base64Invite);
     final invite = Invite.fromBuffer(inviteBytes);
 
@@ -36,12 +30,13 @@ class InviteManager {
     if (spkPublicKey != null) {
       spkSecretKey = await DB.instance.getOwnSpkSecret(spkPublicKey) ?? [];
     }
-  
+
     logger.i('SPK public key: ${base64Encode(spkPublicKey ?? [])}');
     logger.i('SPK secret key: ${base64Encode(spkSecretKey)}');
 
     final inviteContext = BInviteContext(
-      identitySecretKey: account.keypair.rawPrivateKey,
+      identitySecretKey:
+          AccountSecureStorage.instance.account.keypair.rawPrivateKey,
       spkSecretKey: spkSecretKey,
       invite: inviteBytes,
     );

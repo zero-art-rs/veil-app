@@ -292,7 +292,7 @@ impl BPendingGroupContext {
                 .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
         Ok(Self {
-            pending_group_context: PendingGroupContext::from_state(identity_secret_key, state)
+            pending_group_context: PendingGroupContext::from_state(identity_secret_key, state, None)
                 .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
         })
     }
@@ -378,7 +378,7 @@ impl BGroupContext {
                 .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
         Ok(Self {
-            group_context: GroupContext::from_state(identity_secret_key, state)
+            group_context: GroupContext::from_state(identity_secret_key, state, None)
                 .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
         })
     }

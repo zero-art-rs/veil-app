@@ -87,7 +87,7 @@ class DocsPage extends StatelessWidget {
               itemCount: vm.syncModels.length,
               itemBuilder: (context, i) => _DocCard(
                 doc: vm.syncModels[i],
-                onDelete: () => aysModal(
+                onDelete: () => aysAsyncModal(
                   context: context,
                   title: 'Delete document',
                   content:

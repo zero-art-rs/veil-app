@@ -12,7 +12,6 @@ import 'package:veil/storage/models.dart';
 import 'package:veil/utils/group_context_factory.dart';
 
 class DocsPageViewModel extends ChangeNotifier {
-  final _accStorage = AppSecureStorage();
   final _syncProvider = SyncProvider.instance;
 
   late StreamSubscription<List<SyncProviderModel>> _docsListener;
@@ -27,11 +26,6 @@ class DocsPageViewModel extends ChangeNotifier {
 
   Future<void> createDoc(String title) async {
     final resTitle = title.isEmpty ? 'Document' : title;
-    final owner = await _accStorage.getAccount();
-
-    if (owner == null) {
-      throw Exception('To create a document, you must have an account');
-    }
 
     final docID = UuidV4().generate();
     final content = BAutoCommit();
@@ -39,7 +33,7 @@ class DocsPageViewModel extends ChangeNotifier {
     final (groupContext, frame) = GroupContextFactory.createGroupContext(
       groupName: resTitle,
       groupID: docID,
-      owner: owner,
+      owner: AccountSecureStorage.instance.account,
     );
 
     final document = Document(
@@ -51,7 +45,7 @@ class DocsPageViewModel extends ChangeNotifier {
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 
-    await _syncProvider.add(document, groupContext);
+    await _syncProvider.add(document, groupContext, insertToDb: true);
   }
 
   Future<void> deleteDoc(Document doc) async {

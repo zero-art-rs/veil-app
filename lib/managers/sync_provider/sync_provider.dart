@@ -19,11 +19,7 @@ class SyncProvider {
   final _centrifugo = CentrifugeProvider.instance;
   final _db = DB.instance;
   final _api = GroupApiClient.instance;
-  final _accountStorage = AppSecureStorage.instance;
   final _changeManager = ChangeManager.instance;
-
-  Account? _acc;
-  Account get _account => _acc!;
 
   List<SyncProviderModel> get current => subject.value;
   BehaviorSubject<List<SyncProviderModel>> subject = BehaviorSubject.seeded([]);
@@ -32,15 +28,12 @@ class SyncProvider {
 
   Future<void> init() async {
     final documents = await _db.getDocumentList();
-    _acc = await _accountStorage.getAccount();
-
-    if (_acc == null) {
-      throw Exception('No account, unreachable flow');
-    }
 
     for (final doc in documents) {
       final groupContext = doc.groupContextParts.toGroupContext(
-        identitySecretKey: Uint8List.fromList(_account.keypair.rawPrivateKey),
+        identitySecretKey: Uint8List.fromList(
+          AccountSecureStorage.instance.account.keypair.rawPrivateKey,
+        ),
       );
 
       await add(doc, groupContext);

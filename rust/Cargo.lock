@@ -2503,9 +2503,9 @@ dependencies = [
 
 [[package]]
 name = "typenum"
-version = "1.18.0"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dccffe3ce07af9386bfd29e80c0ab1a8205a2fc34e4bcd40364df902cfa8f3f"
+checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
 
 [[package]]
 name = "ucd-trie"
@@ -2967,7 +2967,7 @@ dependencies = [
 [[package]]
 name = "zrt-client-sdk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zero-art-rs/client-sdk.git?branch=refactoring#bf15cc7ac9a460b1da4b60d864ddfc53f106771b"
+source = "git+ssh://git@github.com/zero-art-rs/client-sdk.git?branch=refactoring#ebddcac4a74e93b6a787de1c6b9a6089535d9283"
 dependencies = [
  "aes-gcm",
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",

@@ -33,7 +33,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await AppSecureStorage.instance.setAccountIfNeeded();
+    await AccountSecureStorage.instance.init();
     await DB.instance.open();
     // await DB.instance.removeAll();
     await SyncProvider.instance.init();
@@ -139,16 +139,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _acceptInvite(BuildContext context, String inviteData) async {
-    final account = await AppSecureStorage.instance.getAccount();
-
-    if (account == null) {
-      throw Exception('No account, unreachable flow');
-    }
-
     final (pendingGroupContext, document) = await InviteManager.instance.join(
       inviteData,
     );
 
+    final account = AccountSecureStorage.instance.account;
     await SyncProvider.instance.addFromInvite(
       document,
       pendingGroupContext,
