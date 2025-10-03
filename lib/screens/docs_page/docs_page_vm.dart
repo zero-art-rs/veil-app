@@ -28,7 +28,9 @@ class DocsPageViewModel extends ChangeNotifier {
     final resTitle = title.isEmpty ? 'Document' : title;
 
     final docID = UuidV4().generate();
-    final content = BAutoCommit();
+    final content = BAutoCommit.withOwner(
+      actorId: AccountSecureStorage.instance.account.actorId,
+    );
 
     final (groupContext, frame) = GroupContextFactory.createGroupContext(
       groupName: resTitle,

@@ -51,7 +51,6 @@ class SyncPendingProviderModel {
     logger.i('group epoch ${groupContext.getEpoch().toInt()}');
 
     while (true) {
-      // TODO: Make better handling
       try {
         await poll();
       } catch (err) {

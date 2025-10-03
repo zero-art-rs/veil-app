@@ -185,10 +185,7 @@ class DB {
     );
   }
 
-  Future<Contact> insertContact(
-    SpkShareData spk, {
-    ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.rollback,
-  }) async {
+  Future<Contact> insertContact(SpkShareData spk) async {
     final sqlAccount = SQLAccount(
       actorId: spk.account.actorId,
       publicKey: Uint8List.fromList(spk.account.rawPublicKey),
@@ -207,6 +204,12 @@ class DB {
         accountsTable,
         sqlAccount.toJson(),
         conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      await db._delete(
+        spksTable,
+        where: 'contact_id = ?',
+        whereArgs: [spk.account.actorId],
       );
 
       for (final spk in sqlspks) {
@@ -354,7 +357,11 @@ class DB {
       sequenceNumber: document.sequenceNumber,
     );
 
-    await _insert(documentsTable, sqlDoc.toJson());
+    await _insert(
+      documentsTable,
+      sqlDoc.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<void> updateDocumentTitle({

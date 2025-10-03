@@ -195,6 +195,7 @@ class EditorPageVm extends ChangeNotifier {
           ],
         ),
       );
+
       syncModel.groupContext.commitState();
 
       await DB.instance.updateDocument(

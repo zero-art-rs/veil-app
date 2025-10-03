@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:rxdart/subjects.dart';
-import 'package:veil/main.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
@@ -58,12 +58,10 @@ class ContactsManager {
   }
 
   Future<void> removeSpk(String contactId, List<int> publicKey) async {
-    final spkRemoved = current
+    current
         .firstWhere((element) => element.account.actorId == contactId)
         .spks
-        .remove(publicKey);
-
-    logger.i('Removed spk from contact: $spkRemoved');
+        .removeWhere((e) => base64Encode(e) == base64Encode(publicKey));
 
     _subject.add(current);
     await DB.instance.removeSpk(publicKey);

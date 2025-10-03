@@ -108,10 +108,6 @@ class SyncProviderModel {
             frame: spFrame.frame.writeToBuffer(),
           );
 
-          // NOTE:
-          // If rawFramePayloads is empty,
-          // it indicates that the frame belongs to the current user,
-          // thus processing is unnecessary.
           for (final rawPayload in rawFramePayloads) {
             final payload = Payload.fromBuffer(rawPayload);
 

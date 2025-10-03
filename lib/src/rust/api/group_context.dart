@@ -48,7 +48,7 @@ String hashPublcihKey({required List<int> pk}) =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupContext>>
 abstract class BGroupContext implements RustOpaqueInterface {
-  (Uint8List, Uint8List) addIdentifiedMember({
+  Future<(Uint8List, Uint8List)> addIdentifiedMember({
     required List<int> identityPublicKey,
     Uint8List? spkPublicKey,
     required List<Uint8List> payloads,
@@ -89,7 +89,7 @@ abstract class BGroupContext implements RustOpaqueInterface {
 
   List<Uint8List> processFrame({required List<int> frame});
 
-  (Uint8List, BUser?) removeMember({
+  Future<(Uint8List, BUser?)> removeMember({
     required String userId,
     required List<Uint8List> payloads,
   });

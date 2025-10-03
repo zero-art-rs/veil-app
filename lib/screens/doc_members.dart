@@ -144,7 +144,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   void _removeMember(BuildContext context, m.DocumentMember user) {
     final work = Future<void>(() async {
       logger.i('Removing member in group context..');
-      final (frame, member) = widget.groupContext.removeMember(
+      final (frame, member) = await widget.groupContext.removeMember(
         userId: user.account.actorId,
         payloads: [],
       );
@@ -229,45 +229,50 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
   Future<void> _inviteContactMember(Contact contact) async {
     final future = Future(() async {
-      final firstSpk = contact.spks.firstOrNull;
-      final spkPublicKey = firstSpk != null
-          ? Uint8List.fromList(firstSpk)
-          : null;
+      try {
+        final firstSpk = contact.spks.firstOrNull;
+        final spkPublicKey = firstSpk != null
+            ? Uint8List.fromList(firstSpk)
+            : null;
 
-      final payload = Payload(
-        crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-      ).writeToBuffer();
+        final payload = Payload(
+          crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+        ).writeToBuffer();
 
-      final (frame, invite) = widget.groupContext.addIdentifiedMember(
-        identityPublicKey: contact.account.rawPublicKey,
-        spkPublicKey: spkPublicKey,
-        payloads: [payload],
-      );
-
-      await GroupApiClient.instance.sendFrame(
-        groupId: widget.doc.id,
-        frame: frame,
-      );
-
-      widget.groupContext.commitState();
-
-      logger.i('Member invite sent');
-      final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-      await DB.instance.updateDocument(
-        doc: widget.doc,
-        parts: widget.groupContext.asParts(),
-      );
-
-      if (spkPublicKey != null) {
-        logger.i('Removing spk contact spk..');
-        await ContactsManager.instance.removeSpk(
-          contact.account.actorId,
-          spkPublicKey.toList(),
+        final (frame, invite) = await widget.groupContext.addIdentifiedMember(
+          identityPublicKey: contact.account.rawPublicKey,
+          spkPublicKey: spkPublicKey,
+          payloads: [payload],
         );
-      }
 
-      return inviteLink;
+        await GroupApiClient.instance.sendFrame(
+          groupId: widget.doc.id,
+          frame: frame,
+        );
+
+        widget.groupContext.commitState();
+
+        logger.i('Member invite sent');
+        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+        await DB.instance.updateDocument(
+          doc: widget.doc,
+          parts: widget.groupContext.asParts(),
+        );
+
+        if (spkPublicKey != null) {
+          logger.i('Removing spk contact spk..');
+          await ContactsManager.instance.removeSpk(
+            contact.account.actorId,
+            spkPublicKey.toList(),
+          );
+        }
+
+        return inviteLink;
+      } catch (e) {
+        logger.e('Failed to invite member: $e');
+        rethrow;
+      }
     });
 
     showInviteDialog(future);

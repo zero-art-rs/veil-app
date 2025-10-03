@@ -8,6 +8,7 @@ import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/utils/qr.dart';
+import 'package:veil/widgets/banner.dart';
 
 import '../main.dart';
 
@@ -78,78 +79,106 @@ class _AccountPageState extends State<AccountPage> {
     });
   }
 
-  void _showShareModal() async {
-    final th = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
-
-    final payload = await SpkManager.instance.createAccountSpks(_account);
-    final deeplink = DeeplinkManager.instance.buildContactDeepLink(payload);
-    final qrData = QrUtils.instance.buildShareContactData(payload);
-
-    if (!mounted) return;
+  Future<void> showShareSpkDialog(BuildContext context) async {
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (_) => Center(
-        child: Container(
-          width: 400,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: cs.surface,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(blurRadius: 20, color: Colors.black.withAlpha(30)),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 32,
-            children: [
-              QrImageView(
-                key: const ValueKey('qr'),
-                eyeStyle: QrEyeStyle(
-                  eyeShape: QrEyeShape.square,
-                  color: Colors.white,
-                ),
-                dataModuleStyle: QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.square,
-                  color: Colors.white,
-                ),
-                data: qrData,
-              ),
-              Text(
-                "Let someone scan your CR code or copy the link",
-                style: th.bodyLarge,
-              ),
-              Row(
-                spacing: 8,
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () =>
-                          Navigator.of(context, rootNavigator: true).pop(),
-                      child: const Text("Close"),
+        child: FutureBuilder<(String, String)>(
+          future: Future(() async {
+            final payload = await SpkManager.instance.createAccountSpks(
+              _account,
+            );
+            final deeplink = DeeplinkManager.instance.buildContactDeepLink(
+              payload,
+            );
+            final qrData = QrUtils.instance.buildShareContactData(payload);
+            return (deeplink, qrData);
+          }),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return Container(
+                width: 120,
+                height: 120,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 20,
+                      color: Colors.black.withAlpha(30),
                     ),
-                  ),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Clipboard.setData(ClipboardData(text: deeplink));
+                  ],
+                ),
+                child: const CircularProgressIndicator(),
+              );
+            }
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Link copied to clipboard"),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                        Navigator.of(context, rootNavigator: true).pop();
-                      },
-                      child: const Text("Copy link"),
+            final data = snapshot.data!;
+            final th = Theme.of(context).textTheme;
+            final cs = Theme.of(context).colorScheme;
+
+            return Container(
+              width: 400,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(blurRadius: 20, color: Colors.black.withAlpha(30)),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  QrImageView(
+                    key: const ValueKey('qr'),
+                    eyeStyle: QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Colors.white,
                     ),
+                    dataModuleStyle: QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Colors.white,
+                    ),
+                    data: data.$2,
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    "Let someone scan your QR code or copy the link",
+                    style: th.bodyLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text("Close"),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Clipboard.setData(ClipboardData(text: data.$1));
+                            TopBanner.show(
+                              context: context,
+                              message: 'Account share link copied',
+                            );
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text("Copy link"),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -179,7 +208,7 @@ class _AccountPageState extends State<AccountPage> {
           IconButton(
             icon: Icon(isDesktop ? Icons.ios_share_rounded : Icons.ios_share),
             tooltip: 'Share account',
-            onPressed: () => _showShareModal(),
+            onPressed: () => showShareSpkDialog(context),
           ),
         ],
       ),

@@ -45,7 +45,7 @@ class SpkProvider {
 
   List<SpkSendModel> prepareSpkList({
     required List<int> secretKey,
-    int spkCount = 10,
+    int spkCount = 3,
   }) {
     final List<SpkSendModel> spkList = [];
 

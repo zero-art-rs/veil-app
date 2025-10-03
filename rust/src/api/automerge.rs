@@ -45,6 +45,25 @@ pub struct BAutoCommit {
 
 impl BAutoCommit {
     #[flutter_rust_bridge::frb(sync)]
+    pub fn with_owner(actor_id: String) -> BAutoCommit {
+        let mut automerge = BAutoCommit {
+            autocommit: AutoCommit::new(),
+        };
+
+        automerge
+            .set_actor_id(actor_id)
+            .expect("Should set actor id");
+
+        automerge
+            .setup_block_label()
+            .expect("Should setup block label");
+
+        automerge.commit();
+
+        automerge
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
     pub fn new() -> BAutoCommit {
         let mut automerge = BAutoCommit {
             autocommit: AutoCommit::new(),
@@ -104,14 +123,6 @@ impl BAutoCommit {
     /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
     pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
         let block_list_id = self.blocks_list_id();
-
-        // let block = self.get_block(index)?;
-        // let block_hash = sha2::Sha256::digest(&block);
-
-        // if block_hash == sha2::Sha256::digest(&text) {
-        // return Ok(false);
-        // }
-
         self.autocommit.put(block_list_id, index, text.as_str())?;
 
         Ok(())

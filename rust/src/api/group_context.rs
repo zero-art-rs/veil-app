@@ -292,8 +292,12 @@ impl BPendingGroupContext {
                 .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
         Ok(Self {
-            pending_group_context: PendingGroupContext::from_state(identity_secret_key, state, None)
-                .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
+            pending_group_context: PendingGroupContext::from_state(
+                identity_secret_key,
+                state,
+                None,
+            )
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?,
         })
     }
 
@@ -423,7 +427,6 @@ impl BGroupContext {
         Ok(payloads)
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn add_identified_member(
         &mut self,
         identity_public_key: Vec<u8>,
@@ -506,7 +509,6 @@ impl BGroupContext {
         ))
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn remove_member(
         &mut self,
         user_id: String,

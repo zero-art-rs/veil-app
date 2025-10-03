@@ -58,6 +58,11 @@ abstract class BAutoCommit implements RustOpaqueInterface {
 
   /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
   void updateBlock({required BigInt index, required String text});
+
+  static BAutoCommit withOwner({required String actorId}) => RustLib
+      .instance
+      .api
+      .crateApiAutomergeBAutoCommitWithOwner(actorId: actorId);
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BChange>>

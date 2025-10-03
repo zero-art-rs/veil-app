@@ -51,7 +51,9 @@ class PrimaryPageViewModel extends ChangeNotifier {
           : textEditingController.text;
 
       final docID = UuidV4().generate();
-      final content = BAutoCommit();
+      final content = BAutoCommit.withOwner(
+        actorId: AccountSecureStorage.instance.account.actorId,
+      );
 
       final (groupContext, frame) = GroupContextFactory.createGroupContext(
         groupName: resTitle,
@@ -67,9 +69,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-
       await _syncProvider.add(document, groupContext, insertToDb: true);
-
       textEditingController.clear();
 
       notifyListeners();
