@@ -25,7 +25,8 @@ class SyncProvider {
   List<SyncProviderModel> get current => subject.value;
   BehaviorSubject<List<SyncProviderModel>> subject = BehaviorSubject.seeded([]);
 
-  static final instance = SyncProvider();
+  static final instance = SyncProvider._();
+  SyncProvider._();
 
   Future<void> init() async {
     final documents = await _db.getDocumentList();

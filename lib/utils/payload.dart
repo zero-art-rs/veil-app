@@ -10,7 +10,9 @@ class ExposedCRDTPayload {
 }
 
 class PayloadUtils {
-  static final instance = PayloadUtils();
+  static final instance = PayloadUtils._();
+
+  PayloadUtils._();
 
   (ExposedCRDTPayload?, GroupActionPayload?) exposePayload(Payload payload) {
     switch (payload.whichContent()) {

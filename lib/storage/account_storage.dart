@@ -5,10 +5,12 @@ import 'package:veil/storage/models.dart';
 
 class AccountSecureStorage {
   final _storage = AppStorage.shared;
-  static final AccountSecureStorage instance = AccountSecureStorage();
+  static final AccountSecureStorage instance = AccountSecureStorage._();
   static const String _accountKey = 'account';
 
   late Account account;
+
+  AccountSecureStorage._();
 
   Future<void> init() async {
     account = await _setAccountIfNeeded();
@@ -26,14 +28,7 @@ class AccountSecureStorage {
 
   Future<void> setAccount(Account account) async {
     await _storage.write(key: _accountKey, value: jsonEncode(account.toJson()));
-
-    final optionalAccount = await _getAccount();
-
-    if (optionalAccount == null) {
-      throw Exception('No account, unreachable flow');
-    }
-
-    this.account = optionalAccount;
+    this.account = account;
   }
 
   Future<Account> _setAccountIfNeeded() async {

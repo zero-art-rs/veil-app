@@ -3,7 +3,9 @@ import 'dart:convert';
 
 class AppStorage {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  static final AppStorage shared = AppStorage();
+  static final AppStorage shared = AppStorage._();
+
+  AppStorage._();
 
   clear() {
     _storage.deleteAll();

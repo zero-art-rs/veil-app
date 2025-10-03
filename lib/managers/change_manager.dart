@@ -10,13 +10,15 @@ class SyncChange {
 }
 
 class ChangeManager {
-  static final ChangeManager instance = ChangeManager();
+  static final ChangeManager instance = ChangeManager._();
 
   final Map<String, SyncChange?> _state = {};
 
   void setup(String id) {
     _state[id] = SyncChange(frames: {});
   }
+
+  ChangeManager._();
 
   void addFrame({
     required String groupId,

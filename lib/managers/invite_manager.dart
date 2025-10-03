@@ -13,7 +13,9 @@ import 'package:veil/storage/sqlite/db.dart';
 class InviteManager {
   final accountStorage = AccountSecureStorage.instance;
 
-  static final InviteManager instance = InviteManager();
+  static final InviteManager instance = InviteManager._();
+
+  InviteManager._();
 
   Future<(BPendingGroupContext, Document)> join(String base64Invite) async {
     final inviteBytes = base64Decode(base64Invite);

@@ -8,10 +8,6 @@ import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/secret_factory.dart';
 
-class OwnedSpk {}
-
-class ContactSpk {}
-
 class SpkShareData {
   final List<int> identityPublicKey;
   final List<SpkReceiveModel> spks;
@@ -62,8 +58,10 @@ class SharedSpkRevealData {
 }
 
 class SpkManager {
-  static final instance = SpkManager();
+  static final instance = SpkManager._();
   final _db = DB.instance;
+
+  SpkManager._();
 
   Future<SharedSpkRevealData> createAccountSpks(Account account) async {
     final spks = SpkProvider.instance.prepareSpkList(

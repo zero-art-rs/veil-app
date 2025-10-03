@@ -17,11 +17,11 @@ import 'package:veil/utils/group_context_factory.dart';
 const _dbName = 'veil.db';
 
 class DB {
-  static final instance = DB();
+  static final instance = DB._();
   late Database _connection;
   Transaction? _tx;
 
-  DB();
+  DB._();
 
   Future<void> open({String? inMemoryPath}) async {
     _connection = await openDatabase(

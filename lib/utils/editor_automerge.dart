@@ -3,13 +3,13 @@ import 'package:veil/src/rust/api/automerge.dart';
 class EditorAutomergeUtils {
   static EditorAutomergeUtils instance = EditorAutomergeUtils();
 
-  String toDoc(BAutoCommit autocommit) {
+  String toText(BAutoCommit autocommit) {
     final blocks = autocommit.getBlocks();
     final md = blocks.join('\n');
     return md;
   }
 
-  void fromDoc(String md, BAutoCommit automerge) {
+  void toDoc(String md, BAutoCommit automerge) {
     final blocks = md.split('\n').toList();
     final length = automerge.blocksLength().toInt();
 

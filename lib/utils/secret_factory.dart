@@ -4,8 +4,10 @@ import 'dart:typed_data';
 import 'package:veil/src/rust/api/group_context.dart';
 
 class SecretManager {
-  static final SecretManager intance = SecretManager();
+  static final SecretManager intance = SecretManager._();
   late BSecretsFactory secretFactory = _secretFactory();
+
+  SecretManager._();
 
   BSecretsFactory _secretFactory() {
     final random = Random.secure();

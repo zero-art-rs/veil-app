@@ -119,7 +119,7 @@ class Keypair {
 }
 
 class Account {
-  final String name;
+  String name;
   final String actorId;
   final Keypair keypair;
 

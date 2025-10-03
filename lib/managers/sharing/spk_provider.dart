@@ -41,7 +41,9 @@ class SpkSendModel {
 }
 
 class SpkProvider {
-  static final instance = SpkProvider();
+  static final instance = SpkProvider._();
+
+  SpkProvider._();
 
   List<SpkSendModel> prepareSpkList({
     required List<int> secretKey,

@@ -14,12 +14,14 @@ class Contact {
 }
 
 class ContactsManager {
-  static final instance = ContactsManager();
+  static final instance = ContactsManager._();
 
   final BehaviorSubject<List<Contact>> _subject = BehaviorSubject.seeded([]);
   late Stream<List<Contact>> stream = _subject.stream;
 
   List<Contact> get current => _subject.value;
+
+  ContactsManager._();
 
   Future<void> setup() async {
     final contacts = await _getContacts();

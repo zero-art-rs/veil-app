@@ -43,7 +43,7 @@ class EditorPageVm extends ChangeNotifier {
 
   Future<void> init(BuildContext context) async {
     if (syncModel.isLocal) {
-      mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+      mdEditor.text = EditorAutomergeUtils.instance.toText(
         syncModel.document.automergeDoc,
       );
       notifyListeners();
@@ -73,7 +73,7 @@ class EditorPageVm extends ChangeNotifier {
       }
     }
 
-    mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+    mdEditor.text = EditorAutomergeUtils.instance.toText(
       syncModel.document.automergeDoc,
     );
 
@@ -88,7 +88,7 @@ class EditorPageVm extends ChangeNotifier {
       'Init document state ${syncModel.document.automergeDoc.getBlocks()}',
     );
 
-    hashBeforeEditing();
+    hashBeforeEditing(mdEditor.text);
     notifyListeners();
   }
 
@@ -115,9 +115,11 @@ class EditorPageVm extends ChangeNotifier {
           notifyListeners();
 
           syncDocument(crdtPayloads);
-          mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+          mdEditor.text = EditorAutomergeUtils.instance.toText(
             syncModel.document.automergeDoc,
           );
+
+          hashBeforeEditing(mdEditor.text);
 
           logger.i(
             'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
@@ -133,7 +135,6 @@ class EditorPageVm extends ChangeNotifier {
         );
       } catch (e) {
         if (e.toString().contains('User removed from group')) {
-          if (!context.mounted) return;
           await _handleRemoveMember(context);
           return;
         }
@@ -216,11 +217,8 @@ class EditorPageVm extends ChangeNotifier {
         .toString();
 
     if (_hashBeforeEditing != hashAfterEditing) {
-      logger.d('hashAfterEditing: $hashAfterEditing');
-      logger.d('_hashBeforeEditing: $_hashBeforeEditing');
-
       logger.i('Uploading new changes..');
-      EditorAutomergeUtils.instance.fromDoc(
+      EditorAutomergeUtils.instance.toDoc(
         mdEditor.text,
         syncModel.document.automergeDoc,
       );
@@ -232,6 +230,8 @@ class EditorPageVm extends ChangeNotifier {
       syncDocument(_crdtPayloadList);
 
       final saveIncremental = syncModel.document.automergeDoc.saveIncremental();
+
+      logger.i('Sending frame with changes');
       await GroupApiClient.instance.sendFrame(
         groupId: syncModel.document.id,
         frame: syncModel.groupContext.createFrame(
@@ -242,9 +242,10 @@ class EditorPageVm extends ChangeNotifier {
           ],
         ),
       );
+      logger.i('New changes sent');
 
       syncModel.groupContext.commitState();
-      hashBeforeEditing();
+      hashBeforeEditing(mdEditor.text);
 
       await DB.instance.updateDocument(
         doc: syncModel.document,
@@ -259,9 +260,11 @@ class EditorPageVm extends ChangeNotifier {
         logger.i('Syncing buffered changes..');
 
         syncDocument(_crdtPayloadList);
-        mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+        mdEditor.text = EditorAutomergeUtils.instance.toText(
           syncModel.document.automergeDoc,
         );
+
+        hashBeforeEditing(mdEditor.text);
 
         _crdtPayloadList.clear();
       } else {
@@ -273,8 +276,8 @@ class EditorPageVm extends ChangeNotifier {
     notifyListeners();
   }
 
-  void hashBeforeEditing() {
-    _hashBeforeEditing = sha256.convert(utf8.encode(mdEditor.text)).toString();
+  void hashBeforeEditing(String text) {
+    _hashBeforeEditing = sha256.convert(utf8.encode(text)).toString();
   }
 
   void editMD() {

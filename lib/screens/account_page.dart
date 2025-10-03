@@ -20,8 +20,7 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
-  final _storage = AccountSecureStorage();
-  final _account = AccountSecureStorage.instance.account;
+  var _account = AccountSecureStorage.instance.account;
 
   TextEditingController _nameCtrl = TextEditingController();
   TextEditingController _actorCtrl = TextEditingController();
@@ -70,9 +69,16 @@ class _AccountPageState extends State<AccountPage> {
       keypair: _account.keypair,
     );
 
-    await _storage.setAccount(newAccount);
+    await AccountSecureStorage.instance.setAccount(newAccount);
+
+    logger.i(
+      'AccountSecureStorage.instance.account.name ${AccountSecureStorage.instance.account.name}',
+    );
+
+    logger.i(newAccount.name);
 
     setState(() {
+      _nameCtrl.text = newAccount.name;
       _pubkeyCtrl.text = newAccount.keypair.publicKeyHex;
       _actorCtrl.text = newAccount.actorId;
       _saving = false;

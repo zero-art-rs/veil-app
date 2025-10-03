@@ -15,7 +15,9 @@ class DeeplinkManager {
   final _encryptionKeyKey = 'ekey';
   final _inviteKey = 'invite';
 
-  static final instance = DeeplinkManager();
+  static final instance = DeeplinkManager._();
+
+  DeeplinkManager._();
 
   SharedSpkRevealData? retrieveContactDeepLink(Uri? deepLink) {
     if (deepLink == null) return null;
