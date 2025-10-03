@@ -70,6 +70,7 @@ class Document {
   DateTime createdAt;
   GroupContextParts groupContextParts;
   int sequenceNumber;
+  bool localOnly;
 
   Key get key => ValueKey(id);
 
@@ -79,6 +80,7 @@ class Document {
     required this.createdAt,
     required this.groupContextParts,
     this.sequenceNumber = 0,
+    this.localOnly = false,
   });
 
   void setDocument(BAutoCommit doc) {

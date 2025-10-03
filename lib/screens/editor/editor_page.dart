@@ -28,7 +28,7 @@ class EditorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<EditorPageVm>(
-      create: (_) => EditorPageVm(syncModel)..init(),
+      create: (_) => EditorPageVm(syncModel)..init(context),
       child: _EditorPageView(
         isMemberListAccessible: isMemberListAccessible,
         isHistoryAccessible: isHistoryAccessible,
@@ -62,23 +62,45 @@ class _EditorPageView extends StatelessWidget {
           child: Text(vm.syncModel.groupContext.retrieveGroupInfo().name),
         ),
         actions: [
-          SegmentedButton<EditorModes>(
-            showSelectedIcon: false,
-            segments: const <ButtonSegment<EditorModes>>[
-              ButtonSegment<EditorModes>(
-                value: EditorModes.view,
-                label: Icon(Icons.menu_book),
-              ),
-              ButtonSegment<EditorModes>(
-                value: EditorModes.edit,
-                label: Icon(Icons.edit),
-              ),
-            ],
-            selected: <EditorModes>{vm.selectedMode},
-            onSelectionChanged: (newSelection) async {
-              await vm.selectMode(newSelection.first);
-            },
-          ),
+          if (!vm.isLocalOnly)
+            SegmentedButton<EditorModes>(
+              showSelectedIcon: false,
+              segments: const <ButtonSegment<EditorModes>>[
+                ButtonSegment<EditorModes>(
+                  value: EditorModes.view,
+                  label: Icon(Icons.menu_book),
+                ),
+                ButtonSegment<EditorModes>(
+                  value: EditorModes.edit,
+                  label: Icon(Icons.edit),
+                ),
+              ],
+              selected: <EditorModes>{vm.selectedMode},
+              onSelectionChanged: (newSelection) async {
+                await vm.selectMode(newSelection.first);
+              },
+            ),
+          if (vm.isLocalOnly)
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text("Read-only mode"),
+                    content: const Text(
+                      "The owner of this document removed you from the group, you are now in read-only mode.",
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("OK"),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
 
           if (vm.isSinking) SyncCircleView(),
         ],

@@ -26,5 +26,6 @@ CREATE TABLE $documentsTable (
   content BLOB NOT NULL,
   created_at TEXT NOT NULL,
   group_context_parts TEXT NOT NULL,
-  sequence_number INTEGER NOT NULL
+  sequence_number INTEGER NOT NULL,
+  local_only INTEGER NOT NULL DEFAULT 0
 )""";

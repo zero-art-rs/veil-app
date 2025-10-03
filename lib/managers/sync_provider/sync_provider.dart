@@ -14,6 +14,7 @@ import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/local_state.dart';
 
 class SyncProvider {
   final _centrifugo = CentrifugeProvider.instance;
@@ -36,12 +37,38 @@ class SyncProvider {
         ),
       );
 
-      await add(doc, groupContext);
-      await DB.instance.updateDocument(doc: doc, parts: groupContext.asParts());
+      if (doc.localOnly) {
+        await _handleLocal(doc, groupContext);
+      } else {
+        await _handleRemote(doc, groupContext);
+      }
     }
   }
 
-  Future<SyncProviderModel> add(
+  Future<void> _handleLocal(Document doc, BGroupContext groupContext) async {
+    _addLocal(doc, groupContext);
+  }
+
+  Future<void> _handleRemote(Document doc, BGroupContext groupContext) async {
+    try {
+      await add(doc, groupContext);
+      await DB.instance.updateDocument(doc: doc, parts: groupContext.asParts());
+    } catch (e, st) {
+      if (_isUserRemovedError(e)) {
+        logger.i('User removed from group, making local only');
+        await LocalStateUtils.instance.makeDocumentLocal(doc);
+        _addLocal(doc, groupContext);
+      } else {
+        logger.e('Failed to add from invite: $e\n$st');
+      }
+    }
+  }
+
+  bool _isUserRemovedError(Object e) {
+    return e.toString().contains('User removed from group');
+  }
+
+  Future<void> add(
     Document document,
     BGroupContext groupContext, {
     insertToDb = false,
@@ -52,11 +79,16 @@ class SyncProvider {
     }
     current.add(syncModel);
     subject.add(current);
-
-    return syncModel;
   }
 
-  Future<SyncProviderModel> addFromInvite(
+  void _addLocal(Document document, BGroupContext groupContext) {
+    final syncModel = SyncProviderModel.local(document, groupContext);
+
+    current.add(syncModel);
+    subject.add(current);
+  }
+
+  Future<void> addFromInvite(
     Document document,
     BPendingGroupContext pendingGroupContext, {
     required BUser user,
@@ -68,12 +100,9 @@ class SyncProvider {
     );
 
     final syncModel = await _synchronizeDocument(document, groupContext);
-
     await _db.insertDocument(document: document);
     current.add(syncModel);
     subject.add(current);
-
-    return syncModel;
   }
 
   Future<void> remove(String chatId) async {
@@ -128,9 +157,7 @@ class SyncProvider {
       jwt,
       stream,
     );
-
     await syncModel.synchronizeInitially();
-
     return syncModel;
   }
 

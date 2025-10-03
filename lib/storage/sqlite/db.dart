@@ -318,6 +318,7 @@ class DB {
               doc.groupContextParts,
             ),
             sequenceNumber: doc.sequenceNumber,
+            localOnly: doc.localOnly == 1,
           ),
         )
         .toList();
@@ -344,17 +345,28 @@ class DB {
       groupContextParts: GroupContextParts.fromJsonString(
         doc.groupContextParts,
       ),
+      localOnly: doc.localOnly == 1,
+      sequenceNumber: doc.sequenceNumber,
+    );
+  }
+
+  Future<void> makeDocumentLocalOnly({required String id}) async {
+    await _update(
+      documentsTable,
+      {'local_only': 1},
+      where: 'id = ?',
+      whereArgs: [id],
     );
   }
 
   Future<void> insertDocument({required Document document}) async {
     final sqlDoc = SQLDocument(
       id: document.id,
-
       content: document.automergeDoc.save(),
       createdAt: document.createdAt,
       groupContextParts: document.groupContextParts.toJsonString(),
       sequenceNumber: document.sequenceNumber,
+      localOnly: document.localOnly ? 1 : 0,
     );
 
     await _insert(

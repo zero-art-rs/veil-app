@@ -17,7 +17,8 @@ class SyncProviderModel {
   final Document document;
   final BGroupContext groupContext;
   final String jwt;
-  final StreamSubscription<SSEModel> listener;
+  final StreamSubscription<SSEModel>? listener;
+  get isLocal => document.localOnly;
 
   SyncProviderModel({
     required this.document,
@@ -25,6 +26,18 @@ class SyncProviderModel {
     required this.jwt,
     required this.listener,
   });
+
+  factory SyncProviderModel.local(
+    Document document,
+    BGroupContext groupContext,
+  ) {
+    return SyncProviderModel(
+      document: document,
+      groupContext: groupContext,
+      jwt: "",
+      listener: null,
+    );
+  }
 
   factory SyncProviderModel.fromPending(
     SyncPendingProviderModel model,
@@ -90,55 +103,51 @@ class SyncProviderModel {
         nonce: [0],
       );
 
-      try {
-        final result = await GroupApiClient.instance.getFrames(
-          epoch: groupContext.getEpoch().toInt(),
-          groupId: document.id,
-          signature: base64UrlEncode(signature),
-          nonce: base64UrlEncode([0]),
-          messageSequenceNumber: document.sequenceNumber,
+      final result = await GroupApiClient.instance.getFrames(
+        epoch: groupContext.getEpoch().toInt(),
+        groupId: document.id,
+        signature: base64UrlEncode(signature),
+        nonce: base64UrlEncode([0]),
+        messageSequenceNumber: document.sequenceNumber,
+      );
+
+      if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
+        break;
+      }
+
+      for (final spFrame in result.spFrames.reversed) {
+        final rawFramePayloads = groupContext.processFrame(
+          frame: spFrame.frame.writeToBuffer(),
         );
 
-        if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
-          break;
-        }
+        for (final rawPayload in rawFramePayloads) {
+          final payload = Payload.fromBuffer(rawPayload);
 
-        for (final spFrame in result.spFrames.reversed) {
-          final rawFramePayloads = groupContext.processFrame(
-            frame: spFrame.frame.writeToBuffer(),
-          );
+          final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
 
-          for (final rawPayload in rawFramePayloads) {
-            final payload = Payload.fromBuffer(rawPayload);
+          if (crdt == null) continue;
 
-            final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
-
-            if (crdt == null) continue;
-
-            switch (crdt.kind) {
-              case ExposedCRDTPayloadKind.incrementalChange:
-                logger.d('Received incremental change');
-                document.automergeDoc.loadIncremental(
-                  bytes: crdt.crdt.incrementalChange,
-                );
-              case ExposedCRDTPayloadKind.fullDocument:
-                logger.d('Received full document');
-                document.automergeDoc = BAutoCommit.load(
-                  data: crdt.crdt.fullDocument,
-                );
-            }
+          switch (crdt.kind) {
+            case ExposedCRDTPayloadKind.incrementalChange:
+              logger.d('Received incremental change');
+              document.automergeDoc.loadIncremental(
+                bytes: crdt.crdt.incrementalChange,
+              );
+            case ExposedCRDTPayloadKind.fullDocument:
+              logger.d('Received full document');
+              document.automergeDoc = BAutoCommit.load(
+                data: crdt.crdt.fullDocument,
+              );
           }
         }
-
-        document.sequenceNumber = result.spFrames.first.seqNum.toInt();
-      } catch (err) {
-        logger.e('Sync provider inital process error: $err');
       }
+
+      document.sequenceNumber = result.spFrames.first.seqNum.toInt();
     }
   }
 
   Future<void> dispose() async {
     logger.i('Sync provider disposed');
-    await listener.cancel();
+    await listener?.cancel();
   }
 }

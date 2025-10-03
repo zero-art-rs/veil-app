@@ -18,7 +18,9 @@ import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/local_state.dart';
 import 'package:veil/utils/payload.dart';
+import 'package:veil/widgets/banner.dart';
 
 enum EditorModes { edit, view }
 
@@ -35,9 +37,19 @@ class EditorPageVm extends ChangeNotifier {
   var selectedMode = EditorModes.view;
   final _crdtPayloadList = <ExposedCRDTPayload>[];
 
+  get isLocalOnly => syncModel.isLocal;
+
   EditorPageVm(this.syncModel);
 
-  Future<void> init() async {
+  Future<void> init(BuildContext context) async {
+    if (syncModel.isLocal) {
+      mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+        syncModel.document.automergeDoc,
+      );
+      notifyListeners();
+      return;
+    }
+
     syncModel.document.automergeDoc.setActorId(
       uuid: AccountSecureStorage.instance.account.actorId,
     );
@@ -45,48 +57,20 @@ class EditorPageVm extends ChangeNotifier {
     isSinking = true;
     notifyListeners();
 
-    _subscription = _changeManager.stream(syncModel.document.id).listen((
-      spFrame,
-    ) async {
-      final (crdtPayloads, fromCurrentUser) = processFrame(spFrame);
-
-      if (fromCurrentUser) {
-        logger.i('Received frame sent by current user, omitting...');
-        return;
-      }
-
-      if (selectedMode == EditorModes.edit) {
-        logger.i('Received document update, buffering it');
-        _crdtPayloadList.addAll(crdtPayloads);
-      }
-
-      if (selectedMode != EditorModes.edit && crdtPayloads.isNotEmpty) {
-        isSinking = true;
-        notifyListeners();
-
-        syncDocument(crdtPayloads);
-        mdEditor.text = EditorAutomergeUtils.instance.toDoc(
-          syncModel.document.automergeDoc,
-        );
-
-        logger.i(
-          'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
-        );
-
-        isSinking = false;
-        notifyListeners();
-      }
-
-      await DB.instance.updateDocument(
-        doc: syncModel.document,
-        parts: syncModel.groupContext.asParts(),
-      );
-    });
+    _listenCentrifugoFrames(context);
 
     final frames = _changeManager.getFrames(syncModel.document.id);
     for (final frame in frames.values) {
-      final (exposedCrdtPayload, _) = processFrame(frame);
-      syncDocument(exposedCrdtPayload);
+      try {
+        final (exposedCrdtPayload, _) = processFrame(frame);
+        syncDocument(exposedCrdtPayload);
+      } catch (e) {
+        if (e.toString().contains('User removed from group')) {
+          await _handleRemoveMember(context);
+        }
+        logger.e('Error processing frame, stopping sync error: $e');
+        return;
+      }
     }
 
     mdEditor.text = EditorAutomergeUtils.instance.toDoc(
@@ -104,7 +88,74 @@ class EditorPageVm extends ChangeNotifier {
       'Init document state ${syncModel.document.automergeDoc.getBlocks()}',
     );
 
+    hashBeforeEditing();
     notifyListeners();
+  }
+
+  void _listenCentrifugoFrames(BuildContext context) {
+    _subscription = _changeManager.stream(syncModel.document.id).listen((
+      spFrame,
+    ) async {
+      try {
+        final (crdtPayloads, fromCurrentUser) = processFrame(spFrame);
+
+        if (fromCurrentUser) {
+          logger.i('Received frame sent by current user, omitting...');
+          return;
+        }
+
+        if (selectedMode == EditorModes.edit) {
+          logger.i('Received document update, buffering it');
+          _crdtPayloadList.addAll(crdtPayloads);
+        }
+
+        if (selectedMode != EditorModes.edit && crdtPayloads.isNotEmpty) {
+          logger.i('Received crdt payload, syncing it');
+          isSinking = true;
+          notifyListeners();
+
+          syncDocument(crdtPayloads);
+          mdEditor.text = EditorAutomergeUtils.instance.toDoc(
+            syncModel.document.automergeDoc,
+          );
+
+          logger.i(
+            'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
+          );
+
+          isSinking = false;
+          notifyListeners();
+        }
+
+        await DB.instance.updateDocument(
+          doc: syncModel.document,
+          parts: syncModel.groupContext.asParts(),
+        );
+      } catch (e) {
+        if (e.toString().contains('User removed from group')) {
+          if (!context.mounted) return;
+          await _handleRemoveMember(context);
+          return;
+        }
+        logger.e('Error processing frame, stopping sync error: $e');
+      }
+    });
+  }
+
+  Future<void> _handleRemoveMember(BuildContext context) async {
+    logger.i('User removed from group, adding as local');
+    await LocalStateUtils.instance.makeDocumentLocal(syncModel.document);
+    await selectMode(EditorModes.view);
+    await _subscription?.cancel();
+    await syncModel.listener?.cancel();
+    notifyListeners();
+
+    if (!context.mounted) return;
+    TopBanner.show(
+      context: context,
+      message: 'You have been removed from the group',
+      kind: TopBannerCases.info,
+    );
   }
 
   void syncDocument(List<ExposedCRDTPayload> payloads) {
@@ -146,19 +197,11 @@ class EditorPageVm extends ChangeNotifier {
     return (exposedCrdtPayload, false);
   }
 
-  void editMD() {
-    notifyListeners();
-  }
-
   Future<void> selectMode(EditorModes mode) async {
     selectedMode = mode;
 
     if (selectedMode != EditorModes.edit) {
       await editorTextSynchronize();
-
-      _hashBeforeEditing = sha256
-          .convert(utf8.encode(mdEditor.text))
-          .toString();
     }
 
     notifyListeners();
@@ -173,6 +216,10 @@ class EditorPageVm extends ChangeNotifier {
         .toString();
 
     if (_hashBeforeEditing != hashAfterEditing) {
+      logger.d('hashAfterEditing: $hashAfterEditing');
+      logger.d('_hashBeforeEditing: $_hashBeforeEditing');
+
+      logger.i('Uploading new changes..');
       EditorAutomergeUtils.instance.fromDoc(
         mdEditor.text,
         syncModel.document.automergeDoc,
@@ -197,6 +244,7 @@ class EditorPageVm extends ChangeNotifier {
       );
 
       syncModel.groupContext.commitState();
+      hashBeforeEditing();
 
       await DB.instance.updateDocument(
         doc: syncModel.document,
@@ -222,6 +270,14 @@ class EditorPageVm extends ChangeNotifier {
     }
 
     isSinking = false;
+    notifyListeners();
+  }
+
+  void hashBeforeEditing() {
+    _hashBeforeEditing = sha256.convert(utf8.encode(mdEditor.text)).toString();
+  }
+
+  void editMD() {
     notifyListeners();
   }
 
