@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sharing/spk_provider.dart';
@@ -13,6 +15,7 @@ import 'package:veil/storage/sqlite/models/document.dart';
 import 'package:veil/storage/sqlite/models/spk.dart';
 import 'package:veil/storage/sqlite/schemes.dart';
 import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/platform.dart';
 
 const _dbName = 'veil.db';
 
@@ -24,6 +27,11 @@ class DB {
   DB._();
 
   Future<void> open({String? inMemoryPath}) async {
+    if (PlatformUtils.isWindows || PlatformUtils.isLinux) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
     _connection = await openDatabase(
       inMemoryPath ?? _dbName,
       version: 1,

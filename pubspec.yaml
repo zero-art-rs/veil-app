@@ -39,7 +39,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   veil_rust:
     path: rust_builder
-  flutter_rust_bridge: 2.11.1
+  flutter_rust_bridge: ^2.11.1
   google_fonts: ^6.3.0
   flutter_secure_storage: ^9.2.4
   uuid: ^4.5.1
@@ -126,24 +126,3 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-# dependency_overrides:
-#   super_editor:
-#     git:
-#       url: https://github.com/superlistapp/super_editor
-#       path: super_editor
-#       ref: stable # or "main"
-#   super_editor_markdown:
-#     git:
-#       url: https://github.com/superlistapp/super_editor
-#       path: super_editor_markdown
-#       ref: stable
-#   super_text_layout:
-#     git:
-#       url: https://github.com/superlistapp/super_editor
-#       path: super_text_layout
-#       ref: stable
-#   attributed_text:
-#     git:
-#       url: https://github.com/superlistapp/super_editor
-#       path: attributed_text
-#       ref: stable
