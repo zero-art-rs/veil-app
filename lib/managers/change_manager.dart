@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:fixnum/fixnum.dart';
-import 'package:rxdart/subjects.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 
 class SyncChange {
   Map<int, SPFrame> frames;
-  final subject = BehaviorSubject<SPFrame>();
+  final streamController = StreamController<SPFrame>.broadcast();
 
   SyncChange({required this.frames});
 }
@@ -33,7 +34,7 @@ class ChangeManager {
     }
 
     syncChange.frames[sequenceNumber] = frame;
-    syncChange.subject.add(
+    syncChange.streamController.add(
       SPFrame(seqNum: Int64(sequenceNumber), frame: frame.frame),
     );
   }
@@ -48,7 +49,7 @@ class ChangeManager {
     return _state[chatId]!.frames;
   }
 
-  BehaviorSubject<SPFrame> stream(String chatId) {
-    return _state[chatId]!.subject;
+  Stream<SPFrame> stream(String chatId) {
+    return _state[chatId]!.streamController.stream;
   }
 }

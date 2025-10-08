@@ -18,6 +18,7 @@ class SyncProviderModel {
   final BGroupContext groupContext;
   final String jwt;
   final StreamSubscription<SSEModel>? listener;
+
   get isLocal => document.localOnly;
 
   SyncProviderModel({

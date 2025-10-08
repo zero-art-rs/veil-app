@@ -1,14 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:async/async.dart';
+import 'package:async_queue/async_queue.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/change_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/managers/sync_provider/sync_model_executor.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
@@ -18,7 +20,6 @@ import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/utils/group_context_factory.dart';
-import 'package:veil/utils/local_state.dart';
 import 'package:veil/utils/payload.dart';
 import 'package:veil/widgets/banner.dart';
 
@@ -29,126 +30,134 @@ class EditorPageVm extends ChangeNotifier {
   final _changeManager = ChangeManager.instance;
 
   final SyncProviderModel syncModel;
-
   String? _hashBeforeEditing;
-  StreamSubscription<SPFrame>? _subscription;
+
   bool isEditingFlow = false;
   bool isSinking = false;
   var selectedMode = EditorModes.view;
-  final _crdtPayloadList = <ExposedCRDTPayload>[];
+
+  final crdtBufferController = StreamController<ExposedCRDTPayload>();
+  late final crdtBuffer = StreamQueue(crdtBufferController.stream);
+
+  final SyncModelExecutor executor;
+  StreamSubscription<SPFrame>? _centrifugoSubscription;
+
+  final processEventQueue = AsyncQueue();
 
   get isLocalOnly => syncModel.isLocal;
 
-  EditorPageVm(this.syncModel);
+  EditorPageVm(this.syncModel, this.executor);
 
-  Future<void> init(BuildContext context) async {
-    if (syncModel.isLocal) {
-      mdEditor.text = EditorAutomergeUtils.instance.toText(
-        syncModel.document.automergeDoc,
-      );
-      notifyListeners();
-      return;
+  void init(BuildContext context) {
+    switch (syncModel.isLocal) {
+      case true:
+        _localInit();
+      case false:
+        _networkInit(context);
     }
+  }
 
+  void _localInit() {
+    mdEditor.text = EditorAutomergeUtils.instance.toText(
+      syncModel.document.automergeDoc,
+    );
+    notifyListeners();
+  }
+
+  Future<void> _networkInit(BuildContext context) async {
     syncModel.document.automergeDoc.setActorId(
       uuid: AccountSecureStorage.instance.account.actorId,
     );
 
-    isSinking = true;
-    notifyListeners();
-
-    _listenCentrifugoFrames(context);
-
-    final frames = _changeManager.getFrames(syncModel.document.id);
-    for (final frame in frames.values) {
-      try {
-        final (exposedCrdtPayload, _) = processFrame(frame);
-        syncDocument(exposedCrdtPayload);
-      } catch (e) {
-        if (e.toString().contains('User removed from group')) {
-          await _handleRemoveMember(context);
-        }
-        logger.e('Error processing frame, stopping sync error: $e');
-        return;
-      }
-    }
+    processEventQueue.addQueueListener((e) {
+      logger.i('Queue listener: ${e.currentQueueSize}');
+      isSinking = !(e.currentQueueSize == 0);
+      notifyListeners();
+    });
 
     mdEditor.text = EditorAutomergeUtils.instance.toText(
       syncModel.document.automergeDoc,
     );
-
-    await DB.instance.updateDocument(
-      doc: syncModel.document,
-      parts: syncModel.groupContext.asParts(),
-    );
-
-    isSinking = false;
-
-    logger.i(
-      'Init document state ${syncModel.document.automergeDoc.getBlocks()}',
-    );
-
-    hashBeforeEditing(mdEditor.text);
     notifyListeners();
-  }
 
-  void _listenCentrifugoFrames(BuildContext context) {
-    _subscription = _changeManager.stream(syncModel.document.id).listen((
+    // ---- Init buffer
+    var initialBuffer = true;
+    final initialCentrifugoBuffer = [];
+
+    _changeManager.stream(executor.syncModel.document.id).listen((
       spFrame,
     ) async {
-      try {
-        final (crdtPayloads, fromCurrentUser) = processFrame(spFrame);
+      initialCentrifugoBuffer.add(spFrame);
 
-        if (fromCurrentUser) {
-          logger.i('Received frame sent by current user, omitting...');
-          return;
+      if (!initialBuffer) {
+        for (final frame in initialCentrifugoBuffer) {
+          processEventQueue.addJob(() => processFrame(context, frame));
         }
-
-        if (selectedMode == EditorModes.edit) {
-          logger.i('Received document update, buffering it');
-          _crdtPayloadList.addAll(crdtPayloads);
-        }
-
-        if (selectedMode != EditorModes.edit && crdtPayloads.isNotEmpty) {
-          logger.i('Received crdt payload, syncing it');
-          isSinking = true;
-          notifyListeners();
-
-          syncDocument(crdtPayloads);
-          mdEditor.text = EditorAutomergeUtils.instance.toText(
-            syncModel.document.automergeDoc,
-          );
-
-          hashBeforeEditing(mdEditor.text);
-
-          logger.i(
-            'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
-          );
-
-          isSinking = false;
-          notifyListeners();
-        }
-
-        await DB.instance.updateDocument(
-          doc: syncModel.document,
-          parts: syncModel.groupContext.asParts(),
-        );
-      } catch (e) {
-        if (e.toString().contains('User removed from group')) {
-          await _handleRemoveMember(context);
-          return;
-        }
-        logger.e('Error processing frame, stopping sync error: $e');
+        initialCentrifugoBuffer.clear();
+        await processEventQueue.start();
       }
     });
+
+    final frames = _changeManager.getFrames(executor.syncModel.document.id);
+    for (final frame in frames.values) {
+      processEventQueue.addJob(() => processFrame(context, frame));
+    }
+    await processEventQueue.start();
+
+    initialBuffer = false;
   }
+
+  // ---
+  Future<void> processFrame(BuildContext context, SPFrame frame) async {
+    try {
+      final (crdtPayloadList, isCurrentUser) = await executor.processFrame(
+        frame,
+      );
+
+      if (isCurrentUser) {
+        logger.i('Received frame sent by current user, omitting...');
+        return;
+      }
+
+      logger.i('Processing incoming frame...');
+
+      for (final payload in crdtPayloadList) {
+        crdtBufferController.add(payload);
+      }
+
+      if (selectedMode != EditorModes.edit) {
+        final crdtPayloads = await loadBuffer();
+        if (crdtPayloads.isEmpty) {
+          return;
+        }
+
+        mdEditor.text = await executor.appyCrdtOperation(crdtPayloads);
+
+        hashBeforeEditing(mdEditor.text);
+
+        logger.i(
+          'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
+        );
+
+        notifyListeners();
+      }
+    } catch (e) {
+      if (e.toString().contains('User removed from group')) {
+        await _handleRemoveMember(context);
+      } else {
+        logger.e('Error processing frame: $e');
+      }
+    }
+  }
+
+  // --- INIT ---
 
   Future<void> _handleRemoveMember(BuildContext context) async {
     logger.i('User removed from group, adding as local');
-    await LocalStateUtils.instance.makeDocumentLocal(syncModel.document);
+
+    await executor.makeLocalOperation();
     await selectMode(EditorModes.view);
-    await _subscription?.cancel();
-    await syncModel.listener?.cancel();
+    await _centrifugoSubscription?.cancel();
     notifyListeners();
 
     if (!context.mounted) return;
@@ -159,114 +168,43 @@ class EditorPageVm extends ChangeNotifier {
     );
   }
 
-  void syncDocument(List<ExposedCRDTPayload> payloads) {
-    for (final payload in payloads) {
-      switch (payload.kind) {
-        case ExposedCRDTPayloadKind.incrementalChange:
-          final incrementalChange = payload.crdt.incrementalChange;
-          syncModel.document.automergeDoc.loadIncremental(
-            bytes: incrementalChange,
-          );
-        default:
-      }
-    }
-  }
-
-  (List<ExposedCRDTPayload> payloads, bool fromCurrentUser) processFrame(
-    SPFrame spframe,
-  ) {
-    List<ExposedCRDTPayload> exposedCrdtPayload = [];
-
-    final rawPayloads = syncModel.groupContext.processFrame(
-      frame: spframe.frame.writeToBuffer(),
-    );
-
-    if (rawPayloads.isEmpty) {
-      return ([], true);
-    }
-
-    for (final rawPayload in rawPayloads) {
-      final payload = Payload.fromBuffer(rawPayload);
-
-      final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
-      if (crdt == null) continue;
-
-      exposedCrdtPayload.add(crdt);
-    }
-
-    syncModel.document.sequenceNumber = spframe.seqNum.toInt();
-    return (exposedCrdtPayload, false);
-  }
-
   Future<void> selectMode(EditorModes mode) async {
-    selectedMode = mode;
+    final runSync =
+        selectedMode == EditorModes.edit && mode == EditorModes.view;
 
-    if (selectedMode != EditorModes.edit) {
+    if (runSync) {
       await editorTextSynchronize();
     }
+
+    selectedMode = mode;
 
     notifyListeners();
   }
 
   Future<void> editorTextSynchronize() async {
-    isSinking = true;
-    notifyListeners();
-
     var hashAfterEditing = sha256
         .convert(utf8.encode(mdEditor.text))
         .toString();
 
     if (_hashBeforeEditing != hashAfterEditing) {
       logger.i('Uploading new changes..');
-      EditorAutomergeUtils.instance.toDoc(
-        mdEditor.text,
-        syncModel.document.automergeDoc,
-      );
-      syncModel.document.automergeDoc.commit();
 
-      if (_crdtPayloadList.isNotEmpty) {
-        logger.i('Syncing buffered changes..');
-      }
-      syncDocument(_crdtPayloadList);
-
-      final saveIncremental = syncModel.document.automergeDoc.saveIncremental();
-
-      logger.i('Sending frame with changes');
-      await GroupApiClient.instance.sendFrame(
-        groupId: syncModel.document.id,
-        frame: syncModel.groupContext.createFrame(
-          payloads: [
-            Payload(
-              crdt: CRDTPayload(incrementalChange: saveIncremental),
-            ).writeToBuffer(),
-          ],
-        ),
-      );
-      logger.i('New changes sent');
-
-      syncModel.groupContext.commitState();
+      final crdtPayloadList = await loadBuffer();
+      await executor.sendFrame(mdEditor.text, crdtPayloadList);
       hashBeforeEditing(mdEditor.text);
-
-      await DB.instance.updateDocument(
-        doc: syncModel.document,
-        parts: syncModel.groupContext.asParts(),
-      );
 
       logger.i(
         'Document state after changing mode ${syncModel.document.automergeDoc.getBlocks()}',
       );
     } else {
-      if (_crdtPayloadList.isNotEmpty) {
+      final crdtPayloadList = await loadBuffer();
+
+      if (crdtPayloadList.isNotEmpty) {
         logger.i('Syncing buffered changes..');
 
-        syncDocument(_crdtPayloadList);
-        mdEditor.text = EditorAutomergeUtils.instance.toText(
-          syncModel.document.automergeDoc,
-        );
+        mdEditor.text = await executor.appyCrdtOperation(crdtPayloadList);
 
         hashBeforeEditing(mdEditor.text);
-
-        _crdtPayloadList.clear();
       } else {
         logger.i('No buffered changes, no local changes, nothing to sync');
       }
@@ -274,6 +212,18 @@ class EditorPageVm extends ChangeNotifier {
 
     isSinking = false;
     notifyListeners();
+  }
+
+  Future<List<ExposedCRDTPayload>> loadBuffer() async {
+    final buffer = <ExposedCRDTPayload>[];
+
+    while (await crdtBuffer.hasNext.timeout(
+      Durations.short3,
+      onTimeout: () => false,
+    )) {
+      buffer.add(await crdtBuffer.next);
+    }
+    return buffer;
   }
 
   void hashBeforeEditing(String text) {
@@ -336,10 +286,11 @@ class EditorPageVm extends ChangeNotifier {
 
   @override
   void dispose() async {
-    _subscription?.cancel();
+    _centrifugoSubscription?.cancel();
 
-    if (_crdtPayloadList.isNotEmpty) {
-      syncDocument(_crdtPayloadList);
+    final crdtPayloadList = await loadBuffer();
+    if (crdtPayloadList.isNotEmpty) {
+      await executor.appyCrdtOperation(crdtPayloadList);
     }
 
     await DB.instance.updateDocument(
