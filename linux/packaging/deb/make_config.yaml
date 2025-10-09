@@ -1,0 +1,62 @@
+# the name used to display in the OS. Specifically desktop
+# entry name
+display_name: Veil
+
+# package name for debian/apt repository
+# the name should be all lowercase with -+.
+package_name: veil
+
+app_id: com.distributedlab.veil
+
+maintainer:
+  name: test
+  email: test@gmail.com
+
+co_authors:
+  - name: test
+    email: test@gmail.com
+
+# enum options -> required, important, standard, optional, extra
+# refer: https://www.debian.org/doc/debian-policy/ch-archive.html#s-priorities
+priority: optional
+
+# enum options: admin, cli-mono, comm, database, debug, devel, doc, editors, education, electronics, embedded, fonts, games, gnome, gnu-r, gnustep, graphics, hamradio, haskell, httpd, interpreters, introspection, java, javascript, kde, kernel, libdevel, libs, lisp, localization, mail, math, metapackages, misc, net, news, ocaml, oldlibs, otherosfs, perl, php, python, ruby, rust, science, shells, sound, tasks, tex, text, utils, vcs, video, web, x11, xfce, zope
+# refer: https://www.debian.org/doc/debian-policy/ch-archive.html#s-subsections
+section: x11
+
+# the size of binary in kilobyte
+installed_size: 6604
+
+essential: false
+
+# application icon path relative to project url
+icon: assets/logo.png
+
+keywords:
+  - Editor
+  - Collaborative
+
+# a name to categorize the app into a section of application
+generic_name: Collaborative editor 
+
+supported_mime_type:
+  - x-scheme-handler/veil
+
+# supported mime types that can be opened using this application
+# supported_mime_type:
+#   - audio/mpeg
+
+# shown when right clicked the desktop entry icons
+# actions:
+#   - Gallery
+#   - Create
+
+# the categories the application belong to
+# refer: https://specifications.freedesktop.org/menu-spec/latest/
+categories:
+  - Science
+
+# let OS know if the application can be run on start_up. If it's false
+# the application will deny to the OS if it was added as a start_up
+# application
+startup_notify: true

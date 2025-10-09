@@ -80,7 +80,6 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _listenUriChanges() {
-    if (!PlatformUtils.isApple) return;
     try {
       _sub = _appLinks.uriLinkStream.listen(
         (Uri? uri) {
