@@ -1,8 +1,8 @@
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart' as bridge;
-import 'package:zk_notion_app/storage/sqlite/consts.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/src/rust/api/group_context.dart' as bridge;
+import 'package:veil/storage/sqlite/consts.dart';
+import 'package:veil/utils/group_context_factory.dart';
 
 extension GroupContextExt on BGroupContext {
   GroupInfo retrieveGroupInfo() {

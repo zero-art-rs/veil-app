@@ -3,7 +3,9 @@ import 'dart:convert';
 
 class AppStorage {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  static final AppStorage shared = AppStorage();
+  static final AppStorage shared = AppStorage._();
+
+  AppStorage._();
 
   clear() {
     _storage.deleteAll();
@@ -25,6 +27,10 @@ class AppStorage {
 
   Future<void> write({required String key, required String value}) {
     return _storage.write(key: key, value: value);
+  }
+
+  Future<void> remove({required String key}) {
+    return _storage.delete(key: key);
   }
 
   Future<void> setArray(String key, List<Map<String, dynamic>> values) async {

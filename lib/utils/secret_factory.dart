@@ -1,32 +1,36 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
+import 'package:veil/src/rust/api/group_context.dart';
 
 class SecretManager {
-  static final SecretManager intance = SecretManager();
+  static final SecretManager intance = SecretManager._();
+  late BSecretsFactory secretFactory = _secretFactory();
 
-  Uint8List generateSecretKey() {
+  SecretManager._();
+
+  BSecretsFactory _secretFactory() {
     final random = Random.secure();
     final seed = Uint8List.fromList(
       List<int>.generate(32, (_) => random.nextInt(256)),
     );
 
-    final secretKey = BSecretsFactory(seed: U8Array32(seed)).generateSecret();
+    return BSecretsFactory(seed: U8Array32(seed));
+  }
 
-    return secretKey;
+  Uint8List generateSecretKey() {
+    return secretFactory.generateSecret();
   }
 
   (Uint8List, Uint8List) generateKeypair() {
-    final random = Random.secure();
-    final seed = Uint8List.fromList(
-      List<int>.generate(32, (_) => random.nextInt(256)),
-    );
+    return secretFactory.generateSecretWithPublicKey();
+  }
 
-    final (publicKey, secretKey) = BSecretsFactory(
-      seed: U8Array32(seed),
-    ).generateSecretWithPublicKey();
+  (Uint8List, Uint8List) encrypt(List<int> plainText) {
+    return secretFactory.encrypt(plaintext: plainText);
+  }
 
-    return (publicKey, secretKey);
+  Uint8List decrypt(List<int> cipherText, List<int> ecnryptionKey) {
+    return secretFactory.decrypt(ciphertext: cipherText, okm: ecnryptionKey);
   }
 }

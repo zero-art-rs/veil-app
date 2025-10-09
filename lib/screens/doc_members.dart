@@ -1,22 +1,32 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/deeplink_manager.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/screens/contacts_page.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/models.dart' as m;
-import 'package:zk_notion_app/utils/secret_factory.dart';
-import 'package:zk_notion_app/widgets/banner.dart';
-import 'package:zk_notion_app/utils/platform.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import 'package:veil/api/group_api_client.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sharing/deeplink_manager.dart';
+import 'package:veil/managers/sync_provider/sync_model_executor.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/screens/contacts_page.dart';
+import 'package:veil/screens/editor/frame_processor/executor.dart';
+import 'package:veil/storage/models.dart' as m;
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/secret_factory.dart';
+import 'package:veil/utils/platform.dart';
+import 'package:veil/widgets/ays_modal.dart';
 
 class MemberScreenModel {
   final m.DocumentMember member;
   final bool isYou;
+  final bool isOwner;
 
-  MemberScreenModel({required this.member, this.isYou = false});
+  MemberScreenModel({
+    required this.member,
+    this.isYou = false,
+    this.isOwner = false,
+  });
 }
 
 class DocumentMemberListScreen extends StatefulWidget {
@@ -24,11 +34,11 @@ class DocumentMemberListScreen extends StatefulWidget {
     super.key,
     required this.members,
     required this.doc,
-    required this.groupContext,
+    required this.executor,
   });
 
   final List<MemberScreenModel> members;
-  final BGroupContext groupContext;
+  final SyncModelExecutor executor;
 
   final m.Document doc;
 
@@ -47,6 +57,14 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         );
       },
     );
+  }
+
+  get currentAccountIsOwner {
+    final owner = widget.members.firstWhereOrNull((e) {
+      return e.isOwner && e.isYou;
+    });
+
+    return owner != null;
   }
 
   void showInviteDialog(Future<String> linkFuture) async {
@@ -73,7 +91,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
             return AlertDialog(
               title: !snapshot.hasData
                   ? Text("Constructing invite link...")
-                  : Text('Copy untrusted link'),
+                  : Text('Copy link'),
               content: SizedBox(
                 width: 480,
                 child: !snapshot.hasData
@@ -124,82 +142,140 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  Future<void> _inviteUndentifiedMember(BuildContext context) async {
+  void _removeMember(BuildContext context, m.DocumentMember user) {
+    final work = Future<void>(() async {
+      await widget.executor.operate((syncModel) async {
+        logger.i('Removing member in group context..');
+        final (frame, member) = await syncModel.groupContext.removeMember(
+          userId: user.account.actorId,
+          payloads: [],
+        );
+
+        logger.i('Sending remove member frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: widget.doc.id,
+          frame: frame,
+        );
+
+        logger.i('Committing state...');
+        syncModel.groupContext.commitState();
+
+        logger.i('Member removed from document');
+        await DB.instance.updateDocument(
+          doc: widget.doc,
+          parts: syncModel.groupContext.asParts(),
+        );
+      }, priority: TaskPriority.low);
+      setState(() {
+        widget.members.removeWhere(
+          (e) => e.member.account.actorId == user.account.actorId,
+        );
+      });
+    });
+
+    aysAsyncModal(
+      context: context,
+      title: 'Are you sure to remove ${user.account.name} from group?',
+      content: 'This action cannot be undone.',
+      callback: () async {
+        try {
+          await work;
+        } catch (e) {
+          logger.e('Failed to remove member: $e');
+          rethrow;
+        }
+      },
+    );
+  }
+
+  void _inviteUndentifiedMember(BuildContext context) {
     final inviteLink = Future(() async {
-      final secretKey = SecretManager.intance.generateSecretKey();
+      return await widget.executor.operate((syncModel) async {
+        final secretKey = SecretManager.intance.generateSecretKey();
 
-      final payload = Payload(
-        crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-      ).writeToBuffer();
+        final payload = Payload(
+          crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+        ).writeToBuffer();
 
-      logger.i('Creating unidentified member invite...');
-      final (frame, invite) = await widget.groupContext.addUnidentifiedMember(
-        secretKey: secretKey,
-        payloads: [payload],
-      );
+        logger.i('Creating unidentified member invite...');
+        final (frame, invite) = await syncModel.groupContext
+            .addUnidentifiedMember(secretKey: secretKey, payloads: [payload]);
 
-      logger.i('Sending unidentified member invite frame...');
-      await GroupApiClient.instance.sendFrame(
-        groupId: widget.doc.id,
-        frame: frame,
-      );
+        logger.i('Sending unidentified member invite frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: widget.doc.id,
+          frame: frame,
+        );
 
-      widget.groupContext.commitState();
-      logger.i('Finished sending unidentified member invite frame...');
-      final inviteLink = DeeplinkManager.instance.buildUnidentifiedGroupInvite(
-        invite,
-      );
+        logger.i('Committing state...');
+        syncModel.groupContext.commitState();
+        logger.i('Unidentified member invite sent');
+        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
-      return inviteLink;
+        await DB.instance.updateDocument(
+          doc: syncModel.document,
+          parts: syncModel.groupContext.asParts(),
+        );
+
+        return inviteLink;
+      }, priority: TaskPriority.low);
     });
 
     showInviteDialog(inviteLink);
   }
 
-  Future<void> _inviteContactMember(m.ExternalAccount member) async {
-    try {
-      // LOGIC
+  Future<void> _inviteContactMember(Contact contact) async {
+    final future = Future(() async {
+      return await widget.executor.operate((syncModel) async {
+        try {
+          final firstSpk = contact.spks.firstOrNull;
+          final spkPublicKey = firstSpk != null
+              ? Uint8List.fromList(firstSpk)
+              : null;
 
-      // setState(() {
-      //   widget.doc.members.add(
-      //     m.DocumentMember(account: member, isOwner: false),
-      //   );
-      //   widget.members.add(
-      //     MemberScreenModel(
-      //       member: m.DocumentMember(account: member, isOwner: false),
-      //     ),
-      //   );
-      // });
+          final payload = Payload(
+            crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+          ).writeToBuffer();
 
-      if (!mounted) return;
-      Navigator.pop(context);
-    } on DatabaseException catch (e) {
-      if (e.isUniqueConstraintError()) {
-        if (!mounted) return;
+          final (frame, invite) = await syncModel.groupContext
+              .addIdentifiedMember(
+                identityPublicKey: contact.account.rawPublicKey,
+                spkPublicKey: spkPublicKey,
+                payloads: [payload],
+              );
 
-        TopBanner.show(
-          context: context,
-          message: 'Member already exists',
-          kind: TopBannerCases.info,
-        );
-      } else {
-        logger.e('Failed to add member: $e');
-        if (!mounted) return;
-        TopBanner.show(
-          context: context,
-          message: 'Failed to add member, try again',
-          kind: TopBannerCases.error,
-        );
-      }
-    } catch (err) {
-      logger.e('Failed to add member: $err');
-      if (!mounted) return;
-      TopBanner.show(
-        context: context,
-        message: 'Unexpected error, try again',
-        kind: TopBannerCases.error,
-      );
-    }
+          await GroupApiClient.instance.sendFrame(
+            groupId: widget.doc.id,
+            frame: frame,
+          );
+
+          syncModel.groupContext.commitState();
+
+          logger.i('Member invite sent');
+          final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+          await DB.instance.updateDocument(
+            doc: syncModel.document,
+            parts: syncModel.groupContext.asParts(),
+          );
+
+          if (spkPublicKey != null) {
+            logger.i('Removing spk contact spk..');
+            await ContactsManager.instance.removeSpk(
+              contact.account.actorId,
+              spkPublicKey.toList(),
+            );
+          }
+
+          return inviteLink;
+        } catch (e) {
+          logger.e('Failed to invite member: $e');
+          rethrow;
+        }
+      }, priority: TaskPriority.low);
+    });
+
+    showInviteDialog(future);
   }
 
   @override
@@ -241,17 +317,35 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
               child: const Icon(Icons.person),
             ),
             title: Row(
+              spacing: 12,
               children: [
-                Expanded(
-                  child: Text(
-                    g.member.account.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                Text(
+                  g.member.account.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+
+                if (g.isYou)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'You',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
               ],
             ),
             subtitle: Padding(
@@ -276,40 +370,50 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         spacing: 8,
         children: [
-          // TODO: - Uncomment when contact spks will be supported
-          // FloatingActionButton(
-          //   onPressed: () => _onAddMember(context),
-          //   tooltip: 'Invite member',
-          //   child: const Icon(Icons.person_add_alt_1_outlined),
-          // ),
-          FloatingActionButton(
-            onPressed: () => _inviteUndentifiedMember(context),
-            tooltip: 'Invite undentified member',
-            child: const Icon(Icons.person_add_alt_1_outlined),
-          ),
+          if (currentAccountIsOwner)
+            FloatingActionButton(
+              onPressed: () => _onAddMember(context),
+              tooltip: 'Invite member',
+              child: const Icon(Icons.person_add_alt_1_outlined),
+            ),
+          if (currentAccountIsOwner)
+            FloatingActionButton(
+              onPressed: () => _inviteUndentifiedMember(context),
+              tooltip: 'Invite undentified member',
+              child: const Icon(Symbols.domino_mask),
+            ),
         ],
       ),
     );
   }
 
   Widget buildTrailing(ThemeData theme, MemberScreenModel g) {
-    if (g.isYou) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          'You',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.w600,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 12,
+      children: [
+        if (currentAccountIsOwner && !g.isYou)
+          IconButton(
+            onPressed: () => _removeMember(context, g.member),
+            icon: Icon(Icons.delete),
           ),
-        ),
-      );
-    } else {
-      return SizedBox();
-    }
+
+        if (g.isOwner)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'Owner',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }

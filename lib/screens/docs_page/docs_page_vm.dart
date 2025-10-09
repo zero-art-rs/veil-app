@@ -2,17 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:uuid/v4.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
+import 'package:veil/api/group_api_client.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/managers/sync_provider/sync_provider.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/utils/group_context_factory.dart';
 
 class DocsPageViewModel extends ChangeNotifier {
-  final _accStorage = AccountStorage();
   final _syncProvider = SyncProvider.instance;
 
   late StreamSubscription<List<SyncProviderModel>> _docsListener;
@@ -27,19 +26,16 @@ class DocsPageViewModel extends ChangeNotifier {
 
   Future<void> createDoc(String title) async {
     final resTitle = title.isEmpty ? 'Document' : title;
-    final owner = await _accStorage.getAccount();
-
-    if (owner == null) {
-      throw Exception('To create a document, you must have an account');
-    }
 
     final docID = UuidV4().generate();
-    final content = BAutoCommit();
+    final content = BAutoCommit.withOwner(
+      actorId: AccountSecureStorage.instance.account.actorId,
+    );
 
     final (groupContext, frame) = GroupContextFactory.createGroupContext(
       groupName: resTitle,
       groupID: docID,
-      owner: owner,
+      owner: AccountSecureStorage.instance.account,
     );
 
     final document = Document(
@@ -51,7 +47,7 @@ class DocsPageViewModel extends ChangeNotifier {
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
 
-    await _syncProvider.add(document, groupContext);
+    await _syncProvider.add(document, groupContext, insertToDb: true);
   }
 
   Future<void> deleteDoc(Document doc) async {

@@ -39,5 +39,12 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+
+    target.build_configurations.each do |config|
+      homebrew_prefix = File.exist?("/opt/homebrew/bin/protoc") ? "/opt/homebrew/bin" : "/usr/local/bin"
+
+      config.build_settings['PROTOC'] = "#{homebrew_prefix}/protoc"
+      config.build_settings['PATH'] = "#{homebrew_prefix}:#{ENV['PATH']}"
+    end
   end
 end

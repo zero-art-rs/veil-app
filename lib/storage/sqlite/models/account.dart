@@ -5,13 +5,11 @@ class SQLAccount {
   final Uint8List publicKey;
   final String name;
   final Uint8List? image;
-  final String kind;
 
   SQLAccount({
     required this.actorId,
     required this.publicKey,
     required this.name,
-    required this.kind,
     this.image,
   });
 
@@ -21,7 +19,6 @@ class SQLAccount {
       'public_key': publicKey,
       'name': name,
       'image': image,
-      'kind': kind,
     };
   }
 
@@ -31,7 +28,6 @@ class SQLAccount {
       publicKey: json['public_key'] as Uint8List,
       name: json['name'] as String,
       image: json['image'] as Uint8List?,
-      kind: json['kind'] as String,
     );
   }
 }

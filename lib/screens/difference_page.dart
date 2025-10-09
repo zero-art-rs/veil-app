@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:pretty_diff_text/pretty_diff_text.dart';
-import 'package:zk_notion_app/extensions/safe_list.dart';
-import 'package:zk_notion_app/utils/platform.dart';
+import 'package:veil/extensions/safe_list.dart';
+import 'package:veil/utils/platform.dart';
 
 class DifferencePage extends StatelessWidget {
   const DifferencePage({

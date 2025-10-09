@@ -1,4 +1,4 @@
-import 'package:zk_notion_app/protos/zero_art.pbserver.dart';
+import 'package:veil/protos/zero_art.pbserver.dart';
 
 enum ExposedCRDTPayloadKind { incrementalChange, fullDocument }
 
@@ -10,7 +10,9 @@ class ExposedCRDTPayload {
 }
 
 class PayloadUtils {
-  static final instance = PayloadUtils();
+  static final instance = PayloadUtils._();
+
+  PayloadUtils._();
 
   (ExposedCRDTPayload?, GroupActionPayload?) exposePayload(Payload payload) {
     switch (payload.whichContent()) {

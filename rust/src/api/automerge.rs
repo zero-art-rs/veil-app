@@ -6,9 +6,8 @@ use std::{
 use anyhow::{anyhow, bail};
 use automerge::{
     transaction::{CommitOptions, Transactable},
-    ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc, Value,
+    ActorId, AutoCommit, Change, ChangeHash, ReadDoc,
 };
-use sha2::Digest;
 
 const BLOCKS_LABEL: &str = "blocks";
 
@@ -44,6 +43,32 @@ pub struct BAutoCommit {
 }
 
 impl BAutoCommit {
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn with_owner(actor_id: String) -> BAutoCommit {
+        let mut automerge = BAutoCommit {
+            autocommit: AutoCommit::new(),
+        };
+
+        automerge
+            .set_actor_id(actor_id)
+            .expect("Should set actor id");
+
+        automerge
+            .setup_block_label()
+            .expect("Should setup block label");
+
+        automerge.commit();
+
+        automerge
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn fork(&mut self) -> BAutoCommit {
+        let automerge = self.autocommit.fork();
+
+        BAutoCommit { autocommit: automerge }
+    }
+
     #[flutter_rust_bridge::frb(sync)]
     pub fn new() -> BAutoCommit {
         let mut automerge = BAutoCommit {
@@ -104,14 +129,6 @@ impl BAutoCommit {
     /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
     pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
         let block_list_id = self.blocks_list_id();
-
-        // let block = self.get_block(index)?;
-        // let block_hash = sha2::Sha256::digest(&block);
-
-        // if block_hash == sha2::Sha256::digest(&text) {
-        // return Ok(false);
-        // }
-
         self.autocommit.put(block_list_id, index, text.as_str())?;
 
         Ok(())
@@ -158,7 +175,11 @@ impl BAutoCommit {
         for (value, _) in self.autocommit.values(&self.blocks_list_id()) {
             let string = value.to_string();
 
-            let formatted_string = string.chars().skip(1).take(string.chars().count() - 2).collect::<String>();
+            let formatted_string = string
+                .chars()
+                .skip(1)
+                .take(string.chars().count() - 2)
+                .collect::<String>();
 
             blocks.push(formatted_string);
         }

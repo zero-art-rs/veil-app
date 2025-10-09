@@ -7,8 +7,26 @@ import '../frb_generated.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+void initTracing() => RustLib.instance.api.crateApiGroupContextInitTracing();
+
 String hashPublicKey({required List<int> pk}) =>
     RustLib.instance.api.crateApiGroupContextHashPublicKey(pk: pk);
+
+Uint8List schnorrSign({required List<int> sk, required List<int> message}) =>
+    RustLib.instance.api.crateApiGroupContextSchnorrSign(
+      sk: sk,
+      message: message,
+    );
+
+bool schnorrVerify({
+  required List<int> pk,
+  required List<int> message,
+  required List<int> signature,
+}) => RustLib.instance.api.crateApiGroupContextSchnorrVerify(
+  pk: pk,
+  message: message,
+  signature: signature,
+);
 
 Uint8List publicKeyFromSecretKey({required List<int> secretKey}) => RustLib
     .instance
@@ -25,9 +43,12 @@ Uint8List publicKeyFromSecretKey({required List<int> secretKey}) => RustLib
   groupInfo: groupInfo,
 );
 
+String hashPublcihKey({required List<int> pk}) =>
+    RustLib.instance.api.crateApiGroupContextHashPublcihKey(pk: pk);
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupContext>>
 abstract class BGroupContext implements RustOpaqueInterface {
-  (Uint8List, Uint8List) addIdentifiedMember({
+  Future<(Uint8List, Uint8List)> addIdentifiedMember({
     required List<int> identityPublicKey,
     Uint8List? spkPublicKey,
     required List<Uint8List> payloads,
@@ -67,6 +88,11 @@ abstract class BGroupContext implements RustOpaqueInterface {
   (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) intoParts();
 
   List<Uint8List> processFrame({required List<int> frame});
+
+  Future<(Uint8List, BUser?)> removeMember({
+    required String userId,
+    required List<Uint8List> payloads,
+  });
 
   Uint8List signChallenge({required List<int> challenge});
 
@@ -158,6 +184,12 @@ abstract class BPendingGroupContext implements RustOpaqueInterface {
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BSecretsFactory>>
 abstract class BSecretsFactory implements RustOpaqueInterface {
+  /// Applies cipher text and encryption key, return plain text
+  Uint8List decrypt({required List<int> ciphertext, required List<int> okm});
+
+  /// Returns cipher text and encryption key
+  (Uint8List, Uint8List) encrypt({required List<int> plaintext});
+
   Uint8List generateSecret();
 
   (Uint8List, Uint8List) generateSecretWithPublicKey();

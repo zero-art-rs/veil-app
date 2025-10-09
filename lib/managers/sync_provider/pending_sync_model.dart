@@ -2,13 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/utils/payload.dart';
+import 'package:veil/api/group_api_client.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/utils/payload.dart';
 
 import '../../main.dart';
 
@@ -29,6 +28,7 @@ class SyncPendingProviderModel {
   void listenCentrifugo(Stream<SSEModel> stream) {
     listener = stream.listen(
       (event) {
+        logger.i('Centrifugo event: ${event.data}');
         if (event.data == null || event.data!.isEmpty) return;
         final rawJson = json.decode(event.data!);
         if (rawJson['pub'] == null) return;
@@ -51,7 +51,6 @@ class SyncPendingProviderModel {
     logger.i('group epoch ${groupContext.getEpoch().toInt()}');
 
     while (true) {
-      // TODO: Make better handling
       try {
         await poll();
       } catch (err) {

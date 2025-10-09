@@ -1,55 +1,45 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/extensions/group_context.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'package:veil/api/group_api_client.dart';
+import 'package:veil/extensions/group_context.dart';
+import 'package:veil/main.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
 
 class InviteManager {
-  final accountStorage = AccountStorage.instance;
+  final accountStorage = AccountSecureStorage.instance;
 
-  static final InviteManager instance = InviteManager();
+  static final InviteManager instance = InviteManager._();
+
+  InviteManager._();
 
   Future<(BPendingGroupContext, Document)> join(String base64Invite) async {
-    final account = await accountStorage.getAccount();
-
-    if (account == null) {
-      throw Exception('No account, unreachable flow');
-    }
-
     final inviteBytes = base64Decode(base64Invite);
     final invite = Invite.fromBuffer(inviteBytes);
 
-    switch (invite.invite.whichInvite()) {
-      case InviteTbs_Invite.identifiedInvite:
-        // destructIdentifiedInvite(
-        //   invite: inviteBytes,
-        //   identitySecretKey: [],
-        //   spkSecretKey: [],
-        // );
+    final spkPublicKey = switch (invite.invite.whichInvite()) {
+      InviteTbs_Invite.identifiedInvite =>
+        invite.invite.identifiedInvite.spkPublicKey,
+      InviteTbs_Invite.unidentifiedInvite => null,
+      InviteTbs_Invite.notSet => null,
+    };
 
-        throw Exception('Unimplemented flow');
-      case InviteTbs_Invite.unidentifiedInvite:
-        return await _processUnidentifiedInvite(
-          inviteBytes,
-          Uint8List.fromList(account.keypair.rawPrivateKey),
-        );
-      case InviteTbs_Invite.notSet:
-        throw Exception('Invalid invite type');
+    List<int> spkSecretKey = [];
+    if (spkPublicKey != null) {
+      spkSecretKey = await DB.instance.getOwnSpkSecret(spkPublicKey) ?? [];
     }
-  }
 
-  Future<(BPendingGroupContext, Document)> _processUnidentifiedInvite(
-    Uint8List inviteBytes,
-    Uint8List secretKey,
-  ) async {
+    logger.i('SPK public key: ${base64Encode(spkPublicKey ?? [])}');
+    logger.i('SPK secret key: ${base64Encode(spkSecretKey)}');
+
     final inviteContext = BInviteContext(
-      identitySecretKey: secretKey,
-      spkSecretKey: [],
+      identitySecretKey:
+          AccountSecureStorage.instance.account.keypair.rawPrivateKey,
+      spkSecretKey: spkSecretKey,
       invite: inviteBytes,
     );
 
@@ -82,6 +72,10 @@ class InviteManager {
       groupContextParts: pendingGroupContext.asParts(),
       createdAt: DateTime.now(),
     );
+
+    if (spkPublicKey != null) {
+      await DB.instance.removeSpk(spkPublicKey);
+    }
 
     return (pendingGroupContext, document);
   }

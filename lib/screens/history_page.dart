@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/screens/difference_page.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'package:veil/screens/difference_page.dart';
+import 'package:veil/storage/models.dart';
 
 class HistoryPage extends StatelessWidget {
   const HistoryPage({
@@ -199,7 +199,7 @@ class _InfoChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color:
-            actorColor ?? theme.colorScheme.secondaryContainer.withOpacity(0.6),
+            actorColor ?? theme.colorScheme.secondaryContainer.withAlpha(60),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:zk_notion_app/extensions/style.dart';
+import 'package:veil/extensions/style.dart';
 
 class MemberCellState {
   String imgUrl;

@@ -2,14 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:zk_notion_app/api/client.dart';
-import 'package:zk_notion_app/managers/change_manager.dart';
-import 'package:zk_notion_app/managers/sync_provider/pending_sync_model.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/utils/payload.dart';
+import 'package:veil/api/group_api_client.dart';
+import 'package:veil/managers/change_manager.dart';
+import 'package:veil/managers/sync_provider/pending_sync_model.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/utils/payload.dart';
 
 import '../../main.dart';
 
@@ -17,7 +17,9 @@ class SyncProviderModel {
   final Document document;
   final BGroupContext groupContext;
   final String jwt;
-  final StreamSubscription<SSEModel> listener;
+  final StreamSubscription<SSEModel>? listener;
+
+  get isLocal => document.localOnly;
 
   SyncProviderModel({
     required this.document,
@@ -25,6 +27,18 @@ class SyncProviderModel {
     required this.jwt,
     required this.listener,
   });
+
+  factory SyncProviderModel.local(
+    Document document,
+    BGroupContext groupContext,
+  ) {
+    return SyncProviderModel(
+      document: document,
+      groupContext: groupContext,
+      jwt: "",
+      listener: null,
+    );
+  }
 
   factory SyncProviderModel.fromPending(
     SyncPendingProviderModel model,
@@ -81,65 +95,60 @@ class SyncProviderModel {
   }
 
   Future<void> synchronizeInitially() async {
-    logger.i('document.sequenceNumber ${document.sequenceNumber}');
-    logger.i('group epoch ${groupContext.getEpoch().toInt()}');
-
-    final signature = groupContext.signWithTk(groupId: document.id, nonce: [0]);
+    logger.i('initial document.sequenceNumber ${document.sequenceNumber}');
+    logger.i('initial group epoch ${groupContext.getEpoch().toInt()}');
 
     while (true) {
-      try {
-        final result = await GroupApiClient.instance.getFrames(
-          epoch: groupContext.getEpoch().toInt(),
-          groupId: document.id,
-          signature: base64UrlEncode(signature),
-          nonce: base64UrlEncode([0]),
-          messageSequenceNumber: document.sequenceNumber,
+      final signature = groupContext.signWithTk(
+        groupId: document.id,
+        nonce: [0],
+      );
+
+      final result = await GroupApiClient.instance.getFrames(
+        epoch: groupContext.getEpoch().toInt(),
+        groupId: document.id,
+        signature: base64UrlEncode(signature),
+        nonce: base64UrlEncode([0]),
+        messageSequenceNumber: document.sequenceNumber,
+      );
+
+      if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
+        break;
+      }
+
+      for (final spFrame in result.spFrames.reversed) {
+        final rawFramePayloads = groupContext.processFrame(
+          frame: spFrame.frame.writeToBuffer(),
         );
 
-        if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
-          break;
-        }
+        for (final rawPayload in rawFramePayloads) {
+          final payload = Payload.fromBuffer(rawPayload);
 
-        for (final spFrame in result.spFrames.reversed) {
-          final rawFramePayloads = groupContext.processFrame(
-            frame: spFrame.frame.writeToBuffer(),
-          );
+          final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
 
-          // NOTE:
-          // If rawFramePayloads is empty,
-          // it indicates that the frame belongs to the current user,
-          // thus processing is unnecessary.
-          for (final rawPayload in rawFramePayloads) {
-            final payload = Payload.fromBuffer(rawPayload);
+          if (crdt == null) continue;
 
-            final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
-
-            if (crdt == null) continue;
-
-            switch (crdt.kind) {
-              case ExposedCRDTPayloadKind.incrementalChange:
-                logger.d('Received incremental change');
-                document.automergeDoc.loadIncremental(
-                  bytes: crdt.crdt.incrementalChange,
-                );
-              case ExposedCRDTPayloadKind.fullDocument:
-                logger.d('Received full document');
-                document.automergeDoc = BAutoCommit.load(
-                  data: crdt.crdt.fullDocument,
-                );
-            }
+          switch (crdt.kind) {
+            case ExposedCRDTPayloadKind.incrementalChange:
+              logger.d('Received incremental change');
+              document.automergeDoc.loadIncremental(
+                bytes: crdt.crdt.incrementalChange,
+              );
+            case ExposedCRDTPayloadKind.fullDocument:
+              logger.d('Received full document');
+              document.automergeDoc = BAutoCommit.load(
+                data: crdt.crdt.fullDocument,
+              );
           }
         }
-
-        document.sequenceNumber = result.spFrames.first.seqNum.toInt();
-      } catch (err) {
-        logger.e('Sync provider inital process error: $err');
       }
+
+      document.sequenceNumber = result.spFrames.first.seqNum.toInt();
     }
   }
 
   Future<void> dispose() async {
     logger.i('Sync provider disposed');
-    await listener.cancel();
+    await listener?.cancel();
   }
 }

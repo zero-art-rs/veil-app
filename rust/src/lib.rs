@@ -12,8 +12,6 @@ pub(crate) mod test {
 
     use anyhow::Ok;
     use automerge::{
-        patches::TextRepresentation,
-        sync::{Message, State, SyncDoc},
         transaction::{CommitOptions, Transactable},
         ActorId, AutoCommit, PatchLog, SaveOptions, TextEncoding,
     };
@@ -23,7 +21,7 @@ pub(crate) mod test {
         self,
         automerge::{generate_actor_id, BAutoCommit},
     };
-    
+
     #[test]
     fn insert_overrides() -> anyhow::Result<()> {
         let mut automerge = api::automerge::BAutoCommit::new();
@@ -137,41 +135,6 @@ pub(crate) mod test {
     }
 
     #[test]
-    fn test_diff() -> anyhow::Result<()> {
-        let mut automerge = api::automerge::BAutoCommit::new();
-
-        automerge.insert_block(0, '1'.to_string())?;
-        automerge.insert_block(1, "323231231".to_string())?;
-        automerge.commit();
-
-        let before = &automerge.get_change_list().last().unwrap().change_hash();
-
-        // automerge.update_block(1, "32323123155".to_string())?;
-        automerge.delete_block(1)?;
-        automerge.commit();
-
-        let after: &String = &automerge.get_change_list().last().unwrap().change_hash();
-
-        // println!("{:?}", automerge.diff_between(before, after).unwrap());
-        Ok(())
-    }
-
-    #[test]
-    fn test_changes() -> anyhow::Result<()> {
-        let mut automerge = api::automerge::BAutoCommit::new();
-        automerge.commit();
-
-        automerge.insert_block(0, '1'.to_string())?;
-        automerge.commit();
-        automerge.update_block(0, '1'.to_string())?;
-        automerge.commit();
-
-        let change_list_len = automerge.get_change_list().len();
-        println!("{:?}", change_list_len);
-        Ok(())
-    }
-
-    #[test]
     fn patch_flow() -> anyhow::Result<()> {
         let actor_1 = generate_actor_id();
         let actor_2 = generate_actor_id();
@@ -244,19 +207,6 @@ pub(crate) mod test {
         println!("automerge2 change list: {:?}", automerge2.get_change_list());
         println!("automerge change list: {:?}", automerge.get_change_list());
 
-        // assert!(automerge2.get_change_list() == automerge.get_change_list());
-
-        // automerge2.insert_block(4, "20".to_string())?;
-        // automerge2.commit();
-
-        // automerge.load_incremental(automerge2.save_incremental())
-
-        // let blocks = automerge2.get_blocks()?;
-        // println!("{:?}", blocks);
-
-        // let change_list = automerge2.get_change_list();
-        // println!("{:?}", change_list);
-
         Ok(())
     }
 
@@ -273,9 +223,6 @@ pub(crate) mod test {
         automerge_1.insert_block(1, "20".to_string())?;
         automerge_1.insert_block(2, "30".to_string())?;
         automerge_1.commit();
-
-        // let mut automerge_2 = api::automerge::BAutoCommit::new();
-        // automerge_2.setup_block_label()?;
 
         let mut autocommit = BAutoCommit::load(automerge_1.save())?;
 
@@ -323,6 +270,15 @@ pub(crate) mod test {
 
         println!("automerge_1 content {:?}", automerge_1.get_blocks());
         println!("automerge_2 content {:?}", automerge_2.get_blocks());
+
+        println!(
+            "automerge_1 change list: {:?}",
+            automerge_1.get_change_list()
+        );
+        println!(
+            "automerge_2 change list: {:?}",
+            automerge_2.get_change_list()
+        );
 
         Ok(())
     }

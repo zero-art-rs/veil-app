@@ -1,24 +1,35 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:sqflite/sqflite.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/models/account.dart';
-import 'package:zk_notion_app/storage/sqlite/consts.dart';
-import 'package:zk_notion_app/storage/sqlite/models/document.dart';
-import 'package:zk_notion_app/storage/sqlite/schemes.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sharing/spk_manager.dart';
+import 'package:veil/managers/sharing/spk_provider.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/models/account.dart';
+import 'package:veil/storage/sqlite/consts.dart';
+import 'package:veil/storage/sqlite/models/document.dart';
+import 'package:veil/storage/sqlite/models/spk.dart';
+import 'package:veil/storage/sqlite/schemes.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/platform.dart';
 
 const _dbName = 'veil.db';
 
 class DB {
-  static final instance = DB._internal();
-  DB._internal();
-
+  static final instance = DB._();
   late Database _connection;
   Transaction? _tx;
 
+  DB._();
+
   Future<void> open({String? inMemoryPath}) async {
+    if (PlatformUtils.isWindows || PlatformUtils.isLinux) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
     _connection = await openDatabase(
       inMemoryPath ?? _dbName,
       version: 1,
@@ -28,8 +39,16 @@ class DB {
       },
       onCreate: (db, version) async {
         await db.execute(createContactsTable);
-        await db.execute(createContactsSpksTable);
+        await db.execute(createSpksTable);
         await db.execute(createDocumentsTable);
+
+        final ownerAccount = SQLAccount(
+          actorId: 'owner',
+          publicKey: Uint8List(0),
+          name: 'owner',
+        );
+
+        await db.insert(accountsTable, ownerAccount.toJson());
       },
     );
   }
@@ -121,43 +140,141 @@ class DB {
 
   Future<void> removeAll() {
     return transaction((db) async {
-      await db._delete(contactsTable);
-      await db._delete(contactsSpksTable);
+      await db._delete(
+        accountsTable,
+        where: 'actor_id != ?',
+        whereArgs: ['owner'],
+      );
+      await db._delete(spksTable);
       await db._delete(documentsTable);
     });
   }
 
-  Future<void> insertContact(
-    ExternalAccount account, {
-    ConflictAlgorithm conflictAlgorithm = ConflictAlgorithm.rollback,
-  }) async {
-    final sqlAccount = SQLAccount(
-      actorId: account.actorId,
-      publicKey: Uint8List.fromList(account.rawPublicKey),
-      name: account.name,
-      kind: AccountKind.contact.name,
+  Future<void> insertOwnedSpks(List<SpkSendModel> spks) async {
+    final sqlspks = spks.map(
+      (e) => SQLSpk(
+        privateKey: Uint8List.fromList(e.privateKey),
+        publicKey: Uint8List.fromList(e.publicKey),
+        contactId: 'owner',
+      ),
     );
 
-    await _insert(
-      contactsTable,
-      sqlAccount.toJson(),
-      conflictAlgorithm: conflictAlgorithm,
+    await transaction((db) async {
+      for (final spk in sqlspks) {
+        await db._insert(spksTable, spk.toMap());
+      }
+    });
+  }
+
+  Future<List<int>?> getOwnSpkSecret(List<int> publicKey) async {
+    final rawOwnSpk = await _query(
+      spksTable,
+      where: 'public_key = ? AND contact_id = ?',
+      whereArgs: [base64Encode(publicKey), 'owner'],
+    );
+
+    // logger.i('rawOwnSpk: ${base64Encode(rawOwnSpk)}');
+
+    if (rawOwnSpk.firstOrNull == null) {
+      return null;
+    }
+
+    final sqlSpk = SQLSpk.fromJson(rawOwnSpk.first);
+    return sqlSpk.privateKey;
+  }
+
+  Future<void> removeSpk(List<int> publicKey) async {
+    await _delete(
+      spksTable,
+      where: 'public_key = ?',
+      whereArgs: [base64Encode(publicKey)],
+    );
+  }
+
+  Future<Contact> insertContact(SpkShareData spk) async {
+    final sqlAccount = SQLAccount(
+      actorId: spk.account.actorId,
+      publicKey: Uint8List.fromList(spk.account.rawPublicKey),
+      name: spk.account.name,
+    );
+
+    final sqlspks = spk.spks.map(
+      (e) => SQLSpk(
+        publicKey: Uint8List.fromList(e.publicKey),
+        contactId: spk.account.actorId,
+      ),
+    );
+
+    await transaction((db) async {
+      await db._insert(
+        accountsTable,
+        sqlAccount.toJson(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      await db._delete(
+        spksTable,
+        where: 'contact_id = ?',
+        whereArgs: [spk.account.actorId],
+      );
+
+      for (final spk in sqlspks) {
+        await db._insert(spksTable, spk.toMap());
+      }
+    });
+
+    return Contact(
+      account: spk.account,
+      spks: spk.spks.map((e) => e.publicKey).toList(),
+    );
+  }
+
+  Future<Contact> getContact(String actorId) async {
+    final rawAccount = await _query(
+      accountsTable,
+      where: 'actor_id != ? AND actor_id = ?',
+      whereArgs: ['owner', actorId],
+    );
+
+    if (rawAccount.firstOrNull == null) {
+      throw Exception('Contact not found');
+    }
+
+    final sqlAccount = SQLAccount.fromJson(rawAccount.first);
+    final externalAccount = ExternalAccount(
+      actorId: sqlAccount.actorId,
+      rawPublicKey: sqlAccount.publicKey,
+      name: sqlAccount.name,
+    );
+
+    final rawSpks = await _query(
+      spksTable,
+      where: 'contact_id = ?',
+      whereArgs: [externalAccount.actorId],
+    );
+
+    final sqlSpks = rawSpks.map((e) => SQLSpk.fromJson(e)).toList();
+
+    return Contact(
+      account: externalAccount,
+      spks: sqlSpks.map((e) => e.publicKey).toList(),
     );
   }
 
   Future<void> deleteContact({required String actorId}) async {
-    await _delete(contactsTable, where: 'actor_id = ?', whereArgs: [actorId]);
+    await _delete(accountsTable, where: 'actor_id = ?', whereArgs: [actorId]);
   }
 
-  Future<List<ExternalAccount>> getContactList() async {
+  Future<List<Contact>> getContactList() async {
     final rawAccounts = await _query(
-      contactsTable,
-      whereArgs: [AccountKind.contact.name],
+      accountsTable,
+      where: 'actor_id != ?',
+      whereArgs: ['owner'],
     );
 
     final sqlAccounts = rawAccounts.map((e) => SQLAccount.fromJson(e)).toList();
 
-    return sqlAccounts
+    final externalAccounts = sqlAccounts
         .map(
           (e) => ExternalAccount(
             actorId: e.actorId,
@@ -166,6 +283,26 @@ class DB {
           ),
         )
         .toList();
+
+    final List<Contact> contacts = [];
+    for (final account in externalAccounts) {
+      final rawSpks = await _query(
+        spksTable,
+        where: 'contact_id = ?',
+        whereArgs: [account.actorId],
+      );
+
+      final sqlSpks = rawSpks.map((e) => SQLSpk.fromJson(e)).toList();
+
+      contacts.add(
+        Contact(
+          account: account,
+          spks: sqlSpks.map((e) => e.publicKey).toList(),
+        ),
+      );
+    }
+
+    return contacts;
   }
 
   Future<List<Document>> getDocumentList() async {
@@ -187,6 +324,7 @@ class DB {
               doc.groupContextParts,
             ),
             sequenceNumber: doc.sequenceNumber,
+            localOnly: doc.localOnly == 1,
           ),
         )
         .toList();
@@ -213,22 +351,34 @@ class DB {
       groupContextParts: GroupContextParts.fromJsonString(
         doc.groupContextParts,
       ),
+      localOnly: doc.localOnly == 1,
+      sequenceNumber: doc.sequenceNumber,
+    );
+  }
+
+  Future<void> makeDocumentLocalOnly({required String id}) async {
+    await _update(
+      documentsTable,
+      {'local_only': 1},
+      where: 'id = ?',
+      whereArgs: [id],
     );
   }
 
   Future<void> insertDocument({required Document document}) async {
     final sqlDoc = SQLDocument(
       id: document.id,
-
       content: document.automergeDoc.save(),
       createdAt: document.createdAt,
       groupContextParts: document.groupContextParts.toJsonString(),
       sequenceNumber: document.sequenceNumber,
+      localOnly: document.localOnly ? 1 : 0,
     );
 
     await _insert(
       documentsTable,
       sqlDoc.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
@@ -257,15 +407,6 @@ class DB {
       },
       where: 'id = ?',
       whereArgs: [doc.id],
-    );
-  }
-
-  Future<void> updateAccount(ExternalAccount account) async {
-    await _update(
-      contactsTable,
-      {'name': account.name},
-      where: 'actor_id = ?',
-      whereArgs: [account.actorId, AccountKind.user.name],
     );
   }
 

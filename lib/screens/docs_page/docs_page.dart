@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:zk_notion_app/extensions/group_context.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_model.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
-import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
-import 'package:zk_notion_app/screens/editor/editor_page.dart';
-import 'package:zk_notion_app/widgets/banner.dart';
-import 'package:zk_notion_app/widgets/ays_modal.dart';
+import 'package:veil/extensions/group_context.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/screens/docs_page/docs_page_vm.dart';
+import 'package:veil/screens/editor/editor_page.dart';
+import 'package:veil/widgets/banner.dart';
+import 'package:veil/widgets/ays_modal.dart';
 
 enum _DocAction { edit, delete, share }
 
@@ -87,7 +87,7 @@ class DocsPage extends StatelessWidget {
               itemCount: vm.syncModels.length,
               itemBuilder: (context, i) => _DocCard(
                 doc: vm.syncModels[i],
-                onDelete: () => aysModal(
+                onDelete: () => aysAsyncModal(
                   context: context,
                   title: 'Delete document',
                   content:

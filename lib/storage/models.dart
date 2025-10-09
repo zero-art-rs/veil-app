@@ -1,10 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/storage/sqlite/consts.dart';
-import 'package:zk_notion_app/utils/group_context_factory.dart';
-import 'package:zk_notion_app/utils/secret_factory.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/secret_factory.dart';
 
 class ExternalAccount {
   final String actorId;
@@ -35,7 +34,7 @@ class ExternalAccount {
     return ExternalAccount(
       actorId: json['actorId'],
       name: json['name'],
-      rawPublicKey: json['publicKey'],
+      rawPublicKey: List<int>.from(json['publicKey']),
     );
   }
 }
@@ -71,6 +70,7 @@ class Document {
   DateTime createdAt;
   GroupContextParts groupContextParts;
   int sequenceNumber;
+  bool localOnly;
 
   Key get key => ValueKey(id);
 
@@ -80,6 +80,7 @@ class Document {
     required this.createdAt,
     required this.groupContextParts,
     this.sequenceNumber = 0,
+    this.localOnly = false,
   });
 
   void setDocument(BAutoCommit doc) {
@@ -118,7 +119,7 @@ class Keypair {
 }
 
 class Account {
-  final String name;
+  String name;
   final String actorId;
   final Keypair keypair;
 
@@ -129,7 +130,7 @@ class Account {
     return Account(
       name: name,
       actorId: hashPublicKey(pk: keypair.rawPublicKey),
-      keypair: Keypair.generate(),
+      keypair: keypair,
     );
   }
 

@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class PlatformUtils {
+  static bool get isLinux => defaultTargetPlatform == TargetPlatform.linux;
+  static bool get isWindows => defaultTargetPlatform == TargetPlatform.windows;
+
   static bool get isDesktop =>
       defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.linux ||

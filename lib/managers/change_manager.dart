@@ -1,22 +1,25 @@
+import 'dart:async';
+
 import 'package:fixnum/fixnum.dart';
-import 'package:rxdart/subjects.dart';
-import 'package:zk_notion_app/protos/zero_art.pb.dart';
+import 'package:veil/protos/zero_art.pb.dart';
 
 class SyncChange {
   Map<int, SPFrame> frames;
-  final subject = BehaviorSubject<SPFrame>();
+  final streamController = StreamController<SPFrame>.broadcast();
 
   SyncChange({required this.frames});
 }
 
 class ChangeManager {
-  static final ChangeManager instance = ChangeManager();
+  static final ChangeManager instance = ChangeManager._();
 
   final Map<String, SyncChange?> _state = {};
 
   void setup(String id) {
     _state[id] = SyncChange(frames: {});
   }
+
+  ChangeManager._();
 
   void addFrame({
     required String groupId,
@@ -31,7 +34,7 @@ class ChangeManager {
     }
 
     syncChange.frames[sequenceNumber] = frame;
-    syncChange.subject.add(
+    syncChange.streamController.add(
       SPFrame(seqNum: Int64(sequenceNumber), frame: frame.frame),
     );
   }
@@ -46,7 +49,7 @@ class ChangeManager {
     return _state[chatId]!.frames;
   }
 
-  BehaviorSubject<SPFrame> stream(String chatId) {
-    return _state[chatId]!.subject;
+  Stream<SPFrame> stream(String chatId) {
+    return _state[chatId]!.streamController.stream;
   }
 }

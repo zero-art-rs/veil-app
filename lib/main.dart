@@ -1,40 +1,44 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:zk_notion_app/assets/util.dart';
-import 'package:zk_notion_app/managers/deeplink_manager.dart';
-import 'package:zk_notion_app/managers/invite_manager.dart';
-import 'package:zk_notion_app/managers/sync_provider/sync_provider.dart';
-import 'package:zk_notion_app/screens/desktop/primary_page.dart';
-import 'package:zk_notion_app/screens/desktop/primary_page_vm.dart';
-import 'package:zk_notion_app/screens/docs_page/docs_page.dart';
-import 'package:zk_notion_app/screens/docs_page/docs_page_vm.dart';
-import 'package:zk_notion_app/screens/tab_bar.dart';
-import 'package:zk_notion_app/src/rust/api/group_context.dart';
-import 'package:zk_notion_app/src/rust/frb_generated.dart';
-import 'package:zk_notion_app/assets/theme.dart';
+import 'package:veil/assets/util.dart';
+import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/invite_manager.dart';
+import 'package:veil/managers/sharing/deeplink_manager.dart';
+import 'package:veil/managers/sharing/spk_manager.dart';
+import 'package:veil/managers/sync_provider/sync_provider.dart';
+import 'package:veil/screens/desktop/primary_page.dart';
+import 'package:veil/screens/desktop/primary_page_vm.dart';
+import 'package:veil/screens/docs_page/docs_page.dart';
+import 'package:veil/screens/docs_page/docs_page_vm.dart';
+import 'package:veil/screens/tab_bar.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/src/rust/frb_generated.dart';
+import 'package:veil/assets/theme.dart';
 import 'package:logger/logger.dart';
 import 'package:app_links/app_links.dart';
-import 'package:zk_notion_app/storage/account_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/storage/sqlite/db.dart';
-import 'package:zk_notion_app/widgets/banner.dart';
-import 'package:zk_notion_app/utils/platform.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/platform.dart';
+import 'package:veil/widgets/future_dialog.dart';
 
 Future<void> main() async {
   await RustLib.init();
+  initTracing();
 
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await AccountStorage.instance.setAccountIfNeeded();
+    await AccountSecureStorage.instance.init();
     await DB.instance.open();
-    // DB.instance.removeAll();
-    logger.d('Db path: ${await getDatabasesPath()}');
+    // await DB.instance.removeAll();
     await SyncProvider.instance.init();
+    await ContactsManager.instance.setup();
+    logger.d('Db path: ${await getDatabasesPath()}');
   } catch (e) {
     logger.e('Launch app error: $e');
   }
@@ -76,11 +80,10 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _listenUriChanges() {
-    if (!PlatformUtils.isApple) return;
     try {
       _sub = _appLinks.uriLinkStream.listen(
         (Uri? uri) {
-          final (documentDeepLink, contactDeepLink) = DeeplinkManager()
+          final (documentDeepLink, contactDeepLink) = DeeplinkManager.instance
               .retrieveDeepLink(uri);
 
           if (contactDeepLink != null && mounted) {
@@ -91,7 +94,7 @@ class _MyAppState extends State<MyApp> {
           if (documentDeepLink != null && mounted) {
             _showDocumentInvitationPopUp(
               navigatorKey.currentContext!,
-              documentDeepLink,
+              documentDeepLink.inviteData,
             );
             return;
           }
@@ -108,121 +111,116 @@ class _MyAppState extends State<MyApp> {
 
   void _showDocumentInvitationPopUp(
     BuildContext context,
-    DocumentDeepLink doc,
-  ) {
-    final th = Theme.of(context).textTheme;
-
-    showDialog(
+    String inviteData,
+  ) async {
+    await showFutureDialog(
+      title: 'Invitation',
       context: context,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.description, size: 92),
-            const SizedBox(height: 32),
-            Text(
-              'You have been invited to the document, do you want to join?',
-              style: th.bodyLarge,
-            ),
-          ],
-        ),
-        actions: [
-          const SizedBox(height: 24),
-          Row(
-            spacing: 16.0,
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel'),
-                ),
-              ),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    // TODO: add handle loader and errors ui
-                    await _acceptInvite(context, doc.inviteData);
-                  },
-                  child: Text('Join'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+      work: () async {
+        try {
+          await _acceptInvite(context, inviteData);
+        } catch (err) {
+          logger.e('Failed to join document: $err');
+          if (err is DioException) {
+            if (err.response?.statusCode == 401) {
+              throw FutureDialogError('Error', 'No document found');
+            }
+          }
+
+          throw FutureDialogError('Error', 'Failed to join document');
+        }
+      },
+      applyText: 'Join',
+      cancelText: 'Cancel',
+      message: 'You have been invited to join the document.',
+      successTitle: 'Success',
     );
   }
 
   Future<void> _acceptInvite(BuildContext context, String inviteData) async {
-    final account = await AccountStorage.instance.getAccount();
-
-    if (account == null) {
-      throw Exception('No account, unreachable flow');
-    }
-
     final (pendingGroupContext, document) = await InviteManager.instance.join(
       inviteData,
     );
 
-    // make pending add
+    final account = AccountSecureStorage.instance.account;
     await SyncProvider.instance.addFromInvite(
       document,
       pendingGroupContext,
       user: BUser(name: account.name, publicKey: account.keypair.rawPublicKey),
     );
 
-    // pendingGroupContext.signWithTk(groupId: groupId, nonce: nonce)
-    // pendingGroupContext.processFrame(frame: frame) - polling
-    // final frame pendingGroupContext.joinGroupAs(user: user)
-    // sendframe -> if 200 pendingGroupContext.upgrade() else go to polling and repeat
-
     if (!context.mounted) return;
     Navigator.pop(context);
   }
 
-  void _showContactPopUp(BuildContext context, ExternalAccount account) {
-    final th = Theme.of(context).textTheme;
-
-    showDialog(
+  void _showContactPopUp(
+    BuildContext context,
+    SharedSpkRevealData payload,
+  ) async {
+    await showFutureDialog<SpkShareData>(
+      autoStart: true,
+      successTitle: 'Contact info',
       context: context,
-      builder: (context) => AlertDialog(
-        content: Column(
+      dialogSize: Size(480, 240),
+      work: () async {
+        try {
+          final spk = await SpkManager.instance.getSpk(payload);
+          await ContactsManager.instance.addContact(spk);
+          return spk;
+        } catch (err) {
+          logger.e('Failed to get spk: $err');
+
+          if (err is DioException) {
+            if (err.response?.statusCode == 404) {
+              throw FutureDialogError('Error', 'Contact share link expired');
+            }
+          }
+
+          throw FutureDialogError(
+            'Error',
+            'Failed to receive info about contact',
+          );
+        }
+      },
+      successBuilder: (spk) {
+        final th = Theme.of(context).textTheme;
+
+        return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                border: BoxBorder.all(color: Colors.grey, width: 0.3),
+                border: Border.all(color: Colors.grey, width: 0.3),
               ),
               child: Padding(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Name', style: th.labelLarge),
                     Text(
-                      account.name,
+                      spk.account.name,
                       style: th.bodyMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
                     Text('Actor ID', style: th.labelLarge),
                     Text(
-                      account.actorId,
+                      spk.account.actorId,
                       style: th.bodyMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
                     Text('Public Key', style: th.labelLarge),
                     Text(
-                      account.publicKey,
+                      spk.account.publicKey,
                       style: th.bodyMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -234,67 +232,13 @@ class _MyAppState extends State<MyApp> {
 
             const SizedBox(height: 32),
             Text(
-              'Add this account to your contacts?',
+              'Added to your contacts',
               style: th.bodyLarge,
               textAlign: TextAlign.center,
             ),
           ],
-        ),
-        actions: [
-          const SizedBox(height: 24),
-          Row(
-            spacing: 16.0,
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel'),
-                ),
-              ),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () async {
-                    try {
-                      await DB.instance.insertContact(account);
-                    } on DatabaseException catch (e) {
-                      if (!context.mounted) return;
-
-                      if (e.isUniqueConstraintError()) {
-                        TopBanner.show(
-                          context: context,
-                          message: 'Account already in your contacts',
-                          kind: TopBannerCases.info,
-                        );
-                      } else {
-                        TopBanner.show(
-                          context: context,
-                          message: 'Unexpected error, try again',
-                          kind: TopBannerCases.error,
-                        );
-
-                        logger.e('Failed to add contact: $e');
-                      }
-                    } catch (e) {
-                      if (!context.mounted) return;
-
-                      logger.e('Failed to add contact: $e');
-                      TopBanner.show(
-                        context: context,
-                        message: 'Something went wrong, try again',
-                        kind: TopBannerCases.error,
-                      );
-                    }
-
-                    if (!context.mounted) return;
-                    Navigator.pop(context);
-                  },
-                  child: Text('Add'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

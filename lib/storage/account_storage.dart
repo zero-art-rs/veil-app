@@ -1,14 +1,22 @@
 import 'dart:convert';
 
-import 'package:zk_notion_app/storage/app_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'package:veil/storage/app_storage.dart';
+import 'package:veil/storage/models.dart';
 
-class AccountStorage {
+class AccountSecureStorage {
   final _storage = AppStorage.shared;
-  static final AccountStorage instance = AccountStorage();
+  static final AccountSecureStorage instance = AccountSecureStorage._();
   static const String _accountKey = 'account';
 
-  Future<Account?> getAccount() async {
+  late Account account;
+
+  AccountSecureStorage._();
+
+  Future<void> init() async {
+    account = await _setAccountIfNeeded();
+  }
+
+  Future<Account?> _getAccount() async {
     final rawAccount = await _storage.read(key: _accountKey);
 
     if (rawAccount == null) {
@@ -20,10 +28,11 @@ class AccountStorage {
 
   Future<void> setAccount(Account account) async {
     await _storage.write(key: _accountKey, value: jsonEncode(account.toJson()));
+    this.account = account;
   }
 
-  Future<Account> setAccountIfNeeded() async {
-    final account = await getAccount();
+  Future<Account> _setAccountIfNeeded() async {
+    final account = await _getAccount();
     if (account != null) {
       return account;
     }
