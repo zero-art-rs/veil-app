@@ -4,6 +4,8 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/automerge.dart';
+import 'api/group_context.dart';
+import 'api/secrets_factory.dart';
 import 'api/simple.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -67,21 +69,17 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 833025140;
+  int get rustContentHash => 1039850214;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
-        stem: 'rust_lib_zk_notion_app',
+        stem: 'veil_rust',
         ioDirectory: 'rust/target/release/',
         webPrefix: 'pkg/',
       );
 }
 
 abstract class RustLibApi extends BaseApi {
-  Future<bool> crateApiAutomergeBAutoCommitBlockListExist({
-    required BAutoCommit that,
-  });
-
   BigInt crateApiAutomergeBAutoCommitBlocksLength({required BAutoCommit that});
 
   void crateApiAutomergeBAutoCommitCommit({required BAutoCommit that});
@@ -91,11 +89,24 @@ abstract class RustLibApi extends BaseApi {
     required BigInt index,
   });
 
+  BAutoCommit crateApiAutomergeBAutoCommitDocAtChangeHash({
+    required BAutoCommit that,
+    required String changeHash,
+  });
+
+  (BAutoCommit, BAutoCommit) crateApiAutomergeBAutoCommitDocsBeforeAfter({
+    required BAutoCommit that,
+    required String changeHash,
+  });
+
+  void crateApiAutomergeBAutoCommitEmptyChange({required BAutoCommit that});
+
+  BAutoCommit crateApiAutomergeBAutoCommitFork({required BAutoCommit that});
+
   BAutoCommit crateApiAutomergeBAutoCommitFromBytes({required List<int> bytes});
 
-  String crateApiAutomergeBAutoCommitGetBlock({
+  Future<void> crateApiAutomergeBAutoCommitGetAutomerge({
     required BAutoCommit that,
-    required BigInt index,
   });
 
   List<String> crateApiAutomergeBAutoCommitGetBlocks({
@@ -114,6 +125,13 @@ abstract class RustLibApi extends BaseApi {
     required String text,
   });
 
+  BAutoCommit crateApiAutomergeBAutoCommitLoad({required List<int> data});
+
+  BigInt crateApiAutomergeBAutoCommitLoadIncremental({
+    required BAutoCommit that,
+    required List<int> bytes,
+  });
+
   BAutoCommit crateApiAutomergeBAutoCommitNew();
 
   Uint8List crateApiAutomergeBAutoCommitSave({required BAutoCommit that});
@@ -127,13 +145,13 @@ abstract class RustLibApi extends BaseApi {
     required String uuid,
   });
 
-  void crateApiAutomergeBAutoCommitSetupBlockLabel({required BAutoCommit that});
-
   void crateApiAutomergeBAutoCommitUpdateBlock({
     required BAutoCommit that,
     required BigInt index,
     required String text,
   });
+
+  BAutoCommit crateApiAutomergeBAutoCommitWithOwner({required String actorId});
 
   String crateApiAutomergeBChangeActorIdHex({required BChange that});
 
@@ -141,11 +159,244 @@ abstract class RustLibApi extends BaseApi {
 
   PlatformInt64 crateApiAutomergeBChangeTimestamp({required BChange that});
 
+  Future<(Uint8List, Uint8List)>
+  crateApiGroupContextBGroupContextAddIdentifiedMember({
+    required BGroupContext that,
+    required List<int> identityPublicKey,
+    Uint8List? spkPublicKey,
+    required List<Uint8List> payloads,
+  });
+
+  Future<(Uint8List, Uint8List)>
+  crateApiGroupContextBGroupContextAddUnidentifiedMember({
+    required BGroupContext that,
+    required List<int> secretKey,
+    required List<Uint8List> payloads,
+  });
+
+  void crateApiGroupContextBGroupContextCommitState({
+    required BGroupContext that,
+  });
+
+  Uint8List crateApiGroupContextBGroupContextCreateFrame({
+    required BGroupContext that,
+    required List<Uint8List> payloads,
+  });
+
+  BGroupContext crateApiGroupContextBGroupContextFromParts({
+    required List<int> identitySecretKey,
+    required List<int> leafSecret,
+    required List<int> art,
+    required List<int> stk,
+    required BigInt epoch,
+    required List<int> groupInfo,
+    required bool isLastSender,
+  });
+
+  BigInt crateApiGroupContextBGroupContextGetEpoch({
+    required BGroupContext that,
+  });
+
+  Uint8List crateApiGroupContextBGroupContextGetGroupInfo({
+    required BGroupContext that,
+  });
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBGroupContextIntoParts({required BGroupContext that});
+
+  List<Uint8List> crateApiGroupContextBGroupContextProcessFrame({
+    required BGroupContext that,
+    required List<int> frame,
+  });
+
+  Future<(Uint8List, BUser?)> crateApiGroupContextBGroupContextRemoveMember({
+    required BGroupContext that,
+    required String userId,
+    required List<Uint8List> payloads,
+  });
+
+  Uint8List crateApiGroupContextBGroupContextSignChallenge({
+    required BGroupContext that,
+    required List<int> challenge,
+  });
+
+  Uint8List crateApiGroupContextBGroupContextSignWithTk({
+    required BGroupContext that,
+    required String groupId,
+    required List<int> nonce,
+  });
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBGroupContextToParts({required BGroupContext that});
+
+  String crateApiGroupContextBGroupInfoId({required BGroupInfo that});
+
+  String crateApiGroupContextBGroupInfoName({required BGroupInfo that});
+
+  BGroupInfo crateApiGroupContextBGroupInfoNew({
+    required String id,
+    required String name,
+  });
+
+  BigInt crateApiGroupContextBInviteContextEpoch({
+    required BInviteContext that,
+  });
+
+  String crateApiGroupContextBInviteContextGroupId({
+    required BInviteContext that,
+  });
+
+  Uint8List crateApiGroupContextBInviteContextLeafPublicKey({
+    required BInviteContext that,
+  });
+
+  BInviteContext crateApiGroupContextBInviteContextNew({
+    required List<int> identitySecretKey,
+    required List<int> spkSecretKey,
+    required List<int> invite,
+  });
+
+  Uint8List crateApiGroupContextBInviteContextSignAsIdentity({
+    required BInviteContext that,
+    required List<int> msg,
+  });
+
+  Uint8List crateApiGroupContextBInviteContextSignAsLeaf({
+    required BInviteContext that,
+    required List<int> msg,
+  });
+
+  Uint8List crateApiGroupContextBInviteContextSignChallenge({
+    required BInviteContext that,
+    required List<int> nonce,
+    required List<int> challenge,
+  });
+
+  BPendingGroupContext crateApiGroupContextBInviteContextUpgrade({
+    required BInviteContext that,
+    required List<int> publicArt,
+  });
+
+  BPendingGroupContext crateApiGroupContextBPendingGroupContextFromParts({
+    required List<int> identitySecretKey,
+    required List<int> leafSecret,
+    required List<int> art,
+    required List<int> stk,
+    required BigInt epoch,
+    required List<int> groupInfo,
+    required bool isLastSender,
+  });
+
+  BigInt crateApiGroupContextBPendingGroupContextGetEpoch({
+    required BPendingGroupContext that,
+  });
+
+  Uint8List crateApiGroupContextBPendingGroupContextGetGroupInfo({
+    required BPendingGroupContext that,
+  });
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBPendingGroupContextIntoParts({
+    required BPendingGroupContext that,
+  });
+
+  Uint8List crateApiGroupContextBPendingGroupContextJoinGroupAs({
+    required BPendingGroupContext that,
+    required BUser user,
+  });
+
+  List<Uint8List> crateApiGroupContextBPendingGroupContextProcessFrame({
+    required BPendingGroupContext that,
+    required List<int> frame,
+  });
+
+  Uint8List crateApiGroupContextBPendingGroupContextSignChallenge({
+    required BPendingGroupContext that,
+    required List<int> challenge,
+  });
+
+  Uint8List crateApiGroupContextBPendingGroupContextSignWithTk({
+    required BPendingGroupContext that,
+    required String groupId,
+    required List<int> nonce,
+  });
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBPendingGroupContextToParts({
+    required BPendingGroupContext that,
+  });
+
+  BGroupContext crateApiGroupContextBPendingGroupContextUpgrade({
+    required BPendingGroupContext that,
+  });
+
+  Uint8List crateApiGroupContextBSecretsFactoryDecrypt({
+    required BSecretsFactory that,
+    required List<int> ciphertext,
+    required List<int> okm,
+  });
+
+  (Uint8List, Uint8List) crateApiGroupContextBSecretsFactoryEncrypt({
+    required BSecretsFactory that,
+    required List<int> plaintext,
+  });
+
+  Uint8List crateApiGroupContextBSecretsFactoryGenerateSecret({
+    required BSecretsFactory that,
+  });
+
+  (Uint8List, Uint8List)
+  crateApiGroupContextBSecretsFactoryGenerateSecretWithPublicKey({
+    required BSecretsFactory that,
+  });
+
+  BSecretsFactory crateApiGroupContextBSecretsFactoryNew({
+    required U8Array32 seed,
+  });
+
+  String crateApiGroupContextBUserId({required BUser that});
+
+  String crateApiGroupContextBUserName({required BUser that});
+
+  BUser crateApiGroupContextBUserNew({
+    required String name,
+    required List<int> publicKey,
+  });
+
+  Future<SecretsFactory> crateApiSecretsFactorySecretsFactoryDefault();
+
+  (BGroupContext, Uint8List) crateApiGroupContextCreateGroup({
+    required List<int> identitySecretKey,
+    required BUser user,
+    required BGroupInfo groupInfo,
+  });
+
   String crateApiAutomergeGenerateActorId();
 
   String crateApiSimpleGreet({required String name});
 
+  String crateApiGroupContextHashPublcihKey({required List<int> pk});
+
+  String crateApiGroupContextHashPublicKey({required List<int> pk});
+
   Future<void> crateApiSimpleInitApp();
+
+  void crateApiGroupContextInitTracing();
+
+  Uint8List crateApiGroupContextPublicKeyFromSecretKey({
+    required List<int> secretKey,
+  });
+
+  Uint8List crateApiGroupContextSchnorrSign({
+    required List<int> sk,
+    required List<int> message,
+  });
+
+  bool crateApiGroupContextSchnorrVerify({
+    required List<int> pk,
+    required List<int> message,
+    required List<int> signature,
+  });
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_BAutoCommit;
@@ -160,6 +411,65 @@ abstract class RustLibApi extends BaseApi {
   RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_BChange;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_BChangePtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BGroupContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BGroupContext;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_BGroupContextPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BGroupInfo;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BGroupInfo;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_BGroupInfoPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BInviteContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BInviteContext;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_BInviteContextPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BPendingGroupContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BPendingGroupContext;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_BPendingGroupContextPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BSecretsFactory;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BSecretsFactory;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_BSecretsFactoryPtr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_BUser;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_BUser;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_BUserPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_SecretsFactory;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_SecretsFactory;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_SecretsFactoryPtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -171,42 +481,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Future<bool> crateApiAutomergeBAutoCommitBlockListExist({
-    required BAutoCommit that,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
-            that,
-            serializer,
-          );
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 1,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_bool,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiAutomergeBAutoCommitBlockListExistConstMeta,
-        argValues: [that],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiAutomergeBAutoCommitBlockListExistConstMeta =>
-      const TaskConstMeta(
-        debugName: "BAutoCommit_block_list_exist",
-        argNames: ["that"],
-      );
-
-  @override
   BigInt crateApiAutomergeBAutoCommitBlocksLength({required BAutoCommit that}) {
     return handler.executeSync(
       SyncTask(
@@ -216,7 +490,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_usize,
@@ -245,7 +519,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -275,7 +549,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_usize(index, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -295,6 +569,130 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  BAutoCommit crateApiAutomergeBAutoCommitDocAtChangeHash({
+    required BAutoCommit that,
+    required String changeHash,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+            that,
+            serializer,
+          );
+          sse_encode_String(changeHash, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiAutomergeBAutoCommitDocAtChangeHashConstMeta,
+        argValues: [that, changeHash],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAutomergeBAutoCommitDocAtChangeHashConstMeta =>
+      const TaskConstMeta(
+        debugName: "BAutoCommit_doc_at_change_hash",
+        argNames: ["that", "changeHash"],
+      );
+
+  @override
+  (BAutoCommit, BAutoCommit) crateApiAutomergeBAutoCommitDocsBeforeAfter({
+    required BAutoCommit that,
+    required String changeHash,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+            that,
+            serializer,
+          );
+          sse_encode_String(changeHash, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_auto_commit_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_auto_commit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiAutomergeBAutoCommitDocsBeforeAfterConstMeta,
+        argValues: [that, changeHash],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAutomergeBAutoCommitDocsBeforeAfterConstMeta =>
+      const TaskConstMeta(
+        debugName: "BAutoCommit_docs_before_after",
+        argNames: ["that", "changeHash"],
+      );
+
+  @override
+  void crateApiAutomergeBAutoCommitEmptyChange({required BAutoCommit that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAutomergeBAutoCommitEmptyChangeConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAutomergeBAutoCommitEmptyChangeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BAutoCommit_empty_change",
+        argNames: ["that"],
+      );
+
+  @override
+  BAutoCommit crateApiAutomergeBAutoCommitFork({required BAutoCommit that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAutomergeBAutoCommitForkConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAutomergeBAutoCommitForkConstMeta =>
+      const TaskConstMeta(debugName: "BAutoCommit_fork", argNames: ["that"]);
+
+  @override
   BAutoCommit crateApiAutomergeBAutoCommitFromBytes({
     required List<int> bytes,
   }) {
@@ -303,7 +701,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(bytes, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -324,36 +722,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  String crateApiAutomergeBAutoCommitGetBlock({
+  Future<void> crateApiAutomergeBAutoCommitGetAutomerge({
     required BAutoCommit that,
-    required BigInt index,
   }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
             that,
             serializer,
           );
-          sse_encode_usize(index, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_AnyhowException,
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
         ),
-        constMeta: kCrateApiAutomergeBAutoCommitGetBlockConstMeta,
-        argValues: [that, index],
+        constMeta: kCrateApiAutomergeBAutoCommitGetAutomergeConstMeta,
+        argValues: [that],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiAutomergeBAutoCommitGetBlockConstMeta =>
+  TaskConstMeta get kCrateApiAutomergeBAutoCommitGetAutomergeConstMeta =>
       const TaskConstMeta(
-        debugName: "BAutoCommit_get_block",
-        argNames: ["that", "index"],
+        debugName: "BAutoCommit_get_automerge",
+        argNames: ["that"],
       );
 
   @override
@@ -368,7 +769,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_String,
@@ -399,7 +800,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -429,7 +830,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -461,7 +862,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_usize(index, serializer);
           sse_encode_String(text, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -481,12 +882,69 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  BAutoCommit crateApiAutomergeBAutoCommitLoad({required List<int> data}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(data, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiAutomergeBAutoCommitLoadConstMeta,
+        argValues: [data],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAutomergeBAutoCommitLoadConstMeta =>
+      const TaskConstMeta(debugName: "BAutoCommit_load", argNames: ["data"]);
+
+  @override
+  BigInt crateApiAutomergeBAutoCommitLoadIncremental({
+    required BAutoCommit that,
+    required List<int> bytes,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(bytes, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_usize,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiAutomergeBAutoCommitLoadIncrementalConstMeta,
+        argValues: [that, bytes],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAutomergeBAutoCommitLoadIncrementalConstMeta =>
+      const TaskConstMeta(
+        debugName: "BAutoCommit_load_incremental",
+        argNames: ["that", "bytes"],
+      );
+
+  @override
   BAutoCommit crateApiAutomergeBAutoCommitNew() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -513,7 +971,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -541,7 +999,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -574,7 +1032,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_String(uuid, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -594,37 +1052,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  void crateApiAutomergeBAutoCommitSetupBlockLabel({
-    required BAutoCommit that,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
-            that,
-            serializer,
-          );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiAutomergeBAutoCommitSetupBlockLabelConstMeta,
-        argValues: [that],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiAutomergeBAutoCommitSetupBlockLabelConstMeta =>
-      const TaskConstMeta(
-        debugName: "BAutoCommit_setup_block_label",
-        argNames: ["that"],
-      );
-
-  @override
   void crateApiAutomergeBAutoCommitUpdateBlock({
     required BAutoCommit that,
     required BigInt index,
@@ -640,7 +1067,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_usize(index, serializer);
           sse_encode_String(text, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -660,6 +1087,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  BAutoCommit crateApiAutomergeBAutoCommitWithOwner({required String actorId}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(actorId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAutomergeBAutoCommitWithOwnerConstMeta,
+        argValues: [actorId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAutomergeBAutoCommitWithOwnerConstMeta =>
+      const TaskConstMeta(
+        debugName: "BAutoCommit_with_owner",
+        argNames: ["actorId"],
+      );
+
+  @override
   String crateApiAutomergeBChangeActorIdHex({required BChange that}) {
     return handler.executeSync(
       SyncTask(
@@ -669,7 +1123,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -698,7 +1152,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -724,7 +1178,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_i_64,
@@ -741,12 +1195,1512 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "BChange_timestamp", argNames: ["that"]);
 
   @override
+  Future<(Uint8List, Uint8List)>
+  crateApiGroupContextBGroupContextAddIdentifiedMember({
+    required BGroupContext that,
+    required List<int> identityPublicKey,
+    Uint8List? spkPublicKey,
+    required List<Uint8List> payloads,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(identityPublicKey, serializer);
+          sse_encode_opt_list_prim_u_8_strict(spkPublicKey, serializer);
+          sse_encode_list_list_prim_u_8_strict(payloads, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 25,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBGroupContextAddIdentifiedMemberConstMeta,
+        argValues: [that, identityPublicKey, spkPublicKey, payloads],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBGroupContextAddIdentifiedMemberConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_add_identified_member",
+        argNames: ["that", "identityPublicKey", "spkPublicKey", "payloads"],
+      );
+
+  @override
+  Future<(Uint8List, Uint8List)>
+  crateApiGroupContextBGroupContextAddUnidentifiedMember({
+    required BGroupContext that,
+    required List<int> secretKey,
+    required List<Uint8List> payloads,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(secretKey, serializer);
+          sse_encode_list_list_prim_u_8_strict(payloads, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 26,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBGroupContextAddUnidentifiedMemberConstMeta,
+        argValues: [that, secretKey, payloads],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBGroupContextAddUnidentifiedMemberConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_add_unidentified_member",
+        argNames: ["that", "secretKey", "payloads"],
+      );
+
+  @override
+  void crateApiGroupContextBGroupContextCommitState({
+    required BGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextCommitStateConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextCommitStateConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_commit_state",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBGroupContextCreateFrame({
+    required BGroupContext that,
+    required List<Uint8List> payloads,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_list_prim_u_8_strict(payloads, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextCreateFrameConstMeta,
+        argValues: [that, payloads],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextCreateFrameConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_create_frame",
+        argNames: ["that", "payloads"],
+      );
+
+  @override
+  BGroupContext crateApiGroupContextBGroupContextFromParts({
+    required List<int> identitySecretKey,
+    required List<int> leafSecret,
+    required List<int> art,
+    required List<int> stk,
+    required BigInt epoch,
+    required List<int> groupInfo,
+    required bool isLastSender,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
+          sse_encode_list_prim_u_8_loose(leafSecret, serializer);
+          sse_encode_list_prim_u_8_loose(art, serializer);
+          sse_encode_list_prim_u_8_loose(stk, serializer);
+          sse_encode_u_64(epoch, serializer);
+          sse_encode_list_prim_u_8_loose(groupInfo, serializer);
+          sse_encode_bool(isLastSender, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextFromPartsConstMeta,
+        argValues: [
+          identitySecretKey,
+          leafSecret,
+          art,
+          stk,
+          epoch,
+          groupInfo,
+          isLastSender,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextFromPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_from_parts",
+        argNames: [
+          "identitySecretKey",
+          "leafSecret",
+          "art",
+          "stk",
+          "epoch",
+          "groupInfo",
+          "isLastSender",
+        ],
+      );
+
+  @override
+  BigInt crateApiGroupContextBGroupContextGetEpoch({
+    required BGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextGetEpochConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextGetEpochConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_get_epoch",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBGroupContextGetGroupInfo({
+    required BGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextGetGroupInfoConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextGetGroupInfoConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_get_group_info",
+        argNames: ["that"],
+      );
+
+  @override
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBGroupContextIntoParts({required BGroupContext that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextIntoPartsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextIntoPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_into_parts",
+        argNames: ["that"],
+      );
+
+  @override
+  List<Uint8List> crateApiGroupContextBGroupContextProcessFrame({
+    required BGroupContext that,
+    required List<int> frame,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(frame, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextProcessFrameConstMeta,
+        argValues: [that, frame],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextProcessFrameConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_process_frame",
+        argNames: ["that", "frame"],
+      );
+
+  @override
+  Future<(Uint8List, BUser?)> crateApiGroupContextBGroupContextRemoveMember({
+    required BGroupContext that,
+    required String userId,
+    required List<Uint8List> payloads,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_String(userId, serializer);
+          sse_encode_list_list_prim_u_8_strict(payloads, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 34,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_opt_box_autoadd_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_user,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextRemoveMemberConstMeta,
+        argValues: [that, userId, payloads],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextRemoveMemberConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_remove_member",
+        argNames: ["that", "userId", "payloads"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBGroupContextSignChallenge({
+    required BGroupContext that,
+    required List<int> challenge,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(challenge, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextSignChallengeConstMeta,
+        argValues: [that, challenge],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextSignChallengeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_sign_challenge",
+        argNames: ["that", "challenge"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBGroupContextSignWithTk({
+    required BGroupContext that,
+    required String groupId,
+    required List<int> nonce,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_String(groupId, serializer);
+          sse_encode_list_prim_u_8_loose(nonce, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextSignWithTkConstMeta,
+        argValues: [that, groupId, nonce],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextSignWithTkConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_sign_with_tk",
+        argNames: ["that", "groupId", "nonce"],
+      );
+
+  @override
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBGroupContextToParts({required BGroupContext that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 37)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBGroupContextToPartsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupContextToPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupContext_to_parts",
+        argNames: ["that"],
+      );
+
+  @override
+  String crateApiGroupContextBGroupInfoId({required BGroupInfo that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupInfoIdConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupInfoIdConstMeta =>
+      const TaskConstMeta(debugName: "BGroupInfo_id", argNames: ["that"]);
+
+  @override
+  String crateApiGroupContextBGroupInfoName({required BGroupInfo that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 39)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupInfoNameConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupInfoNameConstMeta =>
+      const TaskConstMeta(debugName: "BGroupInfo_name", argNames: ["that"]);
+
+  @override
+  BGroupInfo crateApiGroupContextBGroupInfoNew({
+    required String id,
+    required String name,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(id, serializer);
+          sse_encode_String(name, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBGroupInfoNewConstMeta,
+        argValues: [id, name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBGroupInfoNewConstMeta =>
+      const TaskConstMeta(
+        debugName: "BGroupInfo_new",
+        argNames: ["id", "name"],
+      );
+
+  @override
+  BigInt crateApiGroupContextBInviteContextEpoch({
+    required BInviteContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 41)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextEpochConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextEpochConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_epoch",
+        argNames: ["that"],
+      );
+
+  @override
+  String crateApiGroupContextBInviteContextGroupId({
+    required BInviteContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 42)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextGroupIdConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextGroupIdConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_group_id",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBInviteContextLeafPublicKey({
+    required BInviteContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextLeafPublicKeyConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextLeafPublicKeyConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_leaf_public_key",
+        argNames: ["that"],
+      );
+
+  @override
+  BInviteContext crateApiGroupContextBInviteContextNew({
+    required List<int> identitySecretKey,
+    required List<int> spkSecretKey,
+    required List<int> invite,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
+          sse_encode_list_prim_u_8_loose(spkSecretKey, serializer);
+          sse_encode_list_prim_u_8_loose(invite, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextNewConstMeta,
+        argValues: [identitySecretKey, spkSecretKey, invite],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextNewConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_new",
+        argNames: ["identitySecretKey", "spkSecretKey", "invite"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBInviteContextSignAsIdentity({
+    required BInviteContext that,
+    required List<int> msg,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(msg, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextSignAsIdentityConstMeta,
+        argValues: [that, msg],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBInviteContextSignAsIdentityConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_sign_as_identity",
+        argNames: ["that", "msg"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBInviteContextSignAsLeaf({
+    required BInviteContext that,
+    required List<int> msg,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(msg, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextSignAsLeafConstMeta,
+        argValues: [that, msg],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextSignAsLeafConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_sign_as_leaf",
+        argNames: ["that", "msg"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBInviteContextSignChallenge({
+    required BInviteContext that,
+    required List<int> nonce,
+    required List<int> challenge,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(nonce, serializer);
+          sse_encode_list_prim_u_8_loose(challenge, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextSignChallengeConstMeta,
+        argValues: [that, nonce, challenge],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextSignChallengeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_sign_challenge",
+        argNames: ["that", "nonce", "challenge"],
+      );
+
+  @override
+  BPendingGroupContext crateApiGroupContextBInviteContextUpgrade({
+    required BInviteContext that,
+    required List<int> publicArt,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(publicArt, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 48)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBInviteContextUpgradeConstMeta,
+        argValues: [that, publicArt],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBInviteContextUpgradeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BInviteContext_upgrade",
+        argNames: ["that", "publicArt"],
+      );
+
+  @override
+  BPendingGroupContext crateApiGroupContextBPendingGroupContextFromParts({
+    required List<int> identitySecretKey,
+    required List<int> leafSecret,
+    required List<int> art,
+    required List<int> stk,
+    required BigInt epoch,
+    required List<int> groupInfo,
+    required bool isLastSender,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
+          sse_encode_list_prim_u_8_loose(leafSecret, serializer);
+          sse_encode_list_prim_u_8_loose(art, serializer);
+          sse_encode_list_prim_u_8_loose(stk, serializer);
+          sse_encode_u_64(epoch, serializer);
+          sse_encode_list_prim_u_8_loose(groupInfo, serializer);
+          sse_encode_bool(isLastSender, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 49)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextFromPartsConstMeta,
+        argValues: [
+          identitySecretKey,
+          leafSecret,
+          art,
+          stk,
+          epoch,
+          groupInfo,
+          isLastSender,
+        ],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextFromPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_from_parts",
+        argNames: [
+          "identitySecretKey",
+          "leafSecret",
+          "art",
+          "stk",
+          "epoch",
+          "groupInfo",
+          "isLastSender",
+        ],
+      );
+
+  @override
+  BigInt crateApiGroupContextBPendingGroupContextGetEpoch({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 50)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_u_64,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextGetEpochConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextGetEpochConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_get_epoch",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBPendingGroupContextGetGroupInfo({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 51)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: null,
+        ),
+        constMeta:
+            kCrateApiGroupContextBPendingGroupContextGetGroupInfoConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextGetGroupInfoConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_get_group_info",
+        argNames: ["that"],
+      );
+
+  @override
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBPendingGroupContextIntoParts({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 52)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextIntoPartsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextIntoPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_into_parts",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBPendingGroupContextJoinGroupAs({
+    required BPendingGroupContext that,
+    required BUser user,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+            user,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 53)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBPendingGroupContextJoinGroupAsConstMeta,
+        argValues: [that, user],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextJoinGroupAsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_join_group_as",
+        argNames: ["that", "user"],
+      );
+
+  @override
+  List<Uint8List> crateApiGroupContextBPendingGroupContextProcessFrame({
+    required BPendingGroupContext that,
+    required List<int> frame,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(frame, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 54)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBPendingGroupContextProcessFrameConstMeta,
+        argValues: [that, frame],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextProcessFrameConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_process_frame",
+        argNames: ["that", "frame"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBPendingGroupContextSignChallenge({
+    required BPendingGroupContext that,
+    required List<int> challenge,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(challenge, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 55)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBPendingGroupContextSignChallengeConstMeta,
+        argValues: [that, challenge],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextSignChallengeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_sign_challenge",
+        argNames: ["that", "challenge"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBPendingGroupContextSignWithTk({
+    required BPendingGroupContext that,
+    required String groupId,
+    required List<int> nonce,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          sse_encode_String(groupId, serializer);
+          sse_encode_list_prim_u_8_loose(nonce, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 56)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextSignWithTkConstMeta,
+        argValues: [that, groupId, nonce],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBPendingGroupContextSignWithTkConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_sign_with_tk",
+        argNames: ["that", "groupId", "nonce"],
+      );
+
+  @override
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  crateApiGroupContextBPendingGroupContextToParts({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 57)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextToPartsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBPendingGroupContextToPartsConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_to_parts",
+        argNames: ["that"],
+      );
+
+  @override
+  BGroupContext crateApiGroupContextBPendingGroupContextUpgrade({
+    required BPendingGroupContext that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 58)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBPendingGroupContextUpgradeConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBPendingGroupContextUpgradeConstMeta =>
+      const TaskConstMeta(
+        debugName: "BPendingGroupContext_upgrade",
+        argNames: ["that"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBSecretsFactoryDecrypt({
+    required BSecretsFactory that,
+    required List<int> ciphertext,
+    required List<int> okm,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(ciphertext, serializer);
+          sse_encode_list_prim_u_8_loose(okm, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 59)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBSecretsFactoryDecryptConstMeta,
+        argValues: [that, ciphertext, okm],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBSecretsFactoryDecryptConstMeta =>
+      const TaskConstMeta(
+        debugName: "BSecretsFactory_decrypt",
+        argNames: ["that", "ciphertext", "okm"],
+      );
+
+  @override
+  (Uint8List, Uint8List) crateApiGroupContextBSecretsFactoryEncrypt({
+    required BSecretsFactory that,
+    required List<int> plaintext,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+            that,
+            serializer,
+          );
+          sse_encode_list_prim_u_8_loose(plaintext, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 60)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBSecretsFactoryEncryptConstMeta,
+        argValues: [that, plaintext],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBSecretsFactoryEncryptConstMeta =>
+      const TaskConstMeta(
+        debugName: "BSecretsFactory_encrypt",
+        argNames: ["that", "plaintext"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextBSecretsFactoryGenerateSecret({
+    required BSecretsFactory that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 61)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBSecretsFactoryGenerateSecretConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBSecretsFactoryGenerateSecretConstMeta =>
+      const TaskConstMeta(
+        debugName: "BSecretsFactory_generate_secret",
+        argNames: ["that"],
+      );
+
+  @override
+  (Uint8List, Uint8List)
+  crateApiGroupContextBSecretsFactoryGenerateSecretWithPublicKey({
+    required BSecretsFactory that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 62)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta:
+            kCrateApiGroupContextBSecretsFactoryGenerateSecretWithPublicKeyConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta
+  get kCrateApiGroupContextBSecretsFactoryGenerateSecretWithPublicKeyConstMeta =>
+      const TaskConstMeta(
+        debugName: "BSecretsFactory_generate_secret_with_public_key",
+        argNames: ["that"],
+      );
+
+  @override
+  BSecretsFactory crateApiGroupContextBSecretsFactoryNew({
+    required U8Array32 seed,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_u_8_array_32(seed, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 63)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBSecretsFactoryNewConstMeta,
+        argValues: [seed],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBSecretsFactoryNewConstMeta =>
+      const TaskConstMeta(debugName: "BSecretsFactory_new", argNames: ["seed"]);
+
+  @override
+  String crateApiGroupContextBUserId({required BUser that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 64)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBUserIdConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBUserIdConstMeta =>
+      const TaskConstMeta(debugName: "BUser_id", argNames: ["that"]);
+
+  @override
+  String crateApiGroupContextBUserName({required BUser that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 65)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextBUserNameConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBUserNameConstMeta =>
+      const TaskConstMeta(debugName: "BUser_name", argNames: ["that"]);
+
+  @override
+  BUser crateApiGroupContextBUserNew({
+    required String name,
+    required List<int> publicKey,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(name, serializer);
+          sse_encode_list_prim_u_8_loose(publicKey, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 66)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextBUserNewConstMeta,
+        argValues: [name, publicKey],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextBUserNewConstMeta =>
+      const TaskConstMeta(
+        debugName: "BUser_new",
+        argNames: ["name", "publicKey"],
+      );
+
+  @override
+  Future<SecretsFactory> crateApiSecretsFactorySecretsFactoryDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 67,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiSecretsFactorySecretsFactoryDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSecretsFactorySecretsFactoryDefaultConstMeta =>
+      const TaskConstMeta(debugName: "SecretsFactory_default", argNames: []);
+
+  @override
+  (BGroupContext, Uint8List) crateApiGroupContextCreateGroup({
+    required List<int> identitySecretKey,
+    required BUser user,
+    required BGroupInfo groupInfo,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(identitySecretKey, serializer);
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+            user,
+            serializer,
+          );
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+            groupInfo,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 68)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextCreateGroupConstMeta,
+        argValues: [identitySecretKey, user, groupInfo],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextCreateGroupConstMeta =>
+      const TaskConstMeta(
+        debugName: "create_group",
+        argNames: ["identitySecretKey", "user", "groupInfo"],
+      );
+
+  @override
   String crateApiAutomergeGenerateActorId() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 69)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -769,7 +2723,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 70)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -786,6 +2740,52 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "greet", argNames: ["name"]);
 
   @override
+  String crateApiGroupContextHashPublcihKey({required List<int> pk}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(pk, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 71)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextHashPublcihKeyConstMeta,
+        argValues: [pk],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextHashPublcihKeyConstMeta =>
+      const TaskConstMeta(debugName: "hash_publcih_key", argNames: ["pk"]);
+
+  @override
+  String crateApiGroupContextHashPublicKey({required List<int> pk}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(pk, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 72)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextHashPublicKeyConstMeta,
+        argValues: [pk],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextHashPublicKeyConstMeta =>
+      const TaskConstMeta(debugName: "hash_public_key", argNames: ["pk"]);
+
+  @override
   Future<void> crateApiSimpleInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -794,7 +2794,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 73,
             port: port_,
           );
         },
@@ -812,6 +2812,118 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiSimpleInitAppConstMeta =>
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
+  @override
+  void crateApiGroupContextInitTracing() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 74)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiGroupContextInitTracingConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextInitTracingConstMeta =>
+      const TaskConstMeta(debugName: "init_tracing", argNames: []);
+
+  @override
+  Uint8List crateApiGroupContextPublicKeyFromSecretKey({
+    required List<int> secretKey,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(secretKey, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 75)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextPublicKeyFromSecretKeyConstMeta,
+        argValues: [secretKey],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextPublicKeyFromSecretKeyConstMeta =>
+      const TaskConstMeta(
+        debugName: "public_key_from_secret_key",
+        argNames: ["secretKey"],
+      );
+
+  @override
+  Uint8List crateApiGroupContextSchnorrSign({
+    required List<int> sk,
+    required List<int> message,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(sk, serializer);
+          sse_encode_list_prim_u_8_loose(message, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 76)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextSchnorrSignConstMeta,
+        argValues: [sk, message],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextSchnorrSignConstMeta =>
+      const TaskConstMeta(
+        debugName: "schnorr_sign",
+        argNames: ["sk", "message"],
+      );
+
+  @override
+  bool crateApiGroupContextSchnorrVerify({
+    required List<int> pk,
+    required List<int> message,
+    required List<int> signature,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(pk, serializer);
+          sse_encode_list_prim_u_8_loose(message, serializer);
+          sse_encode_list_prim_u_8_loose(signature, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 77)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGroupContextSchnorrVerifyConstMeta,
+        argValues: [pk, message, signature],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGroupContextSchnorrVerifyConstMeta =>
+      const TaskConstMeta(
+        debugName: "schnorr_verify",
+        argNames: ["pk", "message", "signature"],
+      );
+
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_BAutoCommit => wire
       .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit;
@@ -827,6 +2939,62 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustArcDecrementStrongCountFnType
   get rust_arc_decrement_strong_count_BChange => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBChange;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BGroupContext => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BGroupContext => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BGroupInfo => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BGroupInfo => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BInviteContext => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BInviteContext => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BPendingGroupContext => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BPendingGroupContext => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BSecretsFactory => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BSecretsFactory => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_BUser => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_BUser => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_SecretsFactory => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_SecretsFactory => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory;
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
@@ -853,12 +3021,102 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BGroupContext
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BGroupInfo
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BGroupInfoImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BInviteContext
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BPendingGroupContext
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BSecretsFactory
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BSecretsFactoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BUser
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BUserImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SecretsFactory
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecretsFactoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   BAutoCommit
   dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return BAutoCommitImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BGroupContext
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BPendingGroupContext
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BSecretsFactory
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BSecretsFactoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -880,6 +3138,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BGroupContext
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BGroupInfo
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BGroupInfoImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BInviteContext
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BPendingGroupContext
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BUser
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BUserImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   BAutoCommit
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
     dynamic raw,
@@ -898,6 +3201,69 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BGroupContext
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BGroupInfo
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BGroupInfoImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BInviteContext
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BPendingGroupContext
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BSecretsFactory
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BSecretsFactoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  BUser
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BUserImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SecretsFactory
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecretsFactoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
@@ -907,6 +3273,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   bool dco_decode_bool(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as bool;
+  }
+
+  @protected
+  BUser
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+      raw,
+    );
   }
 
   @protected
@@ -935,6 +3312,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<Uint8List> dco_decode_list_list_prim_u_8_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_list_prim_u_8_strict).toList();
+  }
+
+  @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as List<int>;
@@ -947,9 +3330,130 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BUser?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+            raw,
+          );
+  }
+
+  @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_list_prim_u_8_strict(raw);
+  }
+
+  @protected
+  (BAutoCommit, BAutoCommit)
+  dco_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_auto_commit_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_auto_commit(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+        arr[0],
+      ),
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+        arr[1],
+      ),
+    );
+  }
+
+  @protected
+  (BGroupContext, Uint8List)
+  dco_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+        arr[0],
+      ),
+      dco_decode_list_prim_u_8_strict(arr[1]),
+    );
+  }
+
+  @protected
+  (Uint8List, Uint8List)
+  dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_list_prim_u_8_strict(arr[0]),
+      dco_decode_list_prim_u_8_strict(arr[1]),
+    );
+  }
+
+  @protected
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6) {
+      throw Exception('Expected 6 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_list_prim_u_8_strict(arr[0]),
+      dco_decode_list_prim_u_8_strict(arr[1]),
+      dco_decode_list_prim_u_8_strict(arr[2]),
+      dco_decode_u_64(arr[3]),
+      dco_decode_list_prim_u_8_strict(arr[4]),
+      dco_decode_bool(arr[5]),
+    );
+  }
+
+  @protected
+  (Uint8List, BUser?)
+  dco_decode_record_list_prim_u_8_strict_opt_box_autoadd_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_user(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_list_prim_u_8_strict(arr[0]),
+      dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+        arr[1],
+      ),
+    );
+  }
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
   int dco_decode_u_8(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
+  }
+
+  @protected
+  U8Array32 dco_decode_u_8_array_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return U8Array32(dco_decode_list_prim_u_8_strict(raw));
   }
 
   @protected
@@ -996,12 +3500,132 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BGroupContext
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BGroupInfo
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BGroupInfoImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BInviteContext
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BPendingGroupContext
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BSecretsFactory
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BSecretsFactoryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BUser
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BUserImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  SecretsFactory
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SecretsFactoryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
   BAutoCommit
   sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return BAutoCommitImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BGroupContext
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BPendingGroupContext
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BSecretsFactory
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BSecretsFactoryImpl.frbInternalSseDecode(
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
@@ -1032,6 +3656,66 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BGroupContext
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BGroupInfo
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BGroupInfoImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BInviteContext
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BPendingGroupContext
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BUser
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BUserImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
   BAutoCommit
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
     SseDeserializer deserializer,
@@ -1056,6 +3740,90 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BGroupContext
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BGroupInfo
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BGroupInfoImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BInviteContext
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BInviteContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BPendingGroupContext
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BPendingGroupContextImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BSecretsFactory
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BSecretsFactoryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  BUser
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return BUserImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  SecretsFactory
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SecretsFactoryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
@@ -1066,6 +3834,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  BUser
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+      deserializer,
+    ));
   }
 
   @protected
@@ -1106,6 +3885,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<Uint8List> sse_decode_list_list_prim_u_8_strict(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <Uint8List>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_list_prim_u_8_strict(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -1120,9 +3913,127 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BUser?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+        deserializer,
+      ));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_list_prim_u_8_strict(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  (BAutoCommit, BAutoCommit)
+  sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_auto_commit_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_auto_commit(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+          deserializer,
+        );
+    var var_field1 =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+          deserializer,
+        );
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  (BGroupContext, Uint8List)
+  sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+          deserializer,
+        );
+    var var_field1 = sse_decode_list_prim_u_8_strict(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  (Uint8List, Uint8List)
+  sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_field1 = sse_decode_list_prim_u_8_strict(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool)
+  sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_field1 = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_field2 = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_field3 = sse_decode_u_64(deserializer);
+    var var_field4 = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_field5 = sse_decode_bool(deserializer);
+    return (
+      var_field0,
+      var_field1,
+      var_field2,
+      var_field3,
+      var_field4,
+      var_field5,
+    );
+  }
+
+  @protected
+  (Uint8List, BUser?)
+  sse_decode_record_list_prim_u_8_strict_opt_box_autoadd_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_user(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_field1 =
+        sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+          deserializer,
+        );
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
   int sse_decode_u_8(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8();
+  }
+
+  @protected
+  U8Array32 sse_decode_u_8_array_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_prim_u_8_strict(deserializer);
+    return U8Array32(inner);
   }
 
   @protected
@@ -1179,6 +4090,97 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    BGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BGroupContextImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    BGroupInfo self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BGroupInfoImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    BInviteContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BInviteContextImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    BPendingGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BPendingGroupContextImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    BSecretsFactory self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BSecretsFactoryImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    BUser self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BUserImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory(
+    SecretsFactory self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as SecretsFactoryImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
   sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
     BAutoCommit self,
     SseSerializer serializer,
@@ -1186,6 +4188,45 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
       (self as BAutoCommitImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    BGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BGroupContextImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    BPendingGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BPendingGroupContextImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    BSecretsFactory self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BSecretsFactoryImpl).frbInternalSseEncode(move: false),
       serializer,
     );
   }
@@ -1218,6 +4259,71 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    BGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BGroupContextImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    BGroupInfo self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BGroupInfoImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    BInviteContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BInviteContextImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    BPendingGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BPendingGroupContextImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    BUser self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BUserImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
     BAutoCommit self,
     SseSerializer serializer,
@@ -1243,6 +4349,97 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+    BGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BGroupContextImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupInfo(
+    BGroupInfo self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BGroupInfoImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBInviteContext(
+    BInviteContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BInviteContextImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBPendingGroupContext(
+    BPendingGroupContext self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BPendingGroupContextImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBSecretsFactory(
+    BSecretsFactory self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BSecretsFactoryImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    BUser self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as BUserImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerSecretsFactory(
+    SecretsFactory self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as SecretsFactoryImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
@@ -1252,6 +4449,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_bool(bool self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    BUser self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+      self,
+      serializer,
+    );
   }
 
   @protected
@@ -1286,6 +4496,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_list_prim_u_8_strict(
+    List<Uint8List> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_list_prim_u_8_strict(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_loose(
     List<int> self,
     SseSerializer serializer,
@@ -1308,9 +4530,121 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+    BUser? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+        self,
+        serializer,
+      );
+    }
+  }
+
+  @protected
+  void sse_encode_opt_list_prim_u_8_strict(
+    Uint8List? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_list_prim_u_8_strict(self, serializer);
+    }
+  }
+
+  @protected
+  void
+  sse_encode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_auto_commit_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_auto_commit(
+    (BAutoCommit, BAutoCommit) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+      self.$1,
+      serializer,
+    );
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBAutoCommit(
+      self.$2,
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_group_context_list_prim_u_8_strict(
+    (BGroupContext, Uint8List) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBGroupContext(
+      self.$1,
+      serializer,
+    );
+    sse_encode_list_prim_u_8_strict(self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict(
+    (Uint8List, Uint8List) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.$1, serializer);
+    sse_encode_list_prim_u_8_strict(self.$2, serializer);
+  }
+
+  @protected
+  void
+  sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict_list_prim_u_8_strict_u_64_list_prim_u_8_strict_bool(
+    (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.$1, serializer);
+    sse_encode_list_prim_u_8_strict(self.$2, serializer);
+    sse_encode_list_prim_u_8_strict(self.$3, serializer);
+    sse_encode_u_64(self.$4, serializer);
+    sse_encode_list_prim_u_8_strict(self.$5, serializer);
+    sse_encode_bool(self.$6, serializer);
+  }
+
+  @protected
+  void
+  sse_encode_record_list_prim_u_8_strict_opt_box_autoadd_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_b_user(
+    (Uint8List, BUser?) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.$1, serializer);
+    sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerBUser(
+      self.$2,
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
+  }
+
+  @protected
   void sse_encode_u_8(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self);
+  }
+
+  @protected
+  void sse_encode_u_8_array_32(U8Array32 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.inner, serializer);
   }
 
   @protected
@@ -1350,9 +4684,6 @@ class BAutoCommitImpl extends RustOpaque implements BAutoCommit {
         RustLib.instance.api.rust_arc_decrement_strong_count_BAutoCommitPtr,
   );
 
-  Future<bool> blockListExist() => RustLib.instance.api
-      .crateApiAutomergeBAutoCommitBlockListExist(that: this);
-
   BigInt blocksLength() =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitBlocksLength(that: this);
 
@@ -1362,8 +4693,27 @@ class BAutoCommitImpl extends RustOpaque implements BAutoCommit {
   void deleteBlock({required BigInt index}) => RustLib.instance.api
       .crateApiAutomergeBAutoCommitDeleteBlock(that: this, index: index);
 
-  String getBlock({required BigInt index}) => RustLib.instance.api
-      .crateApiAutomergeBAutoCommitGetBlock(that: this, index: index);
+  BAutoCommit docAtChangeHash({required String changeHash}) =>
+      RustLib.instance.api.crateApiAutomergeBAutoCommitDocAtChangeHash(
+        that: this,
+        changeHash: changeHash,
+      );
+
+  (BAutoCommit, BAutoCommit) docsBeforeAfter({required String changeHash}) =>
+      RustLib.instance.api.crateApiAutomergeBAutoCommitDocsBeforeAfter(
+        that: this,
+        changeHash: changeHash,
+      );
+
+  void emptyChange() =>
+      RustLib.instance.api.crateApiAutomergeBAutoCommitEmptyChange(that: this);
+
+  BAutoCommit fork() =>
+      RustLib.instance.api.crateApiAutomergeBAutoCommitFork(that: this);
+
+  /// For tests only
+  Future<void> getAutomerge() =>
+      RustLib.instance.api.crateApiAutomergeBAutoCommitGetAutomerge(that: this);
 
   List<String> getBlocks() =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitGetBlocks(that: this);
@@ -1383,6 +4733,9 @@ class BAutoCommitImpl extends RustOpaque implements BAutoCommit {
         text: text,
       );
 
+  BigInt loadIncremental({required List<int> bytes}) => RustLib.instance.api
+      .crateApiAutomergeBAutoCommitLoadIncremental(that: this, bytes: bytes);
+
   Uint8List save() =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitSave(that: this);
 
@@ -1392,11 +4745,7 @@ class BAutoCommitImpl extends RustOpaque implements BAutoCommit {
   void setActorId({required String uuid}) => RustLib.instance.api
       .crateApiAutomergeBAutoCommitSetActorId(that: this, uuid: uuid);
 
-  /// This function setups list of message blocks.
-  /// If it is exist it will be skipped
-  void setupBlockLabel() => RustLib.instance.api
-      .crateApiAutomergeBAutoCommitSetupBlockLabel(that: this);
-
+  /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
   void updateBlock({required BigInt index, required String text}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitUpdateBlock(
         that: this,
@@ -1432,4 +4781,335 @@ class BChangeImpl extends RustOpaque implements BChange {
 
   PlatformInt64 timestamp() =>
       RustLib.instance.api.crateApiAutomergeBChangeTimestamp(that: this);
+}
+
+@sealed
+class BGroupContextImpl extends RustOpaque implements BGroupContext {
+  // Not to be used by end users
+  BGroupContextImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  BGroupContextImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_BGroupContext,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BGroupContext,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BGroupContextPtr,
+  );
+
+  Future<(Uint8List, Uint8List)> addIdentifiedMember({
+    required List<int> identityPublicKey,
+    Uint8List? spkPublicKey,
+    required List<Uint8List> payloads,
+  }) =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextAddIdentifiedMember(
+        that: this,
+        identityPublicKey: identityPublicKey,
+        spkPublicKey: spkPublicKey,
+        payloads: payloads,
+      );
+
+  Future<(Uint8List, Uint8List)> addUnidentifiedMember({
+    required List<int> secretKey,
+    required List<Uint8List> payloads,
+  }) => RustLib.instance.api
+      .crateApiGroupContextBGroupContextAddUnidentifiedMember(
+        that: this,
+        secretKey: secretKey,
+        payloads: payloads,
+      );
+
+  void commitState() => RustLib.instance.api
+      .crateApiGroupContextBGroupContextCommitState(that: this);
+
+  Uint8List createFrame({required List<Uint8List> payloads}) =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextCreateFrame(
+        that: this,
+        payloads: payloads,
+      );
+
+  BigInt getEpoch() => RustLib.instance.api
+      .crateApiGroupContextBGroupContextGetEpoch(that: this);
+
+  Uint8List getGroupInfo() => RustLib.instance.api
+      .crateApiGroupContextBGroupContextGetGroupInfo(that: this);
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) intoParts() =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextIntoParts(
+        that: this,
+      );
+
+  List<Uint8List> processFrame({required List<int> frame}) => RustLib
+      .instance
+      .api
+      .crateApiGroupContextBGroupContextProcessFrame(that: this, frame: frame);
+
+  Future<(Uint8List, BUser?)> removeMember({
+    required String userId,
+    required List<Uint8List> payloads,
+  }) => RustLib.instance.api.crateApiGroupContextBGroupContextRemoveMember(
+    that: this,
+    userId: userId,
+    payloads: payloads,
+  );
+
+  Uint8List signChallenge({required List<int> challenge}) =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextSignChallenge(
+        that: this,
+        challenge: challenge,
+      );
+
+  Uint8List signWithTk({required String groupId, required List<int> nonce}) =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextSignWithTk(
+        that: this,
+        groupId: groupId,
+        nonce: nonce,
+      );
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) toParts() =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextToParts(that: this);
+}
+
+@sealed
+class BGroupInfoImpl extends RustOpaque implements BGroupInfo {
+  // Not to be used by end users
+  BGroupInfoImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  BGroupInfoImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_BGroupInfo,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BGroupInfo,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BGroupInfoPtr,
+  );
+
+  String id() =>
+      RustLib.instance.api.crateApiGroupContextBGroupInfoId(that: this);
+
+  String name() =>
+      RustLib.instance.api.crateApiGroupContextBGroupInfoName(that: this);
+}
+
+@sealed
+class BInviteContextImpl extends RustOpaque implements BInviteContext {
+  // Not to be used by end users
+  BInviteContextImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  BInviteContextImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_BInviteContext,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BInviteContext,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BInviteContextPtr,
+  );
+
+  BigInt epoch() =>
+      RustLib.instance.api.crateApiGroupContextBInviteContextEpoch(that: this);
+
+  String groupId() => RustLib.instance.api
+      .crateApiGroupContextBInviteContextGroupId(that: this);
+
+  Uint8List leafPublicKey() => RustLib.instance.api
+      .crateApiGroupContextBInviteContextLeafPublicKey(that: this);
+
+  Uint8List signAsIdentity({required List<int> msg}) => RustLib.instance.api
+      .crateApiGroupContextBInviteContextSignAsIdentity(that: this, msg: msg);
+
+  Uint8List signAsLeaf({required List<int> msg}) => RustLib.instance.api
+      .crateApiGroupContextBInviteContextSignAsLeaf(that: this, msg: msg);
+
+  Uint8List signChallenge({
+    required List<int> nonce,
+    required List<int> challenge,
+  }) => RustLib.instance.api.crateApiGroupContextBInviteContextSignChallenge(
+    that: this,
+    nonce: nonce,
+    challenge: challenge,
+  );
+
+  BPendingGroupContext upgrade({required List<int> publicArt}) =>
+      RustLib.instance.api.crateApiGroupContextBInviteContextUpgrade(
+        that: this,
+        publicArt: publicArt,
+      );
+}
+
+@sealed
+class BPendingGroupContextImpl extends RustOpaque
+    implements BPendingGroupContext {
+  // Not to be used by end users
+  BPendingGroupContextImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  BPendingGroupContextImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_increment_strong_count_BPendingGroupContext,
+    rustArcDecrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_BPendingGroupContext,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_BPendingGroupContextPtr,
+  );
+
+  BigInt getEpoch() => RustLib.instance.api
+      .crateApiGroupContextBPendingGroupContextGetEpoch(that: this);
+
+  Uint8List getGroupInfo() => RustLib.instance.api
+      .crateApiGroupContextBPendingGroupContextGetGroupInfo(that: this);
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) intoParts() =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextIntoParts(
+        that: this,
+      );
+
+  Uint8List joinGroupAs({required BUser user}) =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextJoinGroupAs(
+        that: this,
+        user: user,
+      );
+
+  List<Uint8List> processFrame({required List<int> frame}) =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextProcessFrame(
+        that: this,
+        frame: frame,
+      );
+
+  Uint8List signChallenge({required List<int> challenge}) => RustLib
+      .instance
+      .api
+      .crateApiGroupContextBPendingGroupContextSignChallenge(
+        that: this,
+        challenge: challenge,
+      );
+
+  Uint8List signWithTk({required String groupId, required List<int> nonce}) =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextSignWithTk(
+        that: this,
+        groupId: groupId,
+        nonce: nonce,
+      );
+
+  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) toParts() =>
+      RustLib.instance.api.crateApiGroupContextBPendingGroupContextToParts(
+        that: this,
+      );
+
+  BGroupContext upgrade() => RustLib.instance.api
+      .crateApiGroupContextBPendingGroupContextUpgrade(that: this);
+}
+
+@sealed
+class BSecretsFactoryImpl extends RustOpaque implements BSecretsFactory {
+  // Not to be used by end users
+  BSecretsFactoryImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  BSecretsFactoryImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_BSecretsFactory,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BSecretsFactory,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BSecretsFactoryPtr,
+  );
+
+  /// Applies cipher text and encryption key, return plain text
+  Uint8List decrypt({required List<int> ciphertext, required List<int> okm}) =>
+      RustLib.instance.api.crateApiGroupContextBSecretsFactoryDecrypt(
+        that: this,
+        ciphertext: ciphertext,
+        okm: okm,
+      );
+
+  /// Returns cipher text and encryption key
+  (Uint8List, Uint8List) encrypt({required List<int> plaintext}) =>
+      RustLib.instance.api.crateApiGroupContextBSecretsFactoryEncrypt(
+        that: this,
+        plaintext: plaintext,
+      );
+
+  Uint8List generateSecret() => RustLib.instance.api
+      .crateApiGroupContextBSecretsFactoryGenerateSecret(that: this);
+
+  (Uint8List, Uint8List) generateSecretWithPublicKey() => RustLib.instance.api
+      .crateApiGroupContextBSecretsFactoryGenerateSecretWithPublicKey(
+        that: this,
+      );
+}
+
+@sealed
+class BUserImpl extends RustOpaque implements BUser {
+  // Not to be used by end users
+  BUserImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  BUserImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_BUser,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BUser,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_BUserPtr,
+  );
+
+  String id() => RustLib.instance.api.crateApiGroupContextBUserId(that: this);
+
+  String name() =>
+      RustLib.instance.api.crateApiGroupContextBUserName(that: this);
+}
+
+@sealed
+class SecretsFactoryImpl extends RustOpaque implements SecretsFactory {
+  // Not to be used by end users
+  SecretsFactoryImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  SecretsFactoryImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_SecretsFactory,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_SecretsFactory,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_SecretsFactoryPtr,
+  );
 }

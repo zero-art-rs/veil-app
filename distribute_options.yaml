@@ -1,0 +1,8 @@
+output: linux/packaging/dist
+releases:
+  - name: veil
+    jobs:
+      - name: linux-deb
+        package:
+          platform: linux
+          target: deb

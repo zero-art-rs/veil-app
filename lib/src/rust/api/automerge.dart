@@ -6,25 +6,33 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `blocks_list_id`, `new`
+// These functions are ignored because they are not marked as `pub`: `block_list_exist`, `blocks_list_id`, `new`, `setup_block_label`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
 
 String generateActorId() =>
     RustLib.instance.api.crateApiAutomergeGenerateActorId();
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>>
 abstract class BAutoCommit implements RustOpaqueInterface {
-  Future<bool> blockListExist();
-
   BigInt blocksLength();
 
   void commit();
 
   void deleteBlock({required BigInt index});
 
+  BAutoCommit docAtChangeHash({required String changeHash});
+
+  (BAutoCommit, BAutoCommit) docsBeforeAfter({required String changeHash});
+
+  void emptyChange();
+
+  BAutoCommit fork();
+
   static BAutoCommit fromBytes({required List<int> bytes}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitFromBytes(bytes: bytes);
 
-  String getBlock({required BigInt index});
+  /// For tests only
+  Future<void> getAutomerge();
 
   List<String> getBlocks();
 
@@ -36,6 +44,11 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   /// If index is duplicate it will add new value at this index and previous value will be moved to next index
   void insertBlock({required BigInt index, required String text});
 
+  static BAutoCommit load({required List<int> data}) =>
+      RustLib.instance.api.crateApiAutomergeBAutoCommitLoad(data: data);
+
+  BigInt loadIncremental({required List<int> bytes});
+
   factory BAutoCommit() =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitNew();
 
@@ -45,11 +58,13 @@ abstract class BAutoCommit implements RustOpaqueInterface {
 
   void setActorId({required String uuid});
 
-  /// This function setups list of message blocks.
-  /// If it is exist it will be skipped
-  void setupBlockLabel();
-
+  /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
   void updateBlock({required BigInt index, required String text});
+
+  static BAutoCommit withOwner({required String actorId}) => RustLib
+      .instance
+      .api
+      .crateApiAutomergeBAutoCommitWithOwner(actorId: actorId);
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BChange>>

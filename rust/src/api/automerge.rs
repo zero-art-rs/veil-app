@@ -3,14 +3,15 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use automerge::{
     transaction::{CommitOptions, Transactable},
-    ActorId, AutoCommit, Change, ObjType, ReadDoc,
+    ActorId, AutoCommit, Change, ChangeHash, ReadDoc,
 };
 
 const BLOCKS_LABEL: &str = "blocks";
 
+#[derive(Debug)]
 pub struct BChange {
     change: Change,
 }
@@ -36,16 +37,58 @@ impl BChange {
     }
 }
 
+#[derive(Clone)]
 pub struct BAutoCommit {
     autocommit: AutoCommit,
 }
 
 impl BAutoCommit {
     #[flutter_rust_bridge::frb(sync)]
-    pub fn new() -> BAutoCommit {
-        BAutoCommit {
+    pub fn with_owner(actor_id: String) -> BAutoCommit {
+        let mut automerge = BAutoCommit {
             autocommit: AutoCommit::new(),
-        }
+        };
+
+        automerge
+            .set_actor_id(actor_id)
+            .expect("Should set actor id");
+
+        automerge
+            .setup_block_label()
+            .expect("Should setup block label");
+
+        automerge.commit();
+
+        automerge
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn fork(&mut self) -> BAutoCommit {
+        let automerge = self.autocommit.fork();
+
+        BAutoCommit { autocommit: automerge }
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn new() -> BAutoCommit {
+        let mut automerge = BAutoCommit {
+            autocommit: AutoCommit::new(),
+        };
+
+        automerge
+            .setup_block_label()
+            .expect("Should setup block label");
+
+        automerge
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn load(data: Vec<u8>) -> anyhow::Result<BAutoCommit> {
+        let autocommit = AutoCommit::load(&data)?;
+
+        Ok(BAutoCommit {
+            autocommit: autocommit,
+        })
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -71,65 +114,24 @@ impl BAutoCommit {
     /// If index is duplicate it will add new value at this index and previous value will be moved to next index
     #[flutter_rust_bridge::frb(sync)]
     pub fn insert_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
-        let obj_id = match self.autocommit.insert_object(
-            self.blocks_list_id(),
-            index,
-            automerge::ObjType::Text,
-        ) {
+        match self
+            .autocommit
+            .insert(self.blocks_list_id(), index, text.as_str())
+        {
             Ok(id) => id,
             Err(err) => bail!("Failed to insert block object: {}", err),
         };
 
-        let Err(err) = self.autocommit.splice_text(obj_id, 0, 0, &text) else {
-            return Ok(());
-        };
-
-        bail!("Failed to put root object: {}", err);
+        Ok(())
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    pub fn get_block(&self, index: usize) -> anyhow::Result<String> {
-        let Some(obj) = self
-            .autocommit
-            .get(self.blocks_list_id(), index)
-            .map_err(|err| {
-                anyhow::anyhow!("Failed to get block with index {}, error: {}", index, err)
-            })?
-        else {
-            bail!("No such block with index {}", index);
-        };
-
-        match self.autocommit.object_type(&obj.1) {
-            Ok(ObjType::Text) => (),
-            Err(err) => bail!("Failed to get block object type: {}", err),
-            _ => bail!("Invalid block object type"),
-        };
-
-        let text = self
-            .autocommit
-            .text(obj.1)
-            .map_err(|err| anyhow::anyhow!("Failed to get text block: {}", err))?;
-
-        Ok(text)
-    }
-
-    #[flutter_rust_bridge::frb(sync)]
+    /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
     pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
-        let obj_id = match self.autocommit.get(self.blocks_list_id(), index) {
-            Ok(Some(id)) => id.1,
-            Err(err) => bail!("Failed to get block with index {}, error: {}", index, err),
-            _ => bail!("No such block with index {}", index),
-        };
+        let block_list_id = self.blocks_list_id();
+        self.autocommit.put(block_list_id, index, text.as_str())?;
 
-        let block = self.get_block(index)?;
-        let Err(err) = self
-            .autocommit
-            .splice_text(obj_id, 0, block.len() as isize, &text)
-        else {
-            return Ok(());
-        };
-
-        bail!("Failed to update block: {}", err);
+        Ok(())
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -143,19 +145,46 @@ impl BAutoCommit {
     }
 
     #[flutter_rust_bridge::frb(sync)]
+    pub fn load_incremental(&mut self, bytes: Vec<u8>) -> anyhow::Result<usize> {
+        self.autocommit
+            .load_incremental(&bytes)
+            .map_err(|e| anyhow!("Failed to load incremental: {}", e))
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn empty_change(&mut self) {
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("time should go forward")
+            .as_secs();
+
+        let opts = CommitOptions::default().with_time(since_the_epoch as i64);
+
+        self.autocommit.empty_change(opts);
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
     pub fn info(&self) -> String {
         format!("{:?}", self.autocommit)
     }
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn get_blocks(&self) -> anyhow::Result<Vec<String>> {
-        let mut block_array = vec![];
+        let mut blocks = vec![];
+        for (value, _) in self.autocommit.values(&self.blocks_list_id()) {
+            let string = value.to_string();
 
-        for index in 0..self.blocks_length() {
-            block_array.push(self.get_block(index)?);
+            let formatted_string = string
+                .chars()
+                .skip(1)
+                .take(string.chars().count() - 2)
+                .collect::<String>();
+
+            blocks.push(formatted_string);
         }
 
-        Ok(block_array)
+        Ok(blocks)
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -196,8 +225,8 @@ impl BAutoCommit {
 
     /// This function setups list of message blocks.
     /// If it is exist it will be skipped
-    #[flutter_rust_bridge::frb(sync)]
-    pub fn setup_block_label(&mut self) -> anyhow::Result<()> {
+    // #[flutter_rust_bridge::frb(sync)]
+    fn setup_block_label(&mut self) -> anyhow::Result<()> {
         if self.block_list_exist()? {
             return Ok(());
         }
@@ -221,13 +250,54 @@ impl BAutoCommit {
             .1
     }
 
-    pub fn block_list_exist(&self) -> anyhow::Result<bool> {
+    fn block_list_exist(&self) -> anyhow::Result<bool> {
         let label = self
             .autocommit
             .get(automerge::ROOT, BLOCKS_LABEL)
             .map_err(|e| anyhow::anyhow!("Failed to get block list: {}", e))?;
 
         Ok(label.is_some())
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn doc_at_change_hash(&self, change_hash: &str) -> anyhow::Result<BAutoCommit> {
+        let hash = ChangeHash::from_str(change_hash)?;
+        let autocommit = self.autocommit.clone().fork_at(&[hash])?;
+
+        Ok(BAutoCommit {
+            autocommit: autocommit,
+        })
+    }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn docs_before_after(
+        &mut self,
+        change_hash: &str,
+    ) -> anyhow::Result<(BAutoCommit, BAutoCommit)> {
+        let changes = self.get_change_list();
+
+        let index = changes
+            .iter()
+            .position(|c| c.change.hash().to_string() == change_hash)
+            .ok_or_else(|| anyhow::anyhow!("No such change hash"))?;
+
+        let after_doc = self.doc_at_change_hash(change_hash)?;
+
+        let before_doc = if index == 0 {
+            let mut doc = BAutoCommit::new();
+            doc.setup_block_label()?;
+            doc
+        } else {
+            let prev_hash = changes[index - 1].change.hash().to_string();
+            self.doc_at_change_hash(&prev_hash)?
+        };
+
+        Ok((before_doc, after_doc))
+    }
+
+    /// For tests only
+    pub fn get_automerge(&self) -> &AutoCommit {
+        &self.autocommit
     }
 }
 

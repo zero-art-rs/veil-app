@@ -1,16 +1,32 @@
-import 'package:appflowy_editor/appflowy_editor.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:zk_notion_app/screens/contacts_page.dart';
-import 'package:zk_notion_app/storage/document_storage.dart';
-import 'package:zk_notion_app/storage/models.dart' as m;
-import 'package:zk_notion_app/utils/banner.dart';
+import 'package:flutter/services.dart';
+import 'package:material_symbols_icons/symbols.dart';
+import 'package:veil/api/group_api_client.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sharing/deeplink_manager.dart';
+import 'package:veil/managers/sync_provider/sync_model_executor.dart';
+import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/screens/contacts_page.dart';
+import 'package:veil/screens/editor/frame_processor/executor.dart';
+import 'package:veil/storage/models.dart' as m;
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/secret_factory.dart';
+import 'package:veil/utils/platform.dart';
+import 'package:veil/widgets/ays_modal.dart';
 
 class MemberScreenModel {
   final m.DocumentMember member;
   final bool isYou;
+  final bool isOwner;
 
-  MemberScreenModel({required this.member, this.isYou = false});
+  MemberScreenModel({
+    required this.member,
+    this.isYou = false,
+    this.isOwner = false,
+  });
 }
 
 class DocumentMemberListScreen extends StatefulWidget {
@@ -18,9 +34,11 @@ class DocumentMemberListScreen extends StatefulWidget {
     super.key,
     required this.members,
     required this.doc,
+    required this.executor,
   });
 
   final List<MemberScreenModel> members;
+  final SyncModelExecutor executor;
 
   final m.Document doc;
 
@@ -30,56 +48,234 @@ class DocumentMemberListScreen extends StatefulWidget {
 }
 
 class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
-  final _storage = DocumentStorage();
-
   void _onAddMember(BuildContext context) {
-    showCupertinoSheet(
+    showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {
         return ContactsScreen(
-          onPick: (account) async => await _addMember(account),
+          onPick: (account) async => _inviteContactMember(account),
         );
       },
     );
   }
 
-  Future<void> _addMember(m.ExternalAccount member) async {
-    final duplicate = await _storage.addMember(
-      widget.doc.id,
-      m.DocumentMember(account: member, isOwner: false),
-    );
-
-    if (duplicate && mounted) {
-      TopBanner.show(
-        context: context,
-        message: 'Duplicate member',
-        kind: TopBannerCases.error,
-      );
-      return;
-    }
-
-    setState(() {
-      widget.doc.members.add(m.DocumentMember(account: member, isOwner: false));
-      widget.members.add(
-        MemberScreenModel(
-          member: m.DocumentMember(account: member, isOwner: false),
-        ),
-      );
+  get currentAccountIsOwner {
+    final owner = widget.members.firstWhereOrNull((e) {
+      return e.isOwner && e.isYou;
     });
 
-    if (mounted) {
-      Navigator.pop(context);
-    }
+    return owner != null;
   }
 
-  void _onRemoveMember(MemberScreenModel g) async {
-    setState(() => widget.members.remove(g));
+  void showInviteDialog(Future<String> linkFuture) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return FutureBuilder<String>(
+          future: linkFuture,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return AlertDialog(
+                title: const Text("Error"),
+                content: Text("Failed to create invite link"),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Close"),
+                  ),
+                ],
+              );
+            }
 
-    widget.doc.members.removeWhere(
-      (e) => e.account.actorId == g.member.account.actorId,
+            return AlertDialog(
+              title: !snapshot.hasData
+                  ? Text("Constructing invite link...")
+                  : Text('Copy link'),
+              content: SizedBox(
+                width: 480,
+                child: !snapshot.hasData
+                    ? Container(
+                        alignment: Alignment.center,
+                        width: 48,
+                        height: 48,
+                        child: CircularProgressIndicator(),
+                      )
+                    : TextField(
+                        controller: TextEditingController(text: snapshot.data),
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+              ),
+              actions: !snapshot.hasData
+                  ? [Container()]
+                  : [
+                      Row(
+                        spacing: 16,
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Close'),
+                            ),
+                          ),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: snapshot.data ?? ''),
+                                );
+                                Navigator.pop(ctx);
+                              },
+                              child: const Text('Copy'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+            );
+          },
+        );
+      },
     );
+  }
 
-    await _storage.removeMember(widget.doc.id, g.member.account.actorId);
+  void _removeMember(BuildContext context, m.DocumentMember user) {
+    final work = Future<void>(() async {
+      await widget.executor.operate((syncModel) async {
+        logger.i('Removing member in group context..');
+        final (frame, member) = await syncModel.groupContext.removeMember(
+          userId: user.account.actorId,
+          payloads: [],
+        );
+
+        logger.i('Sending remove member frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: widget.doc.id,
+          frame: frame,
+        );
+
+        logger.i('Committing state...');
+        syncModel.groupContext.commitState();
+
+        logger.i('Member removed from document');
+        await DB.instance.updateDocument(
+          doc: widget.doc,
+          parts: syncModel.groupContext.asParts(),
+        );
+      }, priority: TaskPriority.low);
+      setState(() {
+        widget.members.removeWhere(
+          (e) => e.member.account.actorId == user.account.actorId,
+        );
+      });
+    });
+
+    aysAsyncModal(
+      context: context,
+      title: 'Are you sure to remove ${user.account.name} from group?',
+      content: 'This action cannot be undone.',
+      callback: () async {
+        try {
+          await work;
+        } catch (e) {
+          logger.e('Failed to remove member: $e');
+          rethrow;
+        }
+      },
+    );
+  }
+
+  void _inviteUndentifiedMember(BuildContext context) {
+    final inviteLink = Future(() async {
+      return await widget.executor.operate((syncModel) async {
+        final secretKey = SecretManager.intance.generateSecretKey();
+
+        final payload = Payload(
+          crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+        ).writeToBuffer();
+
+        logger.i('Creating unidentified member invite...');
+        final (frame, invite) = await syncModel.groupContext
+            .addUnidentifiedMember(secretKey: secretKey, payloads: [payload]);
+
+        logger.i('Sending unidentified member invite frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: widget.doc.id,
+          frame: frame,
+        );
+
+        logger.i('Committing state...');
+        syncModel.groupContext.commitState();
+        logger.i('Unidentified member invite sent');
+        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+        await DB.instance.updateDocument(
+          doc: syncModel.document,
+          parts: syncModel.groupContext.asParts(),
+        );
+
+        return inviteLink;
+      }, priority: TaskPriority.low);
+    });
+
+    showInviteDialog(inviteLink);
+  }
+
+  Future<void> _inviteContactMember(Contact contact) async {
+    final future = Future(() async {
+      return await widget.executor.operate((syncModel) async {
+        try {
+          final firstSpk = contact.spks.firstOrNull;
+          final spkPublicKey = firstSpk != null
+              ? Uint8List.fromList(firstSpk)
+              : null;
+
+          final payload = Payload(
+            crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+          ).writeToBuffer();
+
+          final (frame, invite) = await syncModel.groupContext
+              .addIdentifiedMember(
+                identityPublicKey: contact.account.rawPublicKey,
+                spkPublicKey: spkPublicKey,
+                payloads: [payload],
+              );
+
+          await GroupApiClient.instance.sendFrame(
+            groupId: widget.doc.id,
+            frame: frame,
+          );
+
+          syncModel.groupContext.commitState();
+
+          logger.i('Member invite sent');
+          final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+          await DB.instance.updateDocument(
+            doc: syncModel.document,
+            parts: syncModel.groupContext.asParts(),
+          );
+
+          if (spkPublicKey != null) {
+            logger.i('Removing spk contact spk..');
+            await ContactsManager.instance.removeSpk(
+              contact.account.actorId,
+              spkPublicKey.toList(),
+            );
+          }
+
+          return inviteLink;
+        } catch (e) {
+          logger.e('Failed to invite member: $e');
+          rethrow;
+        }
+      }, priority: TaskPriority.low);
+    });
+
+    showInviteDialog(future);
   }
 
   @override
@@ -88,7 +284,15 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     final dividerColor = theme.colorScheme.outlineVariant;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Document members')),
+      appBar: AppBar(
+        title: const Text('Document members'),
+        leading: PlatformUtils.isDesktop
+            ? CloseButton(
+                onPressed: () =>
+                    Navigator.of(context, rootNavigator: true).pop(),
+              )
+            : BackButton(),
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: widget.members.length,
@@ -113,17 +317,35 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
               child: const Icon(Icons.person),
             ),
             title: Row(
+              spacing: 12,
               children: [
-                Expanded(
-                  child: Text(
-                    g.member.account.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                Text(
+                  g.member.account.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
+
+                if (g.isYou)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'You',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
               ],
             ),
             subtitle: Padding(
@@ -142,36 +364,56 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _onAddMember(context),
-        tooltip: 'Add member',
-        child: const Icon(Icons.person_add_alt_1_outlined),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        spacing: 8,
+        children: [
+          if (currentAccountIsOwner)
+            FloatingActionButton(
+              onPressed: () => _onAddMember(context),
+              tooltip: 'Invite member',
+              child: const Icon(Icons.person_add_alt_1_outlined),
+            ),
+          if (currentAccountIsOwner)
+            FloatingActionButton(
+              onPressed: () => _inviteUndentifiedMember(context),
+              tooltip: 'Invite undentified member',
+              child: const Icon(Symbols.domino_mask),
+            ),
+        ],
       ),
     );
   }
 
   Widget buildTrailing(ThemeData theme, MemberScreenModel g) {
-    if (g.isYou) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          'You',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer,
-            fontWeight: FontWeight.w600,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 12,
+      children: [
+        if (currentAccountIsOwner && !g.isYou)
+          IconButton(
+            onPressed: () => _removeMember(context, g.member),
+            icon: Icon(Icons.delete),
           ),
-        ),
-      );
-    } else {
-      return IconButton(
-        tooltip: 'Remove member',
-        icon: const Icon(Icons.person_remove_outlined),
-        onPressed: () => _onRemoveMember(g),
-      );
-    }
+
+        if (g.isOwner)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'Owner',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }

@@ -1,14 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/storage/contact_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
-import 'package:zk_notion_app/utils/banner.dart';
-import 'package:zk_notion_app/widgets/user_widget.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sharing/spk_manager.dart';
+import 'package:veil/utils/qr.dart';
+import 'package:veil/widgets/future_dialog.dart';
 
 class QRScannerPage extends StatefulWidget {
   const QRScannerPage({super.key});
@@ -24,7 +24,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
     facing: CameraFacing.back,
   );
 
-  final _storage = ContactStorage.shared;
   bool _processing = false;
 
   Future<void> _showErrorDialog(
@@ -51,70 +50,6 @@ class _QRScannerPageState extends State<QRScannerPage> {
     );
   }
 
-  Future<void> _showAccountDialog(
-    BuildContext context,
-    ExternalAccount account,
-    VoidCallback onAdd,
-    VoidCallback onCancel,
-  ) async {
-    return showDialog(
-      context: context,
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: UserInfoView(
-            info: UserInfo(
-              name: account.name,
-              actorId: account.actorId,
-              publicKey: account.publicKey,
-            ),
-            onAdd: onAdd,
-            onCancel: onCancel,
-          ),
-        );
-      },
-    );
-  }
-
-  _addContact(ExternalAccount account, BuildContext context) async {
-    final navigator = Navigator.of(context);
-    try {
-      final duplicate = await _storage.addContact(account: account);
-
-      if (duplicate && context.mounted) {
-        TopBanner.show(
-          context: context,
-          message: 'Contact already exists',
-          kind: TopBannerCases.info,
-        );
-      }
-
-      if (!duplicate && context.mounted) {
-        TopBanner.show(
-          context: context,
-          message: 'Contact added',
-          kind: TopBannerCases.success,
-        );
-      }
-
-      Timer(const Duration(seconds: 1), () {
-        _processing = false;
-      });
-
-      navigator.pop();
-    } catch (err) {
-      logger.e('Failed to add contact: $err');
-
-      if (context.mounted) {
-        _showErrorDialog(context, 'Failed to add contact', () {
-          Future.delayed(const Duration(seconds: 1), () {
-            _processing = false;
-          });
-        });
-      }
-    }
-  }
-
   void _onDetect(BarcodeCapture capture) {
     if (_processing || capture.barcodes.isEmpty) return;
     final code = capture.barcodes.first.rawValue;
@@ -124,28 +59,110 @@ class _QRScannerPageState extends State<QRScannerPage> {
     HapticFeedback.vibrate();
 
     try {
-      final json = jsonDecode(code);
-      final account = ExternalAccount.fromJson(json);
-      _showAccountDialog(
+      final contactData = QrUtils.instance.parseShareContactData(code);
+      _showContactPopUp(
         context,
-        account,
-        () async => await _addContact(account, context),
-        () {
-          Future.delayed(const Duration(seconds: 1), () {
-            _processing = false;
-          });
-          Navigator.of(context).pop();
-        },
+        contactData,
+        () => Future.delayed(Duration(seconds: 1), () => _processing = false),
       );
     } catch (err) {
-      logger.e('Invalid QR code: $err');
-
-      _showErrorDialog(context, 'Invalid QR code', () {
-        Future.delayed(const Duration(seconds: 1), () {
-          _processing = false;
-        });
+      logger.e('Failed to parse qr code: $err');
+      _showErrorDialog(context, 'Failed to parse qr code', () {
+        Future.delayed(Duration(seconds: 1), () => _processing = false);
       });
+      return;
     }
+  }
+
+  void _showContactPopUp(
+    BuildContext context,
+    SharedSpkRevealData payload,
+    void Function()? onSuccessOk,
+  ) async {
+    await showFutureDialog<SpkShareData>(
+      autoStart: true,
+      successTitle: 'Contact info',
+      context: context,
+      dialogSize: Size(480, 240),
+      onSuccessOk: onSuccessOk,
+      work: () async {
+        try {
+          final spk = await SpkManager.instance.getSpk(payload);
+          await ContactsManager.instance.addContact(spk);
+          return spk;
+        } catch (err) {
+          logger.e('Failed to get spk: $err');
+
+          if (err is DioException) {
+            if (err.response?.statusCode == 404) {
+              throw FutureDialogError('Error', 'Contact share link expired');
+            }
+          }
+
+          throw FutureDialogError(
+            'Error',
+            'Failed to receive info about contact',
+          );
+        }
+      },
+      successBuilder: (spk) {
+        final th = Theme.of(context).textTheme;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey, width: 0.3),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Name', style: th.labelLarge),
+                    Text(
+                      spk.account.name,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text('Actor ID', style: th.labelLarge),
+                    Text(
+                      spk.account.actorId,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text('Public Key', style: th.labelLarge),
+                    Text(
+                      spk.account.publicKey,
+                      style: th.bodyMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 32),
+            Text(
+              'Added to your contacts',
+              style: th.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

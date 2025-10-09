@@ -1,5 +1,5 @@
 [package]
-name = "rust_lib_zk_notion_app"
+name = "veil_rust"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,31 @@ edition = "2021"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
+uuid = { version = "1.17.0", features = ["v7", "serde"] }
 flutter_rust_bridge = "=2.11.1"
-automerge = { version = "0.6.1" }
+automerge = { version = "0.6.1", features = ["optree-visualisation"]}
 anyhow = "1.0.99"
+sha2 = "0.10.9"
+zrt-client-sdk = { git = "ssh://git@github.com/zero-art-rs/client-sdk.git", branch = "refactoring" }
+zrt-zk = { git = "ssh://git@github.com/zero-art-rs/core.git" }
+zrt-art = { git = "ssh://git@github.com/zero-art-rs/core.git" }
+zrt-crypto = { git = "ssh://git@github.com/zero-art-rs/core.git" }
+cortado = { git = "ssh://git@github.com/zero-art-rs/core.git" }
+bulletproofs = { version = "5.0.0", git="https://github.com/zero-art-rs/bulletproofs"}
+ark-serialize = { version = "0.5.0", git = "https://github.com/arkworks-rs/algebra", rev = "7601bf9" }
+prost = "0.14.1"
+prost-types = "0.14.1"
+ark-ec = { version = "0.5.0", git = "https://github.com/arkworks-rs/algebra", rev = "7601bf9" }
+chrono = "0.4.42"
+sha3 = "0.10.8"
+base64 = "0.22.1"
+graphviz-rust = "0.9.6"
+hex = "0.4.3"
+ark-ff = "0.5.0"
+ark-std = "0.5.0"
+tracing-subscriber = "0.3.20"
+tracing = "0.1.41"
+aes-gcm = "0.10.3"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

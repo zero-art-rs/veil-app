@@ -92,7 +92,7 @@ BEGIN
             VALUE "CompanyName", "com.example" "\0"
             VALUE "FileDescription", "zk_notion_app" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "zk_notion_app" "\0"
+            VALUE "InternalName", "com.distributedlab.veil" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "zk_notion_app.exe" "\0"
             VALUE "ProductName", "zk_notion_app" "\0"

@@ -1,145 +1,138 @@
-import 'dart:math';
-import 'dart:typed_data';
-
+import 'package:flutter/cupertino.dart';
 import 'package:hex/hex.dart';
-import 'package:uuid/v4.dart';
-import 'package:zk_notion_app/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/automerge.dart';
+import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/secret_factory.dart';
 
 class ExternalAccount {
   final String actorId;
   final String name;
-  final String publicKey;
+  final List<int> rawPublicKey;
+
+  String get publicKey => HEX.encode(rawPublicKey);
 
   ExternalAccount({
     required this.actorId,
     required this.name,
-    required this.publicKey,
+    required this.rawPublicKey,
   });
 
   toJson() => Map<String, dynamic>.from({
     'actorId': actorId,
     'name': name,
-    'publicKey': publicKey,
+    'publicKey': rawPublicKey,
   });
 
   factory ExternalAccount.fromAccount(Account account) => ExternalAccount(
     actorId: account.actorId,
     name: account.name,
-    publicKey: account.keypair.publicKey,
+    rawPublicKey: account.keypair.rawPublicKey,
   );
 
   factory ExternalAccount.fromJson(Map<String, dynamic> json) {
     return ExternalAccount(
       actorId: json['actorId'],
       name: json['name'],
-      publicKey: json['publicKey'],
+      rawPublicKey: List<int>.from(json['publicKey']),
     );
   }
 }
 
 class DocumentMember {
   final ExternalAccount account;
-  final bool isOwner;
+  final int role;
+  final String roleName;
 
   DocumentMember.fromJson(Map<String, dynamic> json)
     : account = ExternalAccount.fromJson(json['account']),
-      isOwner = json['isOwner'];
+      role = json['role'],
+      roleName = json['role_name'];
 
   toJson() => Map<String, dynamic>.from({
     'account': account.toJson(),
-    'isOwner': isOwner,
+    'role': int,
+    'role_name': roleName,
   });
 
-  DocumentMember({required this.account, required this.isOwner});
+  DocumentMember({
+    required this.account,
+    required this.role,
+    required this.roleName,
+  });
 }
+
+class DocumentMemberRole {}
 
 class Document {
   final String id;
-  final String title;
-  final BAutoCommit content;
-  final List<DocumentMember> members;
+  BAutoCommit automergeDoc;
+  DateTime createdAt;
+  GroupContextParts groupContextParts;
+  int sequenceNumber;
+  bool localOnly;
+
+  Key get key => ValueKey(id);
 
   Document({
     required this.id,
-    required this.title,
-    required this.content,
-    required this.members,
+    required this.automergeDoc,
+    required this.createdAt,
+    required this.groupContextParts,
+    this.sequenceNumber = 0,
+    this.localOnly = false,
   });
 
-  toJson() => Map<String, dynamic>.from({
-    'id': id,
-    'title': title,
-    'content': content.save().toList(),
-    'members': members,
-  });
+  void setDocument(BAutoCommit doc) {
+    automergeDoc = doc;
+  }
 
-  String ownerName() => members.firstWhere((e) => e.isOwner).account.name;
-
-  factory Document.withGeneratedId({
-    required String title,
-    required BAutoCommit content,
-    required DocumentMember owner,
-  }) => Document(
-    id: UuidV4().generate(),
-    title: title,
-    content: content,
-    members: [owner],
-  );
-
-  factory Document.fromJson(Map<String, dynamic> json) {
-    return Document(
-      id: json['id'],
-      title: json['title'],
-      content: BAutoCommit.fromBytes(
-        bytes: Uint8List.fromList(List<int>.from(json['content'])),
-      ),
-      members: (json['members'])
-          .map<DocumentMember>((e) => DocumentMember.fromJson(e))
-          .toList(),
-    );
+  void incrementSequenceNumber() {
+    sequenceNumber++;
   }
 }
 
 class Keypair {
-  final String publicKey;
-  final String privateKey;
+  final List<int> rawPublicKey;
+  final List<int> rawPrivateKey;
 
-  Keypair({required this.publicKey, required this.privateKey});
+  String get publicKeyHex => HEX.encode(rawPublicKey);
+  String get privateKeyHex => HEX.encode(rawPrivateKey);
+
+  Keypair({required this.rawPublicKey, required this.rawPrivateKey});
 
   factory Keypair.fromJson(Map<String, dynamic> json) {
     return Keypair(
-      publicKey: json['publicKey'],
-      privateKey: json['privateKey'],
+      rawPublicKey: List<int>.from(json['rawPublicKey']),
+      rawPrivateKey: List<int>.from(json['rawPrivateKey']),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'publicKey': publicKey, 'privateKey': privateKey};
+    return {'rawPublicKey': rawPublicKey, 'rawPrivateKey': rawPrivateKey};
   }
 
   static Keypair generate() {
-    final random = Random.secure();
-    final publicKey = List<int>.generate(32, (_) => random.nextInt(256));
-    final privateKey = List<int>.generate(32, (_) => random.nextInt(256));
-
-    return Keypair(
-      publicKey: HEX.encode(publicKey),
-      privateKey: HEX.encode(privateKey),
-    );
+    final (publicKey, secretKey) = SecretManager.intance.generateKeypair();
+    return Keypair(rawPublicKey: publicKey, rawPrivateKey: secretKey);
   }
 }
 
 class Account {
-  final String name;
+  String name;
   final String actorId;
   final Keypair keypair;
 
   Account({required this.name, required this.actorId, required this.keypair});
-  factory Account.withName(String name, {bool isCurrentUser = true}) => Account(
-    name: name,
-    actorId: generateActorId(),
-    keypair: Keypair.generate(),
-  );
+  factory Account.withName(String name) {
+    final keypair = Keypair.generate();
+
+    return Account(
+      name: name,
+      actorId: hashPublicKey(pk: keypair.rawPublicKey),
+      keypair: keypair,
+    );
+  }
 
   factory Account.fromJson(Map<String, dynamic> json) {
     return Account(

@@ -1,17 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:zk_notion_app/main.dart';
-import 'package:zk_notion_app/storage/contact_storage.dart';
-import 'package:zk_notion_app/storage/models.dart';
+import 'dart:async';
 
-class Contact {
-  final String name;
-  final String actorId;
-  const Contact({required this.name, required this.actorId});
-}
+import 'package:flutter/material.dart';
+import 'package:veil/main.dart';
+import 'package:veil/managers/contacts_manager.dart';
 
 class _ContactsScreenState extends State<ContactsScreen> {
-  final _storage = ContactStorage();
-  late List<ExternalAccount> contacts = [];
+  final _contactsManager = ContactsManager.instance;
+
+  List<Contact> contacts = [];
+  StreamSubscription<List<Contact>>? _subscription;
 
   @override
   void initState() {
@@ -19,26 +16,33 @@ class _ContactsScreenState extends State<ContactsScreen> {
     _init();
   }
 
-  _init() async {
-    try {
-      final contacts = await _storage.getContacts();
-      setState(() {
-        this.contacts = contacts;
-      });
-    } catch (err) {
-      logger.e('Failed to get contacts: $err');
-    }
+  @override
+  void dispose() {
+    super.dispose();
+    _subscription?.cancel();
   }
 
-  _removeContact(ExternalAccount account) async {
-    try {
-      await _storage.removeContact(account);
+  void _init() async {
+    _subscription = _contactsManager.stream.listen((event) {
       setState(() {
-        contacts.removeWhere((contact) => contact.actorId == account.actorId);
+        contacts = event;
       });
+    });
+  }
+
+  Future<void> _removeContact(String id) async {
+    try {
+      await _contactsManager.removeContact(id);
     } catch (err) {
       logger.e('Failed to remove contact: $err');
     }
+  }
+
+  Widget _emptyWidget(BuildContext context) {
+    final th = Theme.of(context).textTheme;
+    return Center(
+      child: Text('You don\'t have any contacts', style: th.bodyLarge),
+    );
   }
 
   @override
@@ -48,16 +52,18 @@ class _ContactsScreenState extends State<ContactsScreen> {
         title: const Text('Contacts'),
         automaticallyImplyLeading: widget.onPick == null,
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-        itemCount: contacts.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, i) => _ContactCell(
-          contact: contacts[i],
-          onRemove: _removeContact,
-          onPick: widget.onPick,
-        ),
-      ),
+      body: contacts.isEmpty
+          ? _emptyWidget(context)
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+              itemCount: contacts.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) => _ContactCell(
+                contact: contacts[i],
+                onRemove: (e) => _removeContact(e.account.actorId),
+                onPick: widget.onPick,
+              ),
+            ),
     );
   }
 }
@@ -65,7 +71,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key, this.onPick});
 
-  final Function(ExternalAccount account)? onPick;
+  final Function(Contact account)? onPick;
 
   @override
   State<ContactsScreen> createState() => _ContactsScreenState();
@@ -77,16 +83,14 @@ class _ContactCell extends StatelessWidget {
     required this.onRemove,
     this.onPick,
   });
-  final ExternalAccount contact;
+  final Contact contact;
 
-  final Function(ExternalAccount)? onPick;
-  final Function(ExternalAccount) onRemove;
+  final Function(Contact)? onPick;
+  final Function(Contact) onRemove;
 
   _onTap() {
     if (onPick != null) {
       onPick!(contact);
-    } else {
-      // TODO: OPEN CONTACT PAGE
     }
   }
 
@@ -126,10 +130,13 @@ class _ContactCell extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(contact.name, style: theme.textTheme.titleLarge),
+                    Text(
+                      contact.account.name,
+                      style: theme.textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 6),
                     Text(
-                      contact.actorId,
+                      contact.account.actorId,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -138,6 +145,11 @@ class _ContactCell extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Spks: ${contact.spks.length}',
+                style: theme.textTheme.bodySmall,
               ),
               const SizedBox(width: 12),
               _deleteButtonWidget(),
