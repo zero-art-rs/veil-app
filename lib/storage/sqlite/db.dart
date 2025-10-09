@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';

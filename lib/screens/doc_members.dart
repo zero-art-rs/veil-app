@@ -10,7 +10,6 @@ import 'package:veil/managers/sync_provider/sync_model_executor.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/screens/editor/frame_processor/executor.dart';
-import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/models.dart' as m;
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';

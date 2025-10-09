@@ -199,7 +199,7 @@ class _InfoChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color:
-            actorColor ?? theme.colorScheme.secondaryContainer.withOpacity(0.6),
+            actorColor ?? theme.colorScheme.secondaryContainer.withAlpha(60),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(

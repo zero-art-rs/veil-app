@@ -6,9 +6,8 @@ use std::{
 use anyhow::{anyhow, bail};
 use automerge::{
     transaction::{CommitOptions, Transactable},
-    ActorId, AutoCommit, Change, ChangeHash, ObjType, ReadDoc, Value,
+    ActorId, AutoCommit, Change, ChangeHash, ReadDoc,
 };
-use sha2::Digest;
 
 const BLOCKS_LABEL: &str = "blocks";
 

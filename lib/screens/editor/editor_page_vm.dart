@@ -143,6 +143,7 @@ class EditorPageVm extends ChangeNotifier {
       }
     } catch (e) {
       if (e.toString().contains('User removed from group')) {
+        // ignore: use_build_context_synchronously
         await _handleRemoveMember(context);
       } else {
         logger.e('Error processing frame: $e');

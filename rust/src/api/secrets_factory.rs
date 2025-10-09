@@ -70,7 +70,6 @@ impl SecretsFactory {
 #[cfg(test)]
 mod tests {
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-    use ark_std::rand::{rngs::StdRng, thread_rng, SeedableRng};
     use cortado::{self, CortadoAffine, Fr as ScalarField};
 
     use super::*;
@@ -79,7 +78,7 @@ mod tests {
     fn test_compression() {
         let mut secrets_factory = SecretsFactory::default();
 
-        for i in 0..10000 {
+        for _ in 0..10000 {
             let (public_key, secret_key) = secrets_factory.generate_secret_with_public_key();
 
             let mut public_key_bytes = Vec::new();

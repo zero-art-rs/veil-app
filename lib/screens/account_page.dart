@@ -20,7 +20,7 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
-  var _account = AccountSecureStorage.instance.account;
+  final _account = AccountSecureStorage.instance.account;
 
   TextEditingController _nameCtrl = TextEditingController();
   TextEditingController _actorCtrl = TextEditingController();
