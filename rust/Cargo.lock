@@ -722,7 +722,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "cortado"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zero-art-rs/core.git#fafcd297aa7bc1dc7aaeb2297c65a5c3e36d577a"
+source = "git+ssh://git@github.com/zero-art-rs/core.git#53125c75cdbebbb12d5608e4780896f490074cc9"
 dependencies = [
  "ark-algebra-test-templates",
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
@@ -2997,7 +2997,7 @@ dependencies = [
 [[package]]
 name = "zrt-art"
 version = "0.1.2"
-source = "git+ssh://git@github.com/zero-art-rs/core.git#fafcd297aa7bc1dc7aaeb2297c65a5c3e36d577a"
+source = "git+ssh://git@github.com/zero-art-rs/core.git#53125c75cdbebbb12d5608e4780896f490074cc9"
 dependencies = [
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-ed25519",
@@ -3025,7 +3025,7 @@ dependencies = [
 [[package]]
 name = "zrt-client-sdk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zero-art-rs/client-sdk.git?branch=dev#202b18f21abf89363c5f8cb84f5b5e3fb466a829"
+source = "git+ssh://git@github.com/zero-art-rs/client-sdk.git?branch=dev#7b48463cd4be799d9649c78ba649d2b652f0bbf2"
 dependencies = [
  "aes-gcm",
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
@@ -3064,7 +3064,7 @@ dependencies = [
 [[package]]
 name = "zrt-crypto"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zero-art-rs/core.git#fafcd297aa7bc1dc7aaeb2297c65a5c3e36d577a"
+source = "git+ssh://git@github.com/zero-art-rs/core.git#53125c75cdbebbb12d5608e4780896f490074cc9"
 dependencies = [
  "ark-serialize 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "cortado",
@@ -3079,7 +3079,7 @@ dependencies = [
 [[package]]
 name = "zrt-zk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zero-art-rs/core.git#fafcd297aa7bc1dc7aaeb2297c65a5c3e36d577a"
+source = "git+ssh://git@github.com/zero-art-rs/core.git#53125c75cdbebbb12d5608e4780896f490074cc9"
 dependencies = [
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-ed25519",

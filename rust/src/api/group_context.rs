@@ -8,13 +8,12 @@ use std::str::FromStr;
 use uuid::Uuid;
 use zrt_art::types::PublicART;
 use zrt_client_sdk::{
-    group_context::PendingGroupContext, group_state::GroupState, invite_context::InviteContext, models::{
+contexts::{group::{GroupContext, Nonce}, invite::InviteContext}, core::impls::concurrent::linear_keyed_validator::LinearKeyedValidator, models::{
         self,
         frame::Frame,
-        group_info::GroupMembers,
         invite::{Invite, Invitee},
         payload::Payload,
-    }, utils::{deserialize, serialize}, validator::{GroupContext, KeyedValidator, Nonce}, zero_art_proto
+    }, utils::{deserialize, serialize}, zero_art_proto
 };
 use zrt_crypto::schnorr;
 
@@ -78,7 +77,6 @@ impl BUser {
                 deserialize(&public_key)
                     .map_err(|e| anyhow!("failed to join group, error: {}", e))?,
                 vec![],
-                models::group_info::Role::Ownership,
             ),
         })
     }
@@ -227,7 +225,7 @@ impl BGroupContext {
     ) -> Result<Self> {
         let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
-        let validator = KeyedValidator::deserialize(&validator).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let validator = LinearKeyedValidator::deserialize(&validator).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
         let group_info: models::group_info::GroupInfo =
             zero_art_proto::GroupInfo::decode(&group_info[..])
                 .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
