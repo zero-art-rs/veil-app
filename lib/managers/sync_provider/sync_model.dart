@@ -121,7 +121,7 @@ extension SyncModelSync on SyncProviderModel {
           final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
 
           if (crdt == null) continue;
-          
+
           switch (crdt.kind) {
             case ExposedCRDTPayloadKind.incrementalChange:
               logger.d('Received incremental change');
@@ -243,9 +243,8 @@ extension SyncModelOperations on SyncProviderModel {
 
 void _syncDocumentWithCrdt(
   BAutoCommit document,
-  List<ExposedCRDTPayload> payloads, {
-  bool withFullDoc = false,
-}) {
+  List<ExposedCRDTPayload> payloads,
+) {
   for (final payload in payloads) {
     switch (payload.kind) {
       case ExposedCRDTPayloadKind.incrementalChange:
