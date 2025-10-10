@@ -25,6 +25,8 @@ import 'package:veil/widgets/banner.dart';
 enum EditorModes { edit, view }
 
 class EditorPageVm extends ChangeNotifier {
+  final joinGroupLabel = 'joinGroup';
+
   final _changeManager = ChangeManager.instance;
   final SyncProviderModel syncModel;
 
@@ -38,7 +40,6 @@ class EditorPageVm extends ChangeNotifier {
   final crdtBufferController = StreamController<ExposedCRDTPayload>();
   late final crdtBuffer = StreamQueue(crdtBufferController.stream);
   StreamSubscription<SPFrame>? _centrifugoSubscription;
-  Timer? _joinGroupTicker;
 
   final readEventQueue = AsyncQueue();
   final writeEventQueue = AsyncQueue();
@@ -52,9 +53,32 @@ class EditorPageVm extends ChangeNotifier {
       case true:
         _localInit();
       case false:
+        _listenWriteQueueEvents();
+        _listenReadQueueEvents();
         _joinGroupIfNeeded();
         _networkInit(context);
     }
+  }
+
+  void _listenWriteQueueEvents() {
+    writeEventQueue.addQueueListener((e) {
+      if (e.jobLabel == joinGroupLabel) {
+        final jobInfo = writeEventQueue.getJobInfo(joinGroupLabel);
+
+        if (jobInfo.state == JobState.done) {
+          allowWriteEvents = true;
+          notifyListeners();
+        }
+      }
+    });
+  }
+
+  void _listenReadQueueEvents() {
+    readEventQueue.addQueueListener((e) {
+      logger.i('Queue listener: ${e.currentQueueSize}');
+      isSinking = !(e.currentQueueSize == 0);
+      notifyListeners();
+    });
   }
 
   void _joinGroupIfNeeded() {
@@ -77,20 +101,10 @@ class EditorPageVm extends ChangeNotifier {
           logger.i('User joined group, notifying..');
         },
         retryTime: -1,
-        label: 'joinGroup',
+        label: joinGroupLabel,
       );
 
       writeEventQueue.start();
-
-      _joinGroupTicker = Timer.periodic(Durations.medium4, (duration) {
-        final jobInfo = writeEventQueue.getJobInfo('joinGruop');
-        if (jobInfo.state == JobState.done) {
-          _joinGroupTicker?.cancel();
-          _joinGroupTicker = null;
-          allowWriteEvents = true;
-          notifyListeners();
-        }
-      });
     }
   }
 
@@ -106,12 +120,6 @@ class EditorPageVm extends ChangeNotifier {
       uuid: AccountSecureStorage.instance.account.actorId,
     );
 
-    readEventQueue.addQueueListener((e) {
-      logger.i('Queue listener: ${e.currentQueueSize}');
-      isSinking = !(e.currentQueueSize == 0);
-      notifyListeners();
-    });
-
     mdEditor.text = EditorAutomergeUtils.instance.toText(
       syncModel.document.automergeDoc,
     );
@@ -125,7 +133,7 @@ class EditorPageVm extends ChangeNotifier {
 
       if (!initialBuffer) {
         for (final frame in initialCentrifugoBuffer) {
-          readEventQueue.addJob(() => processFrame(context, frame));
+          readEventQueue.addJob(() async => await processFrame(context, frame));
         }
         initialCentrifugoBuffer.clear();
         await readEventQueue.start();
@@ -134,7 +142,7 @@ class EditorPageVm extends ChangeNotifier {
 
     final frames = _changeManager.getFrames(syncModel.document.id);
     for (final frame in frames.values) {
-      readEventQueue.addJob(() => processFrame(context, frame));
+      readEventQueue.addJob(() async => await processFrame(context, frame));
     }
     await readEventQueue.start();
 
