@@ -142,7 +142,11 @@ class _MyAppState extends State<MyApp> {
       inviteData,
     );
 
-    await SyncProvider.instance.add(document, groupContext);
+    await SyncProvider.instance.add(
+      document,
+      groupContext,
+      allowFullDocument: true,
+    );
 
     if (!context.mounted) return;
     Navigator.pop(context);

@@ -88,7 +88,7 @@ class SyncProviderModel {
 }
 
 extension SyncModelSync on SyncProviderModel {
-  Future<void> synchronizeInitially() async {
+  Future<void> synchronizeInitially({bool allowFullDocument = false}) async {
     logger.i('initial document.sequenceNumber ${document.sequenceNumber}');
     logger.i('initial group epoch ${(await groupContext.epoch()).toInt()}');
 
@@ -122,7 +122,9 @@ extension SyncModelSync on SyncProviderModel {
 
           if (crdt == null) continue;
 
-          _syncDocumentWithCrdt(document.automergeDoc, [crdt]);
+          _syncDocumentWithCrdt(document.automergeDoc, [
+            crdt,
+          ], withFullDoc: allowFullDocument);
         }
       }
 

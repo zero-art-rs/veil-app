@@ -46,7 +46,7 @@ class EditorPageVm extends ChangeNotifier {
   EditorPageVm(this.syncModel);
 
   void init(BuildContext context) async {
-    allowWriteEvents = syncModel.isLocal;
+    allowWriteEvents = !syncModel.isLocal;
 
     switch (syncModel.isLocal) {
       case true:

@@ -75,8 +75,13 @@ class SyncProvider {
     Document document,
     BGroupContext groupContext, {
     bool insertToDb = false,
+    bool allowFullDocument = false,
   }) async {
-    final syncModel = await _synchronizeDocument(document, groupContext);
+    final syncModel = await _synchronizeDocument(
+      document,
+      groupContext,
+      allowFullDocument: allowFullDocument,
+    );
 
     if (insertToDb) {
       await _db.insertDocument(document: document);
@@ -123,8 +128,9 @@ class SyncProvider {
 
   Future<SyncProviderModel> _synchronizeDocument(
     Document doc,
-    BGroupContext groupContext,
-  ) async {
+    BGroupContext groupContext, {
+    bool allowFullDocument = false,
+  }) async {
     final challenge = await _api.getChallenge(doc.id);
 
     final jwt = await _api.getCentrifugoJWT(
@@ -145,7 +151,7 @@ class SyncProvider {
       jwt,
       stream,
     );
-    await syncModel.synchronizeInitially();
+    await syncModel.synchronizeInitially(allowFullDocument: allowFullDocument);
     return syncModel;
   }
 }
