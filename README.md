@@ -8,9 +8,7 @@ flutter devices # to see avaliable platforms
 # Supporting platforms
 - macOS
 - iOS
-- Linux
-- Android (not yet)
-- Windows (not yet)
+- Linux (Ubuntu)
 # Development tips (optional)
 
 ### Compile proto 

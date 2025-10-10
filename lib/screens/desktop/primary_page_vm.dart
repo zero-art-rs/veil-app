@@ -55,7 +55,10 @@ class PrimaryPageViewModel extends ChangeNotifier {
         actorId: AccountSecureStorage.instance.account.actorId,
       );
 
-      final (groupContext, frame) = GroupContextFactory.createGroupContext(
+      final (
+        groupContext,
+        frame,
+      ) = await GroupContextFactory.createGroupContext(
         groupName: resTitle,
         groupID: docID,
         owner: AccountSecureStorage.instance.account,
@@ -66,7 +69,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
         id: docID,
         createdAt: DateTime.now(),
         automergeDoc: content,
-        groupContextParts: groupContext.asParts(),
+        groupContextParts: await groupContext.asParts(),
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);

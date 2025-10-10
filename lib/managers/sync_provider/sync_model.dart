@@ -4,11 +4,14 @@ import 'dart:convert';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/managers/change_manager.dart';
-import 'package:veil/managers/sync_provider/pending_sync_model.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
+import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/editor_automerge.dart';
+import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/utils/payload.dart';
 
 import '../../main.dart';
@@ -18,6 +21,7 @@ class SyncProviderModel {
   final BGroupContext groupContext;
   final String jwt;
   final StreamSubscription<SSEModel>? listener;
+  final _db = DB.instance;
 
   get isLocal => document.localOnly;
 
@@ -37,18 +41,6 @@ class SyncProviderModel {
       groupContext: groupContext,
       jwt: "",
       listener: null,
-    );
-  }
-
-  factory SyncProviderModel.fromPending(
-    SyncPendingProviderModel model,
-    BGroupContext groupContext,
-  ) {
-    return SyncProviderModel(
-      document: model.document,
-      groupContext: groupContext,
-      jwt: model.jwt,
-      listener: model.listener,
     );
   }
 
@@ -93,19 +85,21 @@ class SyncProviderModel {
       listener: listener,
     );
   }
+}
 
+extension SyncModelSync on SyncProviderModel {
   Future<void> synchronizeInitially() async {
     logger.i('initial document.sequenceNumber ${document.sequenceNumber}');
-    logger.i('initial group epoch ${groupContext.getEpoch().toInt()}');
+    logger.i('initial group epoch ${(await groupContext.epoch()).toInt()}');
 
     while (true) {
-      final signature = groupContext.signWithTk(
+      final signature = await groupContext.signWithTk(
         groupId: document.id,
         nonce: [0],
       );
 
       final result = await GroupApiClient.instance.getFrames(
-        epoch: groupContext.getEpoch().toInt(),
+        epoch: (await groupContext.epoch()).toInt(),
         groupId: document.id,
         signature: base64UrlEncode(signature),
         nonce: base64UrlEncode([0]),
@@ -117,7 +111,7 @@ class SyncProviderModel {
       }
 
       for (final spFrame in result.spFrames.reversed) {
-        final rawFramePayloads = groupContext.processFrame(
+        final rawFramePayloads = await groupContext.processFrame(
           frame: spFrame.frame.writeToBuffer(),
         );
 
@@ -128,18 +122,7 @@ class SyncProviderModel {
 
           if (crdt == null) continue;
 
-          switch (crdt.kind) {
-            case ExposedCRDTPayloadKind.incrementalChange:
-              logger.d('Received incremental change');
-              document.automergeDoc.loadIncremental(
-                bytes: crdt.crdt.incrementalChange,
-              );
-            case ExposedCRDTPayloadKind.fullDocument:
-              logger.d('Received full document');
-              document.automergeDoc = BAutoCommit.load(
-                data: crdt.crdt.fullDocument,
-              );
-          }
+          _syncDocumentWithCrdt(document.automergeDoc, [crdt]);
         }
       }
 
@@ -150,5 +133,105 @@ class SyncProviderModel {
   Future<void> dispose() async {
     logger.i('Sync provider disposed');
     await listener?.cancel();
+  }
+}
+
+extension SyncModelOperations on SyncProviderModel {
+  Future<String> appyCrdtListOperation(
+    List<ExposedCRDTPayload> payloads,
+  ) async {
+    _syncDocumentWithCrdt(document.automergeDoc, payloads);
+
+    await _db.updateDocument(
+      doc: document,
+      parts: await groupContext.asParts(),
+    );
+
+    return EditorAutomergeUtils.instance.toText(document.automergeDoc);
+  }
+
+  Future<void> disableNetworkSyncOperation() async {
+    await listener?.cancel();
+    document.localOnly = true;
+  }
+
+  Future<(List<ExposedCRDTPayload> payloads, bool fromCurrentUser)>
+  processFrame(SPFrame spframe) async {
+    List<ExposedCRDTPayload> exposedCrdtPayload = [];
+
+    final rawPayloads = await groupContext.processFrame(
+      frame: spframe.frame.writeToBuffer(),
+    );
+
+    if (rawPayloads.isEmpty) {
+      return (exposedCrdtPayload, true);
+    }
+
+    for (final rawPayload in rawPayloads) {
+      final payload = Payload.fromBuffer(rawPayload);
+
+      final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
+      if (crdt == null) continue;
+
+      exposedCrdtPayload.add(crdt);
+    }
+
+    document.sequenceNumber = spframe.seqNum.toInt();
+
+    await _db.updateDocument(
+      doc: document,
+      parts: await groupContext.asParts(),
+    );
+    return (exposedCrdtPayload, false);
+  }
+
+  Future<void> sendFrame(String md, List<ExposedCRDTPayload> buffer) async {
+    final forkedDocument = document.automergeDoc.fork();
+    forkedDocument.setActorId(
+      uuid: AccountSecureStorage.instance.account.actorId,
+    );
+    EditorAutomergeUtils.instance.toDoc(md, forkedDocument);
+    forkedDocument.commit();
+
+    _syncDocumentWithCrdt(forkedDocument, buffer);
+
+    final saveIncremential = forkedDocument.saveIncremental();
+
+    await GroupApiClient.instance.sendFrame(
+      groupId: document.id,
+      frame: await groupContext.createFrame(
+        payloads: [
+          Payload(
+            crdt: CRDTPayload(incrementalChange: saveIncremential),
+          ).writeToBuffer(),
+        ],
+      ),
+    );
+
+    document.automergeDoc.loadIncremental(bytes: saveIncremential);
+
+    await _db.updateDocument(
+      doc: document,
+      parts: await groupContext.asParts(),
+    );
+  }
+}
+
+void _syncDocumentWithCrdt(
+  BAutoCommit document,
+  List<ExposedCRDTPayload> payloads, {
+  bool withFullDoc = false,
+}) {
+  for (final payload in payloads) {
+    switch (payload.kind) {
+      case ExposedCRDTPayloadKind.incrementalChange:
+        final incrementalChange = payload.crdt.incrementalChange;
+        document.loadIncremental(bytes: incrementalChange);
+      case ExposedCRDTPayloadKind.fullDocument:
+        if (withFullDoc) {
+          logger.d('Received full document');
+          document = BAutoCommit.load(data: payload.crdt.fullDocument);
+        }
+    }
   }
 }

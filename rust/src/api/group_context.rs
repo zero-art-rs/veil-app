@@ -239,12 +239,10 @@ impl BGroupContext {
         })
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn into_parts(self) -> Result<(Vec<u8>, Vec<u8>, u64, u64)> {
         Ok(self.to_parts()?)
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn to_parts(&self) -> Result<(Vec<u8>, Vec<u8>, u64, u64)> {
         // let group_context = self.group_context.lock().unwrap();
         let (_, validator, group_info, epoch, nonce) = self.group_context.to_parts();
@@ -260,7 +258,6 @@ impl BGroupContext {
         ))
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<Vec<Vec<u8>>> {
         // let mut group_context = self.group_context.lock().unwrap();
 
@@ -387,7 +384,6 @@ impl BGroupContext {
         )
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn create_frame(&mut self, payloads: Vec<Vec<u8>>) -> Result<Vec<u8>> {
         // let mut group_context = self.group_context.lock().unwrap();
 
@@ -408,7 +404,6 @@ impl BGroupContext {
             .map_err(|_| anyhow!("failed to deserialize"))?)
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn sign_with_tk(&self, group_id: String, nonce: Vec<u8>) -> Result<Vec<u8>> {
         // let group_context = self.group_context.lock().unwrap();
 
@@ -422,7 +417,6 @@ impl BGroupContext {
             .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn sign_challenge(&self, challenge: Vec<u8>) -> Result<Vec<u8>> {
         // let pending_group_context = self.pending_group_context.lock().unwrap();
 
@@ -433,7 +427,6 @@ impl BGroupContext {
             .map_err(|e| anyhow!("failed to sign: {}", e.to_string()))
     }
 
-    #[flutter_rust_bridge::frb(sync)]
     pub fn epoch(&self) -> u64 {
         self.group_context.epoch()
     }

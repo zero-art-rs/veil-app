@@ -138,16 +138,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _acceptInvite(BuildContext context, String inviteData) async {
-    final (pendingGroupContext, document) = await InviteManager.instance.join(
+    final (groupContext, document) = await InviteManager.instance.join(
       inviteData,
     );
 
-    final account = AccountSecureStorage.instance.account;
-    await SyncProvider.instance.addFromInvite(
-      document,
-      pendingGroupContext,
-      user: BUser(name: account.name, publicKey: account.keypair.rawPublicKey),
-    );
+    await SyncProvider.instance.add(document, groupContext);
 
     if (!context.mounted) return;
     Navigator.pop(context);

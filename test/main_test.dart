@@ -7,7 +7,7 @@ import 'package:rxdart/subjects.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/change_manager.dart';
 import 'package:veil/protos/zero_art.pb.dart';
-import 'package:veil/screens/editor/frame_processor/executor.dart';
+import 'package:veil/utils/executor.dart';
 
 void main() {
   group('Test rx', () {

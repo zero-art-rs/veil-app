@@ -7,7 +7,6 @@ import 'package:veil/api/centrifuge.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/change_manager.dart';
-import 'package:veil/managers/sync_provider/pending_sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
@@ -53,7 +52,10 @@ class SyncProvider {
   Future<void> _handleRemote(Document doc, BGroupContext groupContext) async {
     try {
       await add(doc, groupContext);
-      await DB.instance.updateDocument(doc: doc, parts: groupContext.asParts());
+      await DB.instance.updateDocument(
+        doc: doc,
+        parts: await groupContext.asParts(),
+      );
     } catch (e, st) {
       if (_isUserRemovedError(e)) {
         logger.i('User removed from group, making local only');
@@ -85,23 +87,6 @@ class SyncProvider {
   void _addLocal(Document document, BGroupContext groupContext) {
     final syncModel = SyncProviderModel.local(document, groupContext);
 
-    current.add(syncModel);
-    subject.add(current);
-  }
-
-  Future<void> addFromInvite(
-    Document document,
-    BPendingGroupContext pendingGroupContext, {
-    required BUser user,
-  }) async {
-    final groupContext = await _upgradeGroupContext(
-      document,
-      pendingGroupContext,
-      user,
-    );
-
-    final syncModel = await _synchronizeDocument(document, groupContext);
-    await _db.insertDocument(document: document);
     current.add(syncModel);
     subject.add(current);
   }
@@ -142,9 +127,9 @@ class SyncProvider {
 
     final jwt = await _api.getCentrifugoJWT(
       groupId: doc.id,
-      epoch: groupContext.getEpoch().toInt(),
+      epoch: (await groupContext.epoch()).toInt(),
       proof: base64Encode(
-        groupContext.signChallenge(challenge: base64Decode(challenge)),
+        await groupContext.signChallenge(challenge: base64Decode(challenge)),
       ),
       challenge: challenge,
     );
@@ -160,33 +145,5 @@ class SyncProvider {
     );
     await syncModel.synchronizeInitially();
     return syncModel;
-  }
-
-  Future<BGroupContext> _upgradeGroupContext(
-    Document doc,
-    BPendingGroupContext pendingGroupContext,
-    BUser user,
-  ) async {
-    final challenge = await _api.getChallenge(doc.id);
-
-    final jwt = await _api.getCentrifugoJWT(
-      groupId: doc.id,
-      epoch: pendingGroupContext.getEpoch().toInt(),
-      proof: base64Encode(
-        pendingGroupContext.signChallenge(challenge: base64Decode(challenge)),
-      ),
-      challenge: challenge,
-    );
-
-    final stream = await _centrifugo.connect(jwt);
-
-    final pendingSyncModel = SyncPendingProviderModel(
-      document: doc,
-      groupContext: pendingGroupContext,
-      jwt: jwt,
-    );
-
-    pendingSyncModel.listenCentrifugo(stream);
-    return await pendingSyncModel.synchronizeInitially(user);
   }
 }

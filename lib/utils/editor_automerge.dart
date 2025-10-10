@@ -1,5 +1,6 @@
 import 'package:veil/src/rust/api/automerge.dart';
 
+/// Keeps all logical connection between [Markdown] and [BAutoCommit]
 class EditorAutomergeUtils {
   static EditorAutomergeUtils instance = EditorAutomergeUtils();
 

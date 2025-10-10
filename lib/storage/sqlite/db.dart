@@ -66,10 +66,6 @@ class DB {
 
   DB._withTransaction(this._connection, this._tx);
 
-  // -------------------------------------------------
-  // CRUD helpers
-  // -------------------------------------------------
-
   Future<List<Map<String, Object?>>> _query(
     String table, {
     bool? distinct,
@@ -134,10 +130,6 @@ class DB {
     );
   }
 
-  // -------------------------------------------------
-  // High-level API
-  // -------------------------------------------------
-
   Future<void> removeAll() {
     return transaction((db) async {
       await db._delete(
@@ -172,8 +164,6 @@ class DB {
       where: 'public_key = ? AND contact_id = ?',
       whereArgs: [base64Encode(publicKey), 'owner'],
     );
-
-    // logger.i('rawOwnSpk: ${base64Encode(rawOwnSpk)}');
 
     if (rawOwnSpk.firstOrNull == null) {
       return null;

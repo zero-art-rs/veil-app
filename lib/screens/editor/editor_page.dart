@@ -4,7 +4,6 @@ import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/managers/sync_provider/sync_model_executor.dart';
 import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
 import 'package:veil/widgets/square_rounded_btn.dart';
@@ -29,8 +28,7 @@ class EditorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<EditorPageVm>(
-      create: (_) =>
-          EditorPageVm(syncModel, SyncModelExecutor(syncModel))..init(context),
+      create: (_) => EditorPageVm(syncModel)..init(context),
       child: _EditorPageView(
         isMemberListAccessible: isMemberListAccessible,
         isHistoryAccessible: isHistoryAccessible,
@@ -166,7 +164,7 @@ class _EditorPageView extends StatelessWidget {
                           builder: (_) => DocumentMemberListScreen(
                             members: members,
                             doc: vm.syncModel.document,
-                            executor: vm.executor,
+                            syncModel: vm.syncModel,
                           ),
                         ),
                       ),
@@ -178,7 +176,7 @@ class _EditorPageView extends StatelessWidget {
                         builder: (_) => DocumentMemberListScreen(
                           members: members,
                           doc: vm.syncModel.document,
-                          executor: vm.executor,
+                          syncModel: vm.syncModel,
                         ),
                       ),
                     );
