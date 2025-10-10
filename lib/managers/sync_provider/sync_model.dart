@@ -121,10 +121,19 @@ extension SyncModelSync on SyncProviderModel {
           final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
 
           if (crdt == null) continue;
-
-          _syncDocumentWithCrdt(document.automergeDoc, [
-            crdt,
-          ], withFullDoc: allowFullDocument);
+          
+          switch (crdt.kind) {
+            case ExposedCRDTPayloadKind.incrementalChange:
+              logger.d('Received incremental change');
+              document.automergeDoc.loadIncremental(
+                bytes: crdt.crdt.incrementalChange,
+              );
+            case ExposedCRDTPayloadKind.fullDocument:
+              logger.d('Received full document');
+              document.automergeDoc = BAutoCommit.load(
+                data: crdt.crdt.fullDocument,
+              );
+          }
         }
       }
 
@@ -242,11 +251,7 @@ void _syncDocumentWithCrdt(
       case ExposedCRDTPayloadKind.incrementalChange:
         final incrementalChange = payload.crdt.incrementalChange;
         document.loadIncremental(bytes: incrementalChange);
-      case ExposedCRDTPayloadKind.fullDocument:
-        if (withFullDoc) {
-          logger.d('Received full document');
-          document = BAutoCommit.load(data: payload.crdt.fullDocument);
-        }
+      default:
     }
   }
 }

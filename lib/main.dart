@@ -35,7 +35,7 @@ Future<void> main() async {
   try {
     await AccountSecureStorage.instance.init();
     await DB.instance.open();
-    await DB.instance.removeAll();
+    // await DB.instance.removeAll();
     await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
     logger.d('Db path: ${await getDatabasesPath()}');
@@ -145,6 +145,7 @@ class _MyAppState extends State<MyApp> {
     await SyncProvider.instance.add(
       document,
       groupContext,
+      insertToDb: true,
       allowFullDocument: true,
     );
 
