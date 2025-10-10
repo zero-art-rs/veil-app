@@ -33,21 +33,64 @@ class EditorPageVm extends ChangeNotifier {
   String? _documentContentBeforeEditing;
   bool isSinking = false;
   var selectedMode = EditorModes.view;
-  get isLocalOnly => syncModel.isLocal;
+  bool allowWriteEvents = true;
 
   final crdtBufferController = StreamController<ExposedCRDTPayload>();
   late final crdtBuffer = StreamQueue(crdtBufferController.stream);
   StreamSubscription<SPFrame>? _centrifugoSubscription;
-  final processEventQueue = AsyncQueue();
+  Timer? _joinGroupTicker;
+
+  final readEventQueue = AsyncQueue();
+  final writeEventQueue = AsyncQueue();
 
   EditorPageVm(this.syncModel);
 
-  void init(BuildContext context) {
+  void init(BuildContext context) async {
+    allowWriteEvents = syncModel.isLocal;
+
     switch (syncModel.isLocal) {
       case true:
         _localInit();
       case false:
+        _joinGroupIfNeeded();
         _networkInit(context);
+    }
+  }
+
+  void _joinGroupIfNeeded() {
+    final userInGroup = syncModel.groupContext.retrieveGroupInfo().members.any(
+      (e) => e.id == AccountSecureStorage.instance.account.actorId,
+    );
+
+    if (!userInGroup) {
+      allowWriteEvents = false;
+      notifyListeners();
+
+      writeEventQueue.addJob(
+        () async {
+          logger.i('User is joining group..');
+
+          await syncModel.sendJoinGroupFrame(
+            AccountSecureStorage.instance.account,
+          );
+
+          logger.i('User joined group, notifying..');
+        },
+        retryTime: -1,
+        label: 'joinGroup',
+      );
+
+      writeEventQueue.start();
+
+      _joinGroupTicker = Timer.periodic(Durations.medium4, (duration) {
+        final jobInfo = writeEventQueue.getJobInfo('joinGruop');
+        if (jobInfo.state == JobState.done) {
+          _joinGroupTicker?.cancel();
+          _joinGroupTicker = null;
+          allowWriteEvents = true;
+          notifyListeners();
+        }
+      });
     }
   }
 
@@ -63,7 +106,7 @@ class EditorPageVm extends ChangeNotifier {
       uuid: AccountSecureStorage.instance.account.actorId,
     );
 
-    processEventQueue.addQueueListener((e) {
+    readEventQueue.addQueueListener((e) {
       logger.i('Queue listener: ${e.currentQueueSize}');
       isSinking = !(e.currentQueueSize == 0);
       notifyListeners();
@@ -82,18 +125,18 @@ class EditorPageVm extends ChangeNotifier {
 
       if (!initialBuffer) {
         for (final frame in initialCentrifugoBuffer) {
-          processEventQueue.addJob(() => processFrame(context, frame));
+          readEventQueue.addJob(() => processFrame(context, frame));
         }
         initialCentrifugoBuffer.clear();
-        await processEventQueue.start();
+        await readEventQueue.start();
       }
     });
 
     final frames = _changeManager.getFrames(syncModel.document.id);
     for (final frame in frames.values) {
-      processEventQueue.addJob(() => processFrame(context, frame));
+      readEventQueue.addJob(() => processFrame(context, frame));
     }
-    await processEventQueue.start();
+    await readEventQueue.start();
 
     initialBuffer = false;
   }
@@ -180,7 +223,7 @@ class EditorPageVm extends ChangeNotifier {
       logger.i('Uploading new changes..');
 
       final crdtPayloadList = await _loadBuffer();
-      await syncModel.sendFrame(mdEditor.text, crdtPayloadList);
+      await syncModel.sendCrdtFrame(mdEditor.text, crdtPayloadList);
       _documentContentBeforeEditing = sha256Hash(mdEditor.text);
 
       logger.i(

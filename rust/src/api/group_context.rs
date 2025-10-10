@@ -258,6 +258,16 @@ impl BGroupContext {
         ))
     }
 
+    pub fn join_group_as(&mut self, user: BUser) -> Result<Vec<u8>> {
+        Ok(self
+            .group_context
+            .join_group_as(user.user)
+            .map_err(|e| anyhow!("failed to join group: {}", e.to_string()))?
+            .encode_to_vec()
+            .map_err(|e| anyhow!("failed to encode vec: {}", e.to_string()))?)
+    }
+
+
     pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<Vec<Vec<u8>>> {
         // let mut group_context = self.group_context.lock().unwrap();
 

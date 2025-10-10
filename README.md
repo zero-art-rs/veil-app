@@ -1,8 +1,12 @@
 ## 🚀 How to Run
 
 ```bash
+# On macOS && iOS
 flutter run -d <platform>
-
+-----------
+# On linux
+cd rust && cargo build --release && cd .. && flutter run -d linux
+-----------
 # To list available devices/platforms:
 flutter devices
 ```

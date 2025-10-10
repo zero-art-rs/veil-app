@@ -159,6 +159,11 @@ extension SyncModelOperations on SyncProviderModel {
   processFrame(SPFrame spframe) async {
     List<ExposedCRDTPayload> exposedCrdtPayload = [];
 
+    logger.i(
+      'Processing frame, group context epoch: ${await groupContext.epoch()}',
+    );
+    logger.i('Processing frame, frame epoch: ${spframe.frame.frame.epoch}');
+
     final rawPayloads = await groupContext.processFrame(
       frame: spframe.frame.writeToBuffer(),
     );
@@ -185,7 +190,7 @@ extension SyncModelOperations on SyncProviderModel {
     return (exposedCrdtPayload, false);
   }
 
-  Future<void> sendFrame(String md, List<ExposedCRDTPayload> buffer) async {
+  Future<void> sendCrdtFrame(String md, List<ExposedCRDTPayload> buffer) async {
     final forkedDocument = document.automergeDoc.fork();
     forkedDocument.setActorId(
       uuid: AccountSecureStorage.instance.account.actorId,
@@ -214,6 +219,14 @@ extension SyncModelOperations on SyncProviderModel {
       doc: document,
       parts: await groupContext.asParts(),
     );
+  }
+
+  Future<void> sendJoinGroupFrame(Account user) async {
+    final frame = await groupContext.joinGroupAs(
+      user: BUser(name: user.name, publicKey: user.keypair.rawPublicKey),
+    );
+
+    await GroupApiClient.instance.sendFrame(groupId: document.id, frame: frame);
   }
 }
 

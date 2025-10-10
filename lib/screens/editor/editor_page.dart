@@ -62,7 +62,7 @@ class _EditorPageView extends StatelessWidget {
           child: Text(vm.syncModel.groupContext.retrieveGroupInfo().name),
         ),
         actions: [
-          if (!vm.isLocalOnly)
+          if (vm.allowWriteEvents)
             SegmentedButton<EditorModes>(
               showSelectedIcon: false,
               segments: const <ButtonSegment<EditorModes>>[
@@ -80,7 +80,7 @@ class _EditorPageView extends StatelessWidget {
                 await vm.selectMode(newSelection.first);
               },
             ),
-          if (vm.isLocalOnly)
+          if (!vm.allowWriteEvents)
             IconButton(
               icon: const Icon(Icons.help_outline),
               onPressed: () {

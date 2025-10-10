@@ -74,12 +74,14 @@ class SyncProvider {
   Future<void> add(
     Document document,
     BGroupContext groupContext, {
-    insertToDb = false,
+    bool insertToDb = false,
   }) async {
     final syncModel = await _synchronizeDocument(document, groupContext);
+
     if (insertToDb) {
       await _db.insertDocument(document: document);
     }
+
     current.add(syncModel);
     subject.add(current);
   }

@@ -81,6 +81,8 @@ abstract class BGroupContext implements RustOpaqueInterface {
 
   Future<(Uint8List, Uint8List, BigInt, BigInt)> intoParts();
 
+  Future<Uint8List> joinGroupAs({required BUser user});
+
   Future<List<Uint8List>> processFrame({required List<int> frame});
 
   Future<Uint8List> removeMember({

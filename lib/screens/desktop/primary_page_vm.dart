@@ -64,7 +64,6 @@ class PrimaryPageViewModel extends ChangeNotifier {
         owner: AccountSecureStorage.instance.account,
       );
 
-      logger.i('name ${AccountSecureStorage.instance.account.name}');
       final document = Document(
         id: docID,
         createdAt: DateTime.now(),

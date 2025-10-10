@@ -185,7 +185,6 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
   void _inviteUndentifiedMember(BuildContext context) {
     final inviteLink = Future(() async {
-      // return await widget.executor.operate((syncModel) async {
       final secretKey = SecretManager.intance.generateSecretKey();
 
       final payload = Payload(
@@ -211,7 +210,6 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       );
 
       return inviteLink;
-      // }, priority: TaskPriority.low);
     });
 
     showInviteDialog(inviteLink);
@@ -219,7 +217,6 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
   Future<void> _inviteContactMember(Contact contact) async {
     final future = Future(() async {
-      // return await widget.executor.operate((syncModel) async {
       try {
         final firstSpk = contact.spks.firstOrNull;
         final spkPublicKey = firstSpk != null
@@ -263,7 +260,6 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         logger.e('Failed to invite member: $e');
         rethrow;
       }
-      // }, priority: TaskPriority.low);
     });
 
     showInviteDialog(future);
