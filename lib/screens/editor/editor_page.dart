@@ -12,7 +12,7 @@ import 'editor_page_vm.dart';
 import 'package:veil/utils/platform.dart';
 
 class EditorPage extends StatelessWidget {
-  final SyncProviderModel syncModel;
+  final SyncModel syncModel;
   final bool isMemberListAccessible;
   final bool isHistoryAccessible;
   final bool readOnly;
@@ -124,7 +124,7 @@ class _EditorPageView extends StatelessWidget {
                           ),
                           keyboardType: TextInputType.multiline,
                           maxLines: null,
-                          onChanged: (_) => vm.editMD(),
+                          onChanged: (_) => vm.notify(),
                         ),
                       ),
                     ],
@@ -152,13 +152,18 @@ class _EditorPageView extends StatelessWidget {
               ModalSquareRoundedButton(
                 iconData: Icons.group_outlined,
                 onPressed: (ctx) async {
-                  final members = await vm.prepareMembers();
+                  final members = await vm.prepareMemberList();
                   if (!context.mounted) return;
                   if (isDesktop) {
                     showPopover(
                       context: ctx,
-                      width: 360,
-                      height: 680,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      constraints: BoxConstraints(
+                        maxHeight: 640,
+                        maxWidth: 360,
+                        minHeight: 16,
+                        minWidth: 9,
+                      ),
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
                           builder: (_) => DocumentMemberListScreen(
@@ -186,13 +191,18 @@ class _EditorPageView extends StatelessWidget {
               ModalSquareRoundedButton(
                 iconData: Icons.history_sharp,
                 onPressed: (ctx) {
-                  final changes = vm.prepareChanges();
+                  final changes = vm.prepareChangeList();
 
                   if (isDesktop) {
                     showPopover(
                       context: ctx,
-                      width: 360,
-                      height: 680,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      constraints: BoxConstraints(
+                        maxHeight: 640,
+                        maxWidth: 360,
+                        minHeight: 16,
+                        minWidth: 9,
+                      ),
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
                           builder: (_) => HistoryPage(

@@ -6,8 +6,8 @@ import 'package:rxdart/subjects.dart';
 import 'package:veil/api/centrifuge.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
-import 'package:veil/managers/change_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
@@ -19,10 +19,9 @@ class SyncProvider {
   final _centrifugo = CentrifugeProvider.instance;
   final _db = DB.instance;
   final _api = GroupApiClient.instance;
-  final _changeManager = ChangeManager.instance;
 
-  List<SyncProviderModel> get current => subject.value;
-  BehaviorSubject<List<SyncProviderModel>> subject = BehaviorSubject.seeded([]);
+  List<SyncModel> get current => subject.value;
+  BehaviorSubject<List<SyncModel>> subject = BehaviorSubject.seeded([]);
 
   static final instance = SyncProvider._();
   SyncProvider._();
@@ -92,7 +91,11 @@ class SyncProvider {
   }
 
   void _addLocal(Document document, BGroupContext groupContext) {
-    final syncModel = SyncProviderModel.local(document, groupContext);
+    final syncModel = SyncModel(
+      document: document,
+      groupContext: groupContext,
+      listener: null,
+    );
 
     current.add(syncModel);
     subject.add(current);
@@ -118,15 +121,15 @@ class SyncProvider {
     subject.add(current);
   }
 
-  SyncProviderModel get(String chatId) {
+  SyncModel get(String chatId) {
     return current.firstWhere((element) => element.document.id == chatId);
   }
 
-  List<SyncProviderModel> getAll() {
+  List<SyncModel> getAll() {
     return current;
   }
 
-  Future<SyncProviderModel> _synchronizeDocument(
+  Future<SyncModel> _synchronizeDocument(
     Document doc,
     BGroupContext groupContext, {
     bool allowFullDocument = false,
@@ -143,15 +146,39 @@ class SyncProvider {
     );
 
     final stream = await _centrifugo.connect(jwt);
-    _changeManager.setup(doc.id);
 
-    final syncModel = SyncProviderModel.withListener(
-      doc,
-      groupContext,
-      jwt,
-      stream,
+    final syncModel = SyncModel(
+      document: doc,
+      groupContext: groupContext,
+      listener: null,
     );
+
+    final listener = stream.listen(
+      (event) {
+        if (event.data == null || event.data!.isEmpty) return;
+
+        final rawJson = json.decode(event.data!);
+        if (rawJson['pub'] == null) return;
+
+        final frameBytes = base64Decode(rawJson['pub']['data'].toString());
+
+        final frame = SPFrame.fromBuffer(frameBytes);
+
+        syncModel.processFrame(frame);
+      },
+      onError: (error, [stackTrace]) {
+        logger.e('Centrifugo error: $error, trace: $stackTrace');
+      },
+      onDone: () {
+        logger.i('Centrifugo done');
+      },
+      cancelOnError: false,
+    );
+
+    syncModel.listener = listener;
     await syncModel.synchronizeInitially(allowFullDocument: allowFullDocument);
+    syncModel.bufferFrames = false;
+
     return syncModel;
   }
 }

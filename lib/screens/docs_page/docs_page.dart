@@ -131,7 +131,7 @@ class _NodocumentsYet extends StatelessWidget {
 
 class _DocCard extends StatelessWidget {
   const _DocCard({required this.doc, this.onEdit, this.onDelete});
-  final SyncProviderModel doc;
+  final SyncModel doc;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 

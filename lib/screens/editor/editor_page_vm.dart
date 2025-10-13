@@ -8,17 +8,13 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
-import 'package:veil/managers/change_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/consts.dart';
-import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
-import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/utils/payload.dart';
 import 'package:veil/widgets/banner.dart';
 
@@ -26,9 +22,7 @@ enum EditorModes { edit, view }
 
 class EditorPageVm extends ChangeNotifier {
   final joinGroupLabel = 'joinGroup';
-
-  final _changeManager = ChangeManager.instance;
-  final SyncProviderModel syncModel;
+  final SyncModel syncModel;
 
   final mdEditor = TextEditingController();
 
@@ -39,15 +33,25 @@ class EditorPageVm extends ChangeNotifier {
 
   final crdtBufferController = StreamController<ExposedCRDTPayload>();
   late final crdtBuffer = StreamQueue(crdtBufferController.stream);
-  StreamSubscription<SPFrame>? _centrifugoSubscription;
 
   final readEventQueue = AsyncQueue();
   final writeEventQueue = AsyncQueue();
+
+  StreamSubscription? _removeFromGroupSubscription;
+  StreamSubscription? _crdtUpdatesSubscription;
 
   EditorPageVm(this.syncModel);
 
   void init(BuildContext context) async {
     allowWriteEvents = !syncModel.isLocal;
+
+    _removeFromGroupSubscription = syncModel.removedFromGroupEvent.listen((_) {
+      if (context.mounted) _handleRemoveMember(context);
+    });
+
+    _crdtUpdatesSubscription = syncModel.crdtUpdatesEvent.listen((e) {
+      mdEditor.text = EditorAutomergeUtils.instance.toText(e);
+    });
 
     switch (syncModel.isLocal) {
       case true:
@@ -56,7 +60,7 @@ class EditorPageVm extends ChangeNotifier {
         _listenWriteQueueEvents();
         _listenReadQueueEvents();
         _joinGroupIfNeeded();
-        _networkInit(context);
+        await _networkInit(context);
     }
   }
 
@@ -87,24 +91,7 @@ class EditorPageVm extends ChangeNotifier {
     );
 
     if (!userInGroup) {
-      allowWriteEvents = false;
-      notifyListeners();
-
-      writeEventQueue.addJob(
-        () async {
-          logger.i('User is joining group..');
-
-          await syncModel.sendJoinGroupFrame(
-            AccountSecureStorage.instance.account,
-          );
-
-          logger.i('User joined group, notifying..');
-        },
-        retryTime: -1,
-        label: joinGroupLabel,
-      );
-
-      writeEventQueue.start();
+      syncModel.sendJoinGroupFrame(AccountSecureStorage.instance.account);
     }
   }
 
@@ -124,84 +111,12 @@ class EditorPageVm extends ChangeNotifier {
       syncModel.document.automergeDoc,
     );
     notifyListeners();
-
-    var initialBuffer = true;
-    final initialCentrifugoBuffer = [];
-
-    _changeManager.stream(syncModel.document.id).listen((spFrame) async {
-      initialCentrifugoBuffer.add(spFrame);
-
-      if (!initialBuffer) {
-        for (final frame in initialCentrifugoBuffer) {
-          readEventQueue.addJob(() async => await processFrame(context, frame));
-        }
-        initialCentrifugoBuffer.clear();
-        await readEventQueue.start();
-      }
-    });
-
-    final frames = _changeManager.getFrames(syncModel.document.id);
-    for (final frame in frames.values) {
-      readEventQueue.addJob(() async => await processFrame(context, frame));
-    }
-    await readEventQueue.start();
-
-    initialBuffer = false;
   }
 
-  Future<void> processFrame(BuildContext context, SPFrame frame) async {
-    logger.i('Received frame, processing');
-
-    try {
-      final (crdtPayloadList, isCurrentUser) = await syncModel.processFrame(
-        frame,
-      );
-
-      if (isCurrentUser) {
-        logger.i('Received frame sent by current user, omitting...');
-        return;
-      }
-
-      logger.i('Processing incoming frame...');
-
-      for (final payload in crdtPayloadList) {
-        crdtBufferController.add(payload);
-      }
-
-      if (selectedMode != EditorModes.edit) {
-        final crdtPayloads = await _loadBuffer();
-        if (crdtPayloads.isEmpty) {
-          return;
-        }
-
-        mdEditor.text = await syncModel.appyCrdtListOperation(crdtPayloads);
-        _documentContentBeforeEditing = sha256Hash(mdEditor.text);
-
-        logger.i(
-          'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
-        );
-
-        notifyListeners();
-      }
-    } catch (e) {
-      if (e.toString().contains('User removed from group')) {
-        // ignore: use_build_context_synchronously
-        await _handleRemoveMember(context);
-      } else {
-        logger.e('Error processing frame: $e');
-      }
-    }
-  }
-
-  Future<void> _handleRemoveMember(BuildContext context) async {
-    logger.i('User removed from group, adding as local');
-
-    await syncModel.disableNetworkSyncOperation();
-    await selectMode(EditorModes.view);
-    await _centrifugoSubscription?.cancel();
+  void _handleRemoveMember(BuildContext context) {
+    allowWriteEvents = false;
     notifyListeners();
-
-    if (!context.mounted) return;
+    logger.i('User removed from group, adding handling on ui');
     TopBanner.show(
       context: context,
       message: 'You have been removed from the group',
@@ -213,8 +128,13 @@ class EditorPageVm extends ChangeNotifier {
     final runSync =
         selectedMode == EditorModes.edit && mode == EditorModes.view;
 
+    if (selectedMode == EditorModes.edit) {
+      syncModel.bufferFrames = true;
+    }
+
     if (runSync) {
-      await editorTextSynchronize();
+      await syncLocalAndNetworkState();
+      syncModel.bufferFrames = false;
     }
 
     selectedMode = mode;
@@ -222,7 +142,7 @@ class EditorPageVm extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> editorTextSynchronize() async {
+  Future<void> syncLocalAndNetworkState() async {
     var hashAfterEditing = sha256
         .convert(utf8.encode(mdEditor.text))
         .toString();
@@ -230,15 +150,14 @@ class EditorPageVm extends ChangeNotifier {
     if (_documentContentBeforeEditing != hashAfterEditing) {
       logger.i('Uploading new changes..');
 
-      final crdtPayloadList = await _loadBuffer();
-      await syncModel.sendCrdtFrame(mdEditor.text, crdtPayloadList);
+      await syncModel.sendCrdtFrame(mdEditor.text);
       _documentContentBeforeEditing = sha256Hash(mdEditor.text);
 
       logger.i(
         'Document state after changing mode ${syncModel.document.automergeDoc.getBlocks()}',
       );
     } else {
-      final crdtPayloadList = await _loadBuffer();
+      final crdtPayloadList = await _loadCrdtBuffer();
 
       if (crdtPayloadList.isNotEmpty) {
         logger.i('Syncing buffered changes..');
@@ -254,7 +173,7 @@ class EditorPageVm extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<ExposedCRDTPayload>> _loadBuffer() async {
+  Future<List<ExposedCRDTPayload>> _loadCrdtBuffer() async {
     final buffer = <ExposedCRDTPayload>[];
 
     while (await crdtBuffer.hasNext.timeout(
@@ -270,11 +189,11 @@ class EditorPageVm extends ChangeNotifier {
     return sha256.convert(utf8.encode(text)).toString();
   }
 
-  void editMD() {
+  void notify() {
     notifyListeners();
   }
 
-  Future<List<MemberScreenModel>> prepareMembers() async {
+  Future<List<MemberScreenModel>> prepareMemberList() async {
     final groupInfo = syncModel.groupContext.retrieveGroupInfo();
 
     final members = groupInfo.members
@@ -299,7 +218,7 @@ class EditorPageVm extends ChangeNotifier {
     return members;
   }
 
-  List<ChangeEvent> prepareChanges() {
+  List<ChangeEvent> prepareChangeList() {
     final members = syncModel.groupContext.retrieveGroupInfo().members;
 
     return syncModel.document.automergeDoc
@@ -325,18 +244,10 @@ class EditorPageVm extends ChangeNotifier {
   }
 
   @override
-  void dispose() async {
-    _centrifugoSubscription?.cancel();
-
-    final crdtPayloadList = await _loadBuffer();
-    if (crdtPayloadList.isNotEmpty) {
-      await syncModel.appyCrdtListOperation(crdtPayloadList);
-    }
-
-    await DB.instance.updateDocument(
-      doc: syncModel.document,
-      parts: await syncModel.groupContext.asParts(),
-    );
+  void dispose() {
+    syncModel.bufferFrames = false;
+    _crdtUpdatesSubscription?.cancel();
+    _removeFromGroupSubscription?.cancel();
     super.dispose();
   }
 }

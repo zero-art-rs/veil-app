@@ -25,8 +25,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
   Widget _selectedPage = AccountPage();
   Widget get selectedPage => _selectedPage;
 
-  List<SyncProviderModel> _syncModels = [];
-  List<SyncProviderModel> get syncModels => _syncModels;
+  List<SyncModel> _syncModels = [];
+  List<SyncModel> get syncModels => _syncModels;
 
   final TextEditingController textEditingController = TextEditingController();
 

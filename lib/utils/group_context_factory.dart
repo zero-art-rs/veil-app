@@ -38,6 +38,13 @@ class GroupContextParts {
     required this.nonce,
   });
 
+  factory GroupContextParts.empty() => GroupContextParts(
+    validator: Uint8List(0),
+    groupInfo: Uint8List(0),
+    epoch: BigInt.zero,
+    nonce: BigInt.zero,
+  );
+
   String toJsonString() {
     final map = {
       'validator': validator,

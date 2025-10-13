@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:async_queue/async_queue.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
+import 'package:rxdart/subjects.dart';
 import 'package:veil/api/group_api_client.dart';
-import 'package:veil/managers/change_manager.dart';
+import 'package:veil/managers/sync_provider/sync_buffer.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
@@ -12,85 +14,45 @@ import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/utils/group_context_factory.dart';
+import 'package:veil/utils/local_state.dart';
 import 'package:veil/utils/payload.dart';
 
 import '../../main.dart';
 
-class SyncProviderModel {
+class SyncModel {
   final Document document;
   final BGroupContext groupContext;
-  final String jwt;
-  final StreamSubscription<SSEModel>? listener;
+  StreamSubscription<SSEModel>? listener;
   final _db = DB.instance;
+
+  final _crdtBuffer = LockedBuffer<ExposedCRDTPayload>();
+  final _processQueue = AsyncQueue();
+  final _sendQueue = AsyncQueue();
+
+  bool bufferFrames = true;
+
+  final _crdtUpdatesEvent = StreamController<BAutoCommit>.broadcast();
+  Stream<BAutoCommit> get crdtUpdatesEvent => _crdtUpdatesEvent.stream;
+  final _removedFromGroupEvent = StreamController<bool>.broadcast();
+  Stream<bool> get removedFromGroupEvent => _removedFromGroupEvent.stream;
 
   get isLocal => document.localOnly;
 
-  SyncProviderModel({
+  SyncModel({
     required this.document,
     required this.groupContext,
-    required this.jwt,
     required this.listener,
   });
-
-  factory SyncProviderModel.local(
-    Document document,
-    BGroupContext groupContext,
-  ) {
-    return SyncProviderModel(
-      document: document,
-      groupContext: groupContext,
-      jwt: "",
-      listener: null,
-    );
-  }
-
-  factory SyncProviderModel.withListener(
-    Document document,
-    BGroupContext groupContext,
-    String jwt,
-    Stream<SSEModel> stream,
-  ) {
-    final changeManager = ChangeManager.instance;
-
-    final listener = stream.listen(
-      (event) {
-        if (event.data == null || event.data!.isEmpty) return;
-
-        final rawJson = json.decode(event.data!);
-        if (rawJson['pub'] == null) return;
-
-        final frameBytes = base64Decode(rawJson['pub']['data'].toString());
-
-        final frame = SPFrame.fromBuffer(frameBytes);
-
-        changeManager.addFrame(
-          groupId: document.id,
-          frame: frame,
-          sequenceNumber: frame.seqNum.toInt(),
-        );
-      },
-      onError: (error, [stackTrace]) {
-        logger.e('Centrifugo error: $error, trace: $stackTrace');
-      },
-      onDone: () {
-        logger.i('Centrifugo done');
-      },
-      cancelOnError: false,
-    );
-
-    return SyncProviderModel(
-      document: document,
-      groupContext: groupContext,
-      jwt: jwt,
-      listener: listener,
-    );
-  }
 }
 
-extension SyncModelSync on SyncProviderModel {
+extension SyncModelInit on SyncModel {
   Future<void> synchronizeInitially({bool allowFullDocument = false}) async {
-    logger.i('initial document.sequenceNumber ${document.sequenceNumber}');
-    logger.i('initial group epoch ${(await groupContext.epoch()).toInt()}');
+    logger.d(
+      'Document sequence number before polling: ${document.sequenceNumber}',
+    );
+    logger.d(
+      'Document epoch before polling: ${(await groupContext.epoch()).toInt()}',
+    );
 
     while (true) {
       final signature = await groupContext.signWithTk(
@@ -124,12 +86,11 @@ extension SyncModelSync on SyncProviderModel {
 
           switch (crdt.kind) {
             case ExposedCRDTPayloadKind.incrementalChange:
-              logger.d('Received incremental change');
               document.automergeDoc.loadIncremental(
                 bytes: crdt.crdt.incrementalChange,
               );
             case ExposedCRDTPayloadKind.fullDocument:
-              logger.d('Received full document');
+              logger.d('Received crdt full document');
               document.automergeDoc = BAutoCommit.load(
                 data: crdt.crdt.fullDocument,
               );
@@ -139,6 +100,13 @@ extension SyncModelSync on SyncProviderModel {
 
       document.sequenceNumber = result.spFrames.first.seqNum.toInt();
     }
+
+    logger.d(
+      'Document sequence number after polling: ${document.sequenceNumber}',
+    );
+    logger.d(
+      'Document epoch after polling: ${(await groupContext.epoch()).toInt()}',
+    );
   }
 
   Future<void> dispose() async {
@@ -147,16 +115,77 @@ extension SyncModelSync on SyncProviderModel {
   }
 }
 
-extension SyncModelOperations on SyncProviderModel {
+extension SyncModelProcessOperations on SyncModel {
+  Future<void> processFrame(SPFrame spframe) async {
+    _processQueue.addJob(() async {
+      logger.i('Received frame, processing..');
+      logger.d('Received frame, frame epoch: ${spframe.frame.frame.epoch}..');
+      logger.d('Received frame, frame seqNum: ${spframe.seqNum}..');
+
+      try {
+        final (crdtList, _) = await _processFrame(spframe);
+
+        if (bufferFrames) {
+          logger.d('Started no buffer frames flow');
+          for (final payload in crdtList) {
+            await _crdtBuffer.push(payload);
+          }
+        } else {
+          logger.d('Started no buffering frames flow');
+          await appyCrdtListOperation(crdtList);
+          _crdtUpdatesEvent.add(document.automergeDoc);
+        }
+      } catch (e) {
+        if (e.toString().contains('User removed from group')) {
+          logger.i('User removed from group, making local only');
+          await disableNetworkSyncOperation();
+          await LocalStateUtils.instance.makeDocumentLocal(document);
+        } else {
+          rethrow;
+        }
+      }
+    });
+  }
+}
+
+extension SyncModelSendOperations on SyncModel {
+  Future<void> sendCrdtFrame(String md) async {
+    _sendQueue.addJob(() async {
+      logger.i('Sending crdt frame..');
+      final snapshot = await _crdtBuffer.snapshot();
+      logger.d('Snapshot size: ${snapshot.length}');
+      await _sendCrdtFrame(md, snapshot);
+      await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
+      logger.d('Buffer size after removal: ${_crdtBuffer.length}');
+      _crdtUpdatesEvent.add(document.automergeDoc);
+      logger.i('Sent crdt frame');
+    }, retryTime: 3);
+
+    _sendQueue.start();
+  }
+
+  Future<void> sendJoinGroupFrame(Account user) async {
+    _sendQueue.addJob(() async {
+      await _sendJoinGroupFrame(user);
+    }, retryTime: 3);
+
+    _sendQueue.start();
+  }
+}
+
+extension SyncModelOperations on SyncModel {
   Future<String> appyCrdtListOperation(
     List<ExposedCRDTPayload> payloads,
   ) async {
-    _syncDocumentWithCrdt(document.automergeDoc, payloads);
+    logger.i('Applying crdt list..');
+    _syncDocumentWithCrdt(document, payloads);
 
     await _db.updateDocument(
       doc: document,
       parts: await groupContext.asParts(),
     );
+
+    logger.i('Applied Crdt list');
 
     return EditorAutomergeUtils.instance.toText(document.automergeDoc);
   }
@@ -164,17 +193,16 @@ extension SyncModelOperations on SyncProviderModel {
   Future<void> disableNetworkSyncOperation() async {
     await listener?.cancel();
     document.localOnly = true;
+
+    await _db.updateDocument(
+      doc: document,
+      parts: await groupContext.asParts(),
+    );
   }
 
   Future<(List<ExposedCRDTPayload> payloads, bool fromCurrentUser)>
-  processFrame(SPFrame spframe) async {
+  _processFrame(SPFrame spframe) async {
     List<ExposedCRDTPayload> exposedCrdtPayload = [];
-
-    logger.i(
-      'Processing frame, group context epoch: ${await groupContext.epoch()}',
-    );
-    logger.i('Processing frame, frame epoch: ${spframe.frame.frame.epoch}');
-
     final rawPayloads = await groupContext.processFrame(
       frame: spframe.frame.writeToBuffer(),
     );
@@ -201,7 +229,10 @@ extension SyncModelOperations on SyncProviderModel {
     return (exposedCrdtPayload, false);
   }
 
-  Future<void> sendCrdtFrame(String md, List<ExposedCRDTPayload> buffer) async {
+  Future<void> _sendCrdtFrame(
+    String md,
+    List<ExposedCRDTPayload> buffer,
+  ) async {
     final forkedDocument = document.automergeDoc.fork();
     forkedDocument.setActorId(
       uuid: AccountSecureStorage.instance.account.actorId,
@@ -209,7 +240,15 @@ extension SyncModelOperations on SyncProviderModel {
     EditorAutomergeUtils.instance.toDoc(md, forkedDocument);
     forkedDocument.commit();
 
-    _syncDocumentWithCrdt(forkedDocument, buffer);
+    _syncDocumentWithCrdt(
+      Document(
+        id: 'forked-doc-id',
+        automergeDoc: forkedDocument,
+        createdAt: DateTime.now(),
+        groupContextParts: GroupContextParts.empty(),
+      ),
+      buffer,
+    );
 
     final saveIncremential = forkedDocument.saveIncremental();
 
@@ -232,25 +271,40 @@ extension SyncModelOperations on SyncProviderModel {
     );
   }
 
-  Future<void> sendJoinGroupFrame(Account user) async {
+  Future<void> _sendJoinGroupFrame(Account user) async {
+    logger.i('Sending join group frame..');
     final frame = await groupContext.joinGroupAs(
       user: BUser(name: user.name, publicKey: user.keypair.rawPublicKey),
     );
 
     await GroupApiClient.instance.sendFrame(groupId: document.id, frame: frame);
+    logger.i('Sent join group frame');
+
+    await _db.updateDocument(
+      doc: document,
+      parts: await groupContext.asParts(),
+    );
   }
 }
 
 void _syncDocumentWithCrdt(
-  BAutoCommit document,
+  Document document,
   List<ExposedCRDTPayload> payloads,
 ) {
+  logger.d('Number of crdt payloads to apply: ${payloads.length}');
+
+  logger.d(
+    'Document state before applying crdt: ID  ${document.id} ${document.automergeDoc.getBlocks()}',
+  );
   for (final payload in payloads) {
     switch (payload.kind) {
       case ExposedCRDTPayloadKind.incrementalChange:
         final incrementalChange = payload.crdt.incrementalChange;
-        document.loadIncremental(bytes: incrementalChange);
+        document.automergeDoc.loadIncremental(bytes: incrementalChange);
       default:
     }
   }
+  logger.d(
+    'Document state after applying crdt: ID ${document.id} ${document.automergeDoc.getBlocks()}',
+  );
 }

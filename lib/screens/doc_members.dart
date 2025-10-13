@@ -37,7 +37,7 @@ class DocumentMemberListScreen extends StatefulWidget {
   });
 
   final List<MemberScreenModel> members;
-  final SyncProviderModel syncModel;
+  final SyncModel syncModel;
 
   final m.Document doc;
 
