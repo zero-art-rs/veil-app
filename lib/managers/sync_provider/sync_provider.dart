@@ -112,10 +112,7 @@ class SyncProvider {
     }
 
     await syncModel.dispose();
-
-    await _db.transaction((database) async {
-      await database.deleteDocument(syncModel.document.id);
-    });
+    await _db.deleteDocument(syncModel.document.id);
 
     current.removeWhere((element) => element.document.id == chatId);
     subject.add(current);

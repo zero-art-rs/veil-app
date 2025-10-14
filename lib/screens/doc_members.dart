@@ -137,7 +137,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  void _removeMember(BuildContext context, m.DocumentMember user) {
+  Future<void> _removeMember(BuildContext context, m.DocumentMember user) async {
     final work = Future<void>(() async {
       logger.i('Removing member in group context..');
 
@@ -150,7 +150,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       });
     });
 
-    aysAsyncModal(
+    await aysAsyncModal(
       context: context,
       title: 'Are you sure to remove ${user.account.name} from group?',
       content: 'This action cannot be undone.',
@@ -346,7 +346,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       children: [
         if (currentAccountIsOwner && !g.isYou)
           IconButton(
-            onPressed: () => _removeMember(context, g.member),
+            onPressed: () async => await _removeMember(context, g.member),
             icon: Icon(Icons.delete),
           ),
 

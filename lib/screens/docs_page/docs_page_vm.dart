@@ -46,7 +46,6 @@ class DocsPageViewModel extends ChangeNotifier {
     );
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-
     await _syncProvider.add(document, groupContext, insertToDb: true);
   }
 

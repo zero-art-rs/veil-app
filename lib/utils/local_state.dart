@@ -8,20 +8,21 @@ class LocalStateUtils {
   LocalStateUtils._();
 
   Future<void> makeDocumentLocal(Document document) async {
+    final oldId = document.id;
     final newId = UuidV4().generate();
     document.localOnly = true;
     document.id = newId;
 
     final localDocument = Document(
       automergeDoc: document.automergeDoc,
-      id: UuidV4().generate(),
+      id: newId,
       createdAt: document.createdAt,
       groupContextParts: document.groupContextParts,
       sequenceNumber: document.sequenceNumber,
       localOnly: true,
     );
 
-    await DB.instance.deleteDocument(document.id);
+    await DB.instance.deleteDocument(oldId);
     await DB.instance.insertDocument(document: localDocument);
   }
 }

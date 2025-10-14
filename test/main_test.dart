@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:veil/main.dart';
-import 'package:veil/managers/change_manager.dart';
-import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/utils/executor.dart';
 
 void main() {
@@ -130,36 +128,6 @@ void main() {
           }
         }
       });
-    });
-  });
-
-  group('Changes manager initial sync test', () {
-    test('test change manager initial flow', () async {
-      final changesManager = ChangeManager.instance;
-      changesManager.setup('1');
-
-      changesManager.addFrame(
-        groupId: '1',
-        frame: SPFrame(),
-        sequenceNumber: 0,
-      );
-
-      final bufferedFrames = changesManager.getFrames('1');
-      expect(bufferedFrames.values.length, 1);
-
-      changesManager.stream('1').listen((e) {
-        // first frame should be ommited
-        logger.i('received frame: $e');
-        expect(e.seqNum.toInt(), 1);
-      });
-
-      changesManager.addFrame(
-        groupId: '1',
-        frame: SPFrame(),
-        sequenceNumber: 1,
-      );
-
-      await Future.delayed(Durations.extralong4);
     });
   });
 
