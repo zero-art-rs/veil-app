@@ -103,7 +103,7 @@ extension SyncModelInit on SyncModel {
           for (final rawPayload in rawFramePayloads) {
             final payload = Payload.fromBuffer(rawPayload);
 
-            final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
+            final crdt = PayloadUtils.instance.exposePayload(payload);
 
             if (crdt == null) continue;
 
@@ -357,7 +357,7 @@ extension SyncModelOperations on SyncModel {
     for (final rawPayload in rawPayloads) {
       final payload = Payload.fromBuffer(rawPayload);
 
-      final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
+      final crdt = PayloadUtils.instance.exposePayload(payload);
       if (crdt == null) continue;
 
       exposedCrdtPayload.add(crdt);

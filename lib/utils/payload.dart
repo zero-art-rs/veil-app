@@ -14,14 +14,12 @@ class PayloadUtils {
 
   PayloadUtils._();
 
-  (ExposedCRDTPayload?, GroupActionPayload?) exposePayload(Payload payload) {
+  ExposedCRDTPayload? exposePayload(Payload payload) {
     switch (payload.whichContent()) {
       case Payload_Content.crdt:
-        return (_handleCRDT(payload.crdt), null);
-      case Payload_Content.action:
-        return (null, _handleGroupOperations(payload.action));
+        return _handleCRDT(payload.crdt);
       default:
-        throw UnimplementedError('Received unknown payload type');
+        return null;
     }
   }
 
@@ -41,29 +39,6 @@ class PayloadUtils {
         throw UnimplementedError('Media attachments not supported');
       case CRDTPayload_Payload.notSet:
         throw UnimplementedError('CRDT payload not set');
-    }
-  }
-
-  GroupActionPayload _handleGroupOperations(GroupActionPayload gop) {
-    switch (gop.whichAction()) {
-      case GroupActionPayload_Action.init:
-        return gop;
-      case GroupActionPayload_Action.inviteMember:
-        return gop;
-      case GroupActionPayload_Action.removeMember:
-        throw UnimplementedError('Remove member not supported');
-      case GroupActionPayload_Action.joinGroup:
-        return gop;
-      case GroupActionPayload_Action.changeUser:
-        throw UnimplementedError('Change user not supported');
-      case GroupActionPayload_Action.changeGroup:
-        throw UnimplementedError('Change group not supported');
-      case GroupActionPayload_Action.leaveGroup:
-        throw UnimplementedError('Leave group not supported');
-      case GroupActionPayload_Action.finalizeRemoval:
-        throw UnimplementedError('Finalize removal not supported');
-      case GroupActionPayload_Action.notSet:
-        throw UnimplementedError('group operation not set');
     }
   }
 }
