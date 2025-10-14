@@ -222,7 +222,7 @@ extension SyncModelSendOperations on SyncModel {
       logger.i('Sent crdt frame');
     }, retryTime: 3);
 
-    _sendQueue.start();
+    await _sendQueue.start();
   }
 
   Future<String> createInviteLink({Contact? contact}) async {
@@ -257,7 +257,38 @@ extension SyncModelSendOperations on SyncModel {
       inviteLinkStream.add(inviteLink);
     }, retryTime: -1);
 
+    await _sendQueue.start();
+
     return inviteLinkStream.stream.first;
+  }
+
+  Future<void> removeMember({required String actorId}) async {
+    final executedHandle = StreamController<bool>();
+
+    _sendQueue.addJob(() async {
+      logger.i('Removing member in group context..');
+      final frame = await groupContext.removeMember(
+        userId: actorId,
+        payloads: [],
+      );
+
+      logger.i('Sending remove member frame...');
+      await GroupApiClient.instance.sendFrame(
+        groupId: document.id,
+        frame: frame,
+      );
+
+      logger.i('Member removed from document');
+      await DB.instance.updateDocument(
+        doc: document,
+        parts: await groupContext.asParts(),
+      );
+
+      executedHandle.add(true);
+    });
+
+    await _sendQueue.start();
+    await executedHandle.stream.first;
   }
 
   Future<void> sendJoinGroupFrame(Account user) async {
@@ -265,7 +296,7 @@ extension SyncModelSendOperations on SyncModel {
       await _sendJoinGroupFrame(user);
     }, retryTime: 3);
 
-    _sendQueue.start();
+    await _sendQueue.start();
   }
 }
 

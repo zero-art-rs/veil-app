@@ -143,24 +143,10 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
   void _removeMember(BuildContext context, m.DocumentMember user) {
     final work = Future<void>(() async {
-      // await widget.executor.operate((syncModel) async {
       logger.i('Removing member in group context..');
-      final frame = await widget.syncModel.groupContext.removeMember(
-        userId: user.account.actorId,
-        payloads: [],
-      );
 
-      logger.i('Sending remove member frame...');
-      await GroupApiClient.instance.sendFrame(
-        groupId: widget.doc.id,
-        frame: frame,
-      );
+      await widget.syncModel.removeMember(actorId: user.account.actorId);
 
-      logger.i('Member removed from document');
-      await DB.instance.updateDocument(
-        doc: widget.doc,
-        parts: await widget.syncModel.groupContext.asParts(),
-      );
       setState(() {
         widget.members.removeWhere(
           (e) => e.member.account.actorId == user.account.actorId,
