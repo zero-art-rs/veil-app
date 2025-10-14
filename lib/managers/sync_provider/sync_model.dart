@@ -5,6 +5,8 @@ import 'package:async_queue/async_queue.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
+import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sync_provider/sync_buffer.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
@@ -16,6 +18,7 @@ import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/utils/local_state.dart';
 import 'package:veil/utils/payload.dart';
+import 'package:veil/utils/secret_factory.dart';
 
 import '../../main.dart';
 
@@ -220,6 +223,41 @@ extension SyncModelSendOperations on SyncModel {
     }, retryTime: 3);
 
     _sendQueue.start();
+  }
+
+  Future<String> createInviteLink({Contact? contact}) async {
+    final inviteLinkStream = StreamController<String>();
+
+    _sendQueue.addJob(() async {
+      final secretKey = SecretManager.intance.generateSecretKey();
+
+      final payload = Payload(
+        crdt: CRDTPayload(fullDocument: document.automergeDoc.save()),
+      ).writeToBuffer();
+
+      logger.i('Creating unidentified member invite...');
+      final (frame, invite) = await groupContext.addUnidentifiedMember(
+        secretKey: secretKey,
+        payloads: [payload],
+      );
+
+      logger.i('Sending unidentified member invite frame...');
+      await GroupApiClient.instance.sendFrame(
+        groupId: document.id,
+        frame: frame,
+      );
+
+      final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+      await DB.instance.updateDocument(
+        doc: document,
+        parts: await groupContext.asParts(),
+      );
+
+      inviteLinkStream.add(inviteLink);
+    }, retryTime: -1);
+
+    return inviteLinkStream.stream.first;
   }
 
   Future<void> sendJoinGroupFrame(Account user) async {
