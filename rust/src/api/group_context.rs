@@ -24,7 +24,8 @@ use tracing_subscriber;
 #[flutter_rust_bridge::frb(sync)]
 pub fn init_tracing() {
     let _ = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::TRACE) // щоб бачили trace/debug/info
+        // .with_max_level(tracing::Level::TRACE) // щоб бачили trace/debug/info
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .try_init();
 }
 

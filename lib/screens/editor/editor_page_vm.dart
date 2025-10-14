@@ -125,7 +125,8 @@ class EditorPageVm extends ChangeNotifier {
     final runSync =
         selectedMode == EditorModes.edit && mode == EditorModes.view;
 
-    if (selectedMode == EditorModes.edit) {
+    if (mode == EditorModes.edit) {
+      logger.d('Bufferizing frames trigger on ui');
       syncModel.bufferizeFrames();
     }
 

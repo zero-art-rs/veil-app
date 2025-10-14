@@ -87,7 +87,6 @@ extension SyncModelInit on SyncModel {
         messageSequenceNumber: document.sequenceNumber,
       );
 
-      logger.d('Last received, seqNum: ${result.spFrames.first.seqNum}');
       if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
         break;
       }
@@ -150,7 +149,10 @@ extension SyncModelInit on SyncModel {
 
 extension SyncModelHandle on SyncModel {
   void bufferizeFrames() {
-    return _processQueue.addJob(() async => bufferFrames = true);
+    return _processQueue.addJob(() async {
+      logger.i('Change process frames to buffer mode');
+      bufferFrames = true;
+    });
   }
 
   Future<void> applyBufferedFrames() async {
@@ -160,6 +162,7 @@ extension SyncModelHandle on SyncModel {
       await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
       _crdtUpdatesEvent.add(document.automergeDoc);
       bufferFrames = false;
+      logger.i('Change process frames to process mode');
     });
   }
 }
@@ -175,12 +178,12 @@ extension SyncModelProcessOperations on SyncModel {
         final (crdtList, _) = await _processFrame(spframe);
 
         if (bufferFrames) {
-          logger.d('Started no buffer frames flow');
+          logger.d('Buffering crdt frames...');
           for (final payload in crdtList) {
             await _crdtBuffer.push(payload);
           }
         } else {
-          logger.d('Started no buffering frames flow');
+          logger.d('Applying crdt frames...');
           final snapshot = await _crdtBuffer.snapshot();
           snapshot.addAll(crdtList);
           await applyCrdtListOperation(snapshot);
