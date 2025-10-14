@@ -12,7 +12,6 @@ import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/models.dart' as m;
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
-import 'package:veil/utils/secret_factory.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/ays_modal.dart';
 
@@ -32,14 +31,11 @@ class DocumentMemberListScreen extends StatefulWidget {
   const DocumentMemberListScreen({
     super.key,
     required this.members,
-    required this.doc,
     required this.syncModel,
   });
 
   final List<MemberScreenModel> members;
   final SyncModel syncModel;
-
-  final m.Document doc;
 
   @override
   State<DocumentMemberListScreen> createState() =>
@@ -170,59 +166,68 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   }
 
   void _inviteUndentifiedMember(BuildContext context) {
-    showInviteDialog(widget.syncModel.createInviteLink());
-  }
-
-  Future<void> _inviteContactMember(Contact contact) async {
-    final future = Future(() async {
+    final work = Future<String>(() async {
       try {
-        final firstSpk = contact.spks.firstOrNull;
-        final spkPublicKey = firstSpk != null
-            ? Uint8List.fromList(firstSpk)
-            : null;
-
-        final payload = Payload(
-          crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-        ).writeToBuffer();
-
-        logger.i('epoch ${await widget.syncModel.groupContext.epoch()}');
-
-        final (frame, invite) = await widget.syncModel.groupContext
-            .addIdentifiedMember(
-              identityPublicKey: contact.account.rawPublicKey,
-              spkPublicKey: spkPublicKey,
-              payloads: [payload],
-            );
-
-        await GroupApiClient.instance.sendFrame(
-          groupId: widget.doc.id,
-          frame: frame,
-        );
-
-        logger.i('Member invite sent');
-        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-        await DB.instance.updateDocument(
-          doc: widget.syncModel.document,
-          parts: await widget.syncModel.groupContext.asParts(),
-        );
-
-        if (spkPublicKey != null) {
-          logger.i('Removing spk contact spk..');
-          await ContactsManager.instance.removeSpk(
-            contact.account.actorId,
-            spkPublicKey.toList(),
-          );
-        }
-
-        return inviteLink;
+        return await widget.syncModel.createInviteLink();
       } catch (e) {
-        logger.e('Failed to invite member: $e');
+        logger.e('Failed to create invite link: $e');
         rethrow;
       }
     });
 
-    showInviteDialog(future);
+    showInviteDialog(work);
+  }
+
+  Future<void> _inviteContactMember(Contact contact) async {
+    final future = Future(() async {
+      // try {
+      //   final firstSpk = contact.spks.firstOrNull;
+      //   final spkPublicKey = firstSpk != null
+      //       ? Uint8List.fromList(firstSpk)
+      //       : null;
+
+      //   final payload = Payload(
+      //     crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+      //   ).writeToBuffer();
+
+      //   logger.i('epoch ${await widget.syncModel.groupContext.epoch()}');
+
+      //   final (frame, invite) = await widget.syncModel.groupContext
+      //       .addIdentifiedMember(
+      //         identityPublicKey: contact.account.rawPublicKey,
+      //         spkPublicKey: spkPublicKey,
+      //         payloads: [payload],
+      //       );
+
+      //   await GroupApiClient.instance.sendFrame(
+      //     groupId: widget.doc.id,
+      //     frame: frame,
+      //   );
+
+      //   logger.i('Member invite sent');
+      //   final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+      //   await DB.instance.updateDocument(
+      //     doc: widget.syncModel.document,
+      //     parts: await widget.syncModel.groupContext.asParts(),
+      //   );
+
+      //   if (spkPublicKey != null) {
+      //     logger.i('Removing spk contact spk..');
+      //     await ContactsManager.instance.removeSpk(
+      //       contact.account.actorId,
+      //       spkPublicKey.toList(),
+      //     );
+      //   }
+
+      //   return inviteLink;
+      // } catch (e) {
+      //   logger.e('Failed to invite member: $e');
+      //   rethrow;
+      // }
+    });
+
+    // showInviteDialog(future);
   }
 
   @override

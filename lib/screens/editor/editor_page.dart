@@ -168,7 +168,6 @@ class _EditorPageView extends StatelessWidget {
                         onGenerateRoute: (_) => MaterialPageRoute(
                           builder: (_) => DocumentMemberListScreen(
                             members: members,
-                            doc: vm.syncModel.document,
                             syncModel: vm.syncModel,
                           ),
                         ),
@@ -180,7 +179,6 @@ class _EditorPageView extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => DocumentMemberListScreen(
                           members: members,
-                          doc: vm.syncModel.document,
                           syncModel: vm.syncModel,
                         ),
                       ),

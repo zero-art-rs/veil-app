@@ -212,14 +212,19 @@ extension SyncModelProcessOperations on SyncModel {
 extension SyncModelSendOperations on SyncModel {
   Future<void> sendCrdtFrame(String md) async {
     _sendQueue.addJob(() async {
-      logger.i('Sending crdt frame..');
-      final snapshot = await _crdtBuffer.snapshot();
-      logger.d('Snapshot size: ${snapshot.length}');
-      await _sendCrdtFrame(md, snapshot);
-      await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-      logger.d('Buffer size after removal: ${await _crdtBuffer.length()}');
-      _crdtUpdatesEvent.add(document.automergeDoc);
-      logger.i('Sent crdt frame');
+      try {
+        logger.i('Sending crdt frame..');
+        final snapshot = await _crdtBuffer.snapshot();
+        logger.d('Snapshot size: ${snapshot.length}');
+        await _sendCrdtFrame(md, snapshot);
+        await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
+        logger.d('Buffer size after removal: ${await _crdtBuffer.length()}');
+        _crdtUpdatesEvent.add(document.automergeDoc);
+        logger.i('Sent crdt frame');
+      } catch (e) {
+        logger.e('Failed to send crdt frame: $e');
+        _sendQueue.retry();
+      }
     }, retryTime: 3);
 
     await _sendQueue.start();
@@ -229,37 +234,43 @@ extension SyncModelSendOperations on SyncModel {
     final inviteLinkStream = StreamController<String>();
 
     _sendQueue.addJob(() async {
-      final secretKey = SecretManager.intance.generateSecretKey();
+      try {
+        logger.i('Invite link creation started..');
+        final secretKey = SecretManager.intance.generateSecretKey();
 
-      final payload = Payload(
-        crdt: CRDTPayload(fullDocument: document.automergeDoc.save()),
-      ).writeToBuffer();
+        final payload = Payload(
+          crdt: CRDTPayload(fullDocument: document.automergeDoc.save()),
+        ).writeToBuffer();
 
-      logger.i('Creating unidentified member invite...');
-      final (frame, invite) = await groupContext.addUnidentifiedMember(
-        secretKey: secretKey,
-        payloads: [payload],
-      );
+        logger.i('Creating unidentified member invite...');
+        final (frame, invite) = await groupContext.addUnidentifiedMember(
+          secretKey: secretKey,
+          payloads: [payload],
+        );
 
-      logger.i('Sending unidentified member invite frame...');
-      await GroupApiClient.instance.sendFrame(
-        groupId: document.id,
-        frame: frame,
-      );
+        logger.i('Sending unidentified member invite frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: document.id,
+          frame: frame,
+        );
 
-      final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
-      await DB.instance.updateDocument(
-        doc: document,
-        parts: await groupContext.asParts(),
-      );
+        await DB.instance.updateDocument(
+          doc: document,
+          parts: await groupContext.asParts(),
+        );
 
-      inviteLinkStream.add(inviteLink);
+        inviteLinkStream.add(inviteLink);
+      } catch (e) {
+        logger.e('Failed to create invite link: $e');
+        _sendQueue.retry();
+      }
     }, retryTime: -1);
 
     await _sendQueue.start();
 
-    return inviteLinkStream.stream.first;
+    return await inviteLinkStream.stream.first;
   }
 
   Future<void> removeMember({required String actorId}) async {
@@ -293,8 +304,13 @@ extension SyncModelSendOperations on SyncModel {
 
   Future<void> sendJoinGroupFrame(Account user) async {
     _sendQueue.addJob(() async {
-      await _sendJoinGroupFrame(user);
-    }, retryTime: 3);
+      try {
+        await _sendJoinGroupFrame(user);
+      } catch (e) {
+        logger.e('Failed to send join group frame: $e');
+        _sendQueue.retry();
+      }
+    }, retryTime: -1);
 
     await _sendQueue.start();
   }
