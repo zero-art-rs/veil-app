@@ -100,9 +100,8 @@ extension SyncModelInit on SyncModel {
             frame: spFrame.frame.writeToBuffer(),
           );
 
-          for (final rawPayload in rawFramePayloads) {
-            final payload = Payload.fromBuffer(rawPayload);
-
+          final payloads = Payloads.fromBuffer(rawFramePayloads);
+          for (final payload in payloads.payloads) {
             final crdt = PayloadUtils.instance.exposePayload(payload);
 
             if (crdt == null) continue;
@@ -238,14 +237,18 @@ extension SyncModelSendOperations on SyncModel {
         logger.i('Invite link creation started..');
         final secretKey = SecretManager.intance.generateSecretKey();
 
-        final payload = Payload(
-          crdt: CRDTPayload(fullDocument: document.automergeDoc.save()),
+        final payloads = Payloads(
+          payloads: [
+            Payload(
+              crdt: CRDTPayload(fullDocument: document.automergeDoc.save()),
+            ),
+          ],
         ).writeToBuffer();
 
         logger.i('Creating unidentified member invite...');
         final (frame, invite) = await groupContext.addUnidentifiedMember(
           secretKey: secretKey,
-          payloads: [payload],
+          content: payloads,
         );
 
         logger.i('Sending unidentified member invite frame...');
@@ -280,7 +283,7 @@ extension SyncModelSendOperations on SyncModel {
       logger.i('Removing member in group context..');
       final frame = await groupContext.removeMember(
         userId: actorId,
-        payloads: [],
+        content: [],
       );
 
       logger.i('Sending remove member frame...');
@@ -354,9 +357,9 @@ extension SyncModelOperations on SyncModel {
       return (exposedCrdtPayload, true);
     }
 
-    for (final rawPayload in rawPayloads) {
-      final payload = Payload.fromBuffer(rawPayload);
+    final payloads = Payloads.fromBuffer(rawPayloads);
 
+    for (final payload in payloads.payloads) {
       final crdt = PayloadUtils.instance.exposePayload(payload);
       if (crdt == null) continue;
 
@@ -398,11 +401,11 @@ extension SyncModelOperations on SyncModel {
     await GroupApiClient.instance.sendFrame(
       groupId: document.id,
       frame: await groupContext.createFrame(
-        payloads: [
-          Payload(
-            crdt: CRDTPayload(incrementalChange: saveIncremential),
-          ).writeToBuffer(),
-        ],
+        content: Payloads(
+          payloads: [
+            Payload(crdt: CRDTPayload(incrementalChange: saveIncremential)),
+          ],
+        ).writeToBuffer(),
       ),
     );
 

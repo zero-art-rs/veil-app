@@ -51,15 +51,19 @@ abstract class BGroupContext implements RustOpaqueInterface {
   Future<(Uint8List, Uint8List)> addIdentifiedMember({
     required List<int> identityPublicKey,
     Uint8List? spkPublicKey,
-    required List<Uint8List> payloads,
+    required List<int> content,
   });
 
   Future<(Uint8List, Uint8List)> addUnidentifiedMember({
     required List<int> secretKey,
-    required List<Uint8List> payloads,
+    required List<int> content,
   });
 
-  Future<Uint8List> createFrame({required List<Uint8List> payloads});
+  Future<Uint8List> changeGroup({String? name, Uint8List? picture});
+
+  Future<Uint8List> changeUser({String? name, Uint8List? picture});
+
+  Future<Uint8List> createFrame({required List<int> content});
 
   Future<BigInt> epoch();
 
@@ -83,11 +87,13 @@ abstract class BGroupContext implements RustOpaqueInterface {
 
   Future<Uint8List> joinGroupAs({required BUser user});
 
-  Future<List<Uint8List>> processFrame({required List<int> frame});
+  Future<Uint8List> leaveGroup();
+
+  Future<Uint8List> processFrame({required List<int> frame});
 
   Future<Uint8List> removeMember({
     required String userId,
-    required List<Uint8List> payloads,
+    required List<int> content,
   });
 
   Future<Uint8List> signChallenge({required List<int> challenge});
