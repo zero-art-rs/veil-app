@@ -154,7 +154,7 @@ class SyncProvider {
     );
 
     final listener = stream.listen(
-      (event) {
+      (event) async {
         if (event.data == null || event.data!.isEmpty) return;
 
         final rawJson = json.decode(event.data!);
@@ -163,6 +163,8 @@ class SyncProvider {
         final frameBytes = base64Decode(rawJson['pub']['data'].toString());
 
         final frame = SPFrame.fromBuffer(frameBytes);
+
+        logger.i('receive frame');
 
         syncModel.processFrame(frame);
       },
@@ -177,7 +179,8 @@ class SyncProvider {
 
     syncModel.listener = listener;
     await syncModel.synchronizeInitially(allowFullDocument: allowFullDocument);
-    syncModel.bufferFrames = false;
+    await syncModel.applyBufferedFrames();
+    syncModel.listenProcess();
 
     return syncModel;
   }

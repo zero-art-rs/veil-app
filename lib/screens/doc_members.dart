@@ -185,31 +185,36 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
   void _inviteUndentifiedMember(BuildContext context) {
     final inviteLink = Future(() async {
-      final secretKey = SecretManager.intance.generateSecretKey();
+      try {
+        final secretKey = SecretManager.intance.generateSecretKey();
 
-      final payload = Payload(
-        crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-      ).writeToBuffer();
+        final payload = Payload(
+          crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
+        ).writeToBuffer();
 
-      logger.i('Creating unidentified member invite...');
-      final (frame, invite) = await widget.syncModel.groupContext
-          .addUnidentifiedMember(secretKey: secretKey, payloads: [payload]);
+        logger.i('Creating unidentified member invite...');
+        final (frame, invite) = await widget.syncModel.groupContext
+            .addUnidentifiedMember(secretKey: secretKey, payloads: [payload]);
 
-      logger.i('Sending unidentified member invite frame...');
-      await GroupApiClient.instance.sendFrame(
-        groupId: widget.doc.id,
-        frame: frame,
-      );
+        logger.i('Sending unidentified member invite frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: widget.doc.id,
+          frame: frame,
+        );
 
-      logger.i('Unidentified member invite sent');
-      final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+        logger.i('Unidentified member invite sent');
+        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
-      await DB.instance.updateDocument(
-        doc: widget.syncModel.document,
-        parts: await widget.syncModel.groupContext.asParts(),
-      );
+        await DB.instance.updateDocument(
+          doc: widget.syncModel.document,
+          parts: await widget.syncModel.groupContext.asParts(),
+        );
 
-      return inviteLink;
+        return inviteLink;
+      } catch (e) {
+        logger.e('Failed to invite member: $e');
+        rethrow;
+      }
     });
 
     showInviteDialog(inviteLink);
@@ -226,6 +231,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         final payload = Payload(
           crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
         ).writeToBuffer();
+
+        logger.i('epoch ${await widget.syncModel.groupContext.epoch()}');
 
         final (frame, invite) = await widget.syncModel.groupContext
             .addIdentifiedMember(

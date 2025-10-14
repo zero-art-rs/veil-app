@@ -3,8 +3,8 @@ import 'dart:convert';
 
 import 'package:async_queue/async_queue.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
-import 'package:rxdart/subjects.dart';
 import 'package:veil/api/group_api_client.dart';
+import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/sync_buffer.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
@@ -32,9 +32,12 @@ class SyncModel {
   bool bufferFrames = true;
 
   final _crdtUpdatesEvent = StreamController<BAutoCommit>.broadcast();
-  Stream<BAutoCommit> get crdtUpdatesEvent => _crdtUpdatesEvent.stream;
   final _removedFromGroupEvent = StreamController<bool>.broadcast();
+  final _isProcessing = StreamController<bool>.broadcast();
+
+  Stream<BAutoCommit> get crdtUpdatesEvent => _crdtUpdatesEvent.stream;
   Stream<bool> get removedFromGroupEvent => _removedFromGroupEvent.stream;
+  Stream<bool> get isProcessing => _isProcessing.stream;
 
   get isLocal => document.localOnly;
 
@@ -43,9 +46,25 @@ class SyncModel {
     required this.groupContext,
     required this.listener,
   });
+
+  bool isUserInGroup() {
+    return groupContext.retrieveGroupInfo().members.any(
+      (e) => e.id == AccountSecureStorage.instance.account.actorId,
+    );
+  }
 }
 
 extension SyncModelInit on SyncModel {
+  void listenProcess() {
+    _processQueue.addQueueListener((e) {
+      _isProcessing.add(e.currentQueueSize != 0 && _sendQueue.size != 0);
+    });
+
+    _sendQueue.addQueueListener((e) {
+      _isProcessing.add(e.currentQueueSize != 0 && _processQueue.size != 0);
+    });
+  }
+
   Future<void> synchronizeInitially({bool allowFullDocument = false}) async {
     logger.d(
       'Document sequence number before polling: ${document.sequenceNumber}',
@@ -68,38 +87,52 @@ extension SyncModelInit on SyncModel {
         messageSequenceNumber: document.sequenceNumber,
       );
 
+      logger.d('Last received, seqNum: ${result.spFrames.first.seqNum}');
       if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
         break;
       }
 
       for (final spFrame in result.spFrames.reversed) {
-        final rawFramePayloads = await groupContext.processFrame(
-          frame: spFrame.frame.writeToBuffer(),
-        );
+        try {
+          final rawFramePayloads = await groupContext.processFrame(
+            frame: spFrame.frame.writeToBuffer(),
+          );
 
-        for (final rawPayload in rawFramePayloads) {
-          final payload = Payload.fromBuffer(rawPayload);
+          for (final rawPayload in rawFramePayloads) {
+            final payload = Payload.fromBuffer(rawPayload);
 
-          final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
+            final (crdt, _) = PayloadUtils.instance.exposePayload(payload);
 
-          if (crdt == null) continue;
+            if (crdt == null) continue;
 
-          switch (crdt.kind) {
-            case ExposedCRDTPayloadKind.incrementalChange:
-              document.automergeDoc.loadIncremental(
-                bytes: crdt.crdt.incrementalChange,
-              );
-            case ExposedCRDTPayloadKind.fullDocument:
-              logger.d('Received crdt full document');
-              document.automergeDoc = BAutoCommit.load(
-                data: crdt.crdt.fullDocument,
-              );
+            switch (crdt.kind) {
+              case ExposedCRDTPayloadKind.incrementalChange:
+                document.automergeDoc.loadIncremental(
+                  bytes: crdt.crdt.incrementalChange,
+                );
+              case ExposedCRDTPayloadKind.fullDocument:
+                logger.d('Received crdt full document');
+                document.automergeDoc = BAutoCommit.load(
+                  data: crdt.crdt.fullDocument,
+                );
+            }
+          }
+        } catch (e) {
+          if (e.toString().contains('Changes already applied or merged')) {
+            continue;
+          } else {
+            rethrow;
           }
         }
       }
 
       document.sequenceNumber = result.spFrames.first.seqNum.toInt();
     }
+
+    await _db.updateDocument(
+      doc: document,
+      parts: await groupContext.asParts(),
+    );
 
     logger.d(
       'Document sequence number after polling: ${document.sequenceNumber}',
@@ -115,8 +148,24 @@ extension SyncModelInit on SyncModel {
   }
 }
 
+extension SyncModelHandle on SyncModel {
+  void bufferizeFrames() {
+    return _processQueue.addJob(() async => bufferFrames = true);
+  }
+
+  Future<void> applyBufferedFrames() async {
+    _processQueue.addJob(() async {
+      final snapshot = await _crdtBuffer.snapshot();
+      await applyCrdtListOperation(snapshot);
+      await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
+      _crdtUpdatesEvent.add(document.automergeDoc);
+      bufferFrames = false;
+    });
+  }
+}
+
 extension SyncModelProcessOperations on SyncModel {
-  Future<void> processFrame(SPFrame spframe) async {
+  void processFrame(SPFrame spframe) async {
     _processQueue.addJob(() async {
       logger.i('Received frame, processing..');
       logger.d('Received frame, frame epoch: ${spframe.frame.frame.epoch}..');
@@ -132,12 +181,16 @@ extension SyncModelProcessOperations on SyncModel {
           }
         } else {
           logger.d('Started no buffering frames flow');
-          await appyCrdtListOperation(crdtList);
+          final snapshot = await _crdtBuffer.snapshot();
+          snapshot.addAll(crdtList);
+          await applyCrdtListOperation(snapshot);
+          await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
           _crdtUpdatesEvent.add(document.automergeDoc);
         }
       } catch (e) {
         if (e.toString().contains('User removed from group')) {
           logger.i('User removed from group, making local only');
+          _removedFromGroupEvent.add(true);
           await disableNetworkSyncOperation();
           await LocalStateUtils.instance.makeDocumentLocal(document);
         } else {
@@ -145,6 +198,8 @@ extension SyncModelProcessOperations on SyncModel {
         }
       }
     });
+
+    _processQueue.start();
   }
 }
 
@@ -156,7 +211,7 @@ extension SyncModelSendOperations on SyncModel {
       logger.d('Snapshot size: ${snapshot.length}');
       await _sendCrdtFrame(md, snapshot);
       await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-      logger.d('Buffer size after removal: ${_crdtBuffer.length}');
+      logger.d('Buffer size after removal: ${await _crdtBuffer.length()}');
       _crdtUpdatesEvent.add(document.automergeDoc);
       logger.i('Sent crdt frame');
     }, retryTime: 3);
@@ -174,10 +229,12 @@ extension SyncModelSendOperations on SyncModel {
 }
 
 extension SyncModelOperations on SyncModel {
-  Future<String> appyCrdtListOperation(
-    List<ExposedCRDTPayload> payloads,
-  ) async {
+  Future<void> applyCrdtListOperation(List<ExposedCRDTPayload> payloads) async {
     logger.i('Applying crdt list..');
+    if (payloads.isEmpty) {
+      logger.i('No crdt payload list to apply');
+      return;
+    }
     _syncDocumentWithCrdt(document, payloads);
 
     await _db.updateDocument(
@@ -185,9 +242,7 @@ extension SyncModelOperations on SyncModel {
       parts: await groupContext.asParts(),
     );
 
-    logger.i('Applied Crdt list');
-
-    return EditorAutomergeUtils.instance.toText(document.automergeDoc);
+    logger.i('Applied crdt list');
   }
 
   Future<void> disableNetworkSyncOperation() async {
