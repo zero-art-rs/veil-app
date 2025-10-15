@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:async_queue/async_queue.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
@@ -229,12 +230,70 @@ extension SyncModelSendOperations on SyncModel {
     await _sendQueue.start();
   }
 
-  Future<String> createInviteLink({Contact? contact}) async {
+  Future<String> createIdentifiedMemberLink({required Contact contact}) async {
     final inviteLinkStream = StreamController<String>();
 
     _sendQueue.addJob(() async {
       try {
-        logger.i('Invite link creation started..');
+        logger.i('Creating identified member invite..');
+        final firstSpk = contact.spks.firstOrNull;
+        final spkPublicKey = firstSpk != null
+            ? Uint8List.fromList(firstSpk)
+            : null;
+
+        logger.i('Spk to use apply: $spkPublicKey');
+
+        final payload = Payload(
+          crdt: CRDTPayload(fullDocument: document.automergeDoc.save()),
+        );
+
+        logger.i('Creating identified invite frame');
+        final (frame, invite) = await groupContext.addIdentifiedMember(
+          identityPublicKey: contact.account.rawPublicKey,
+          spkPublicKey: spkPublicKey,
+          content: Payloads(payloads: [payload]).writeToBuffer(),
+        );
+
+        logger.i('Sending identified invite frame');
+        await GroupApiClient.instance.sendFrame(
+          groupId: document.id,
+          frame: frame,
+        );
+        logger.i('Identified invite frame sent');
+
+        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+        await DB.instance.updateDocument(
+          doc: document,
+          parts: await groupContext.asParts(),
+        );
+
+        if (spkPublicKey != null) {
+          logger.i('Removing spk contact spk..');
+          await ContactsManager.instance.removeSpk(
+            contact.account.actorId,
+            spkPublicKey.toList(),
+          );
+        }
+
+        inviteLinkStream.add(inviteLink);
+      } catch (e) {
+        logger.e('Failed to invite member: $e');
+        _sendQueue.retry();
+      }
+    }, retryTime: -1);
+
+    await _sendQueue.start();
+
+    return await inviteLinkStream.stream.first;
+  }
+
+  Future<String> createUnidentifiedMemberInviteLink() async {
+    final inviteLinkStream = StreamController<String>();
+
+    _sendQueue.addJob(() async {
+      try {
+        logger.i('Creating unidentified member invite..');
         final secretKey = SecretManager.intance.generateSecretKey();
 
         final payloads = Payloads(
@@ -245,13 +304,13 @@ extension SyncModelSendOperations on SyncModel {
           ],
         ).writeToBuffer();
 
-        logger.i('Creating unidentified member invite...');
+        logger.i('Creating unidentified invite frame..');
         final (frame, invite) = await groupContext.addUnidentifiedMember(
           secretKey: secretKey,
           content: payloads,
         );
 
-        logger.i('Sending unidentified member invite frame...');
+        logger.i('Sending unidentified invite frame...');
         await GroupApiClient.instance.sendFrame(
           groupId: document.id,
           frame: frame,

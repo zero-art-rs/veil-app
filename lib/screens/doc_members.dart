@@ -2,16 +2,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
-import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/models.dart' as m;
-import 'package:veil/storage/sqlite/db.dart';
-import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/ays_modal.dart';
 
@@ -137,26 +132,25 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  Future<void> _removeMember(BuildContext context, m.DocumentMember user) async {
-    final work = Future<void>(() async {
-      logger.i('Removing member in group context..');
-
-      await widget.syncModel.removeMember(actorId: user.account.actorId);
-
-      setState(() {
-        widget.members.removeWhere(
-          (e) => e.member.account.actorId == user.account.actorId,
-        );
-      });
-    });
-
+  Future<void> _removeMember(
+    BuildContext context,
+    m.DocumentMember user,
+  ) async {
     await aysAsyncModal(
       context: context,
       title: 'Are you sure to remove ${user.account.name} from group?',
       content: 'This action cannot be undone.',
       callback: () async {
         try {
-          await work;
+          logger.i('Removing member in group context..');
+
+          await widget.syncModel.removeMember(actorId: user.account.actorId);
+
+          setState(() {
+            widget.members.removeWhere(
+              (e) => e.member.account.actorId == user.account.actorId,
+            );
+          });
         } catch (e) {
           logger.e('Failed to remove member: $e');
           rethrow;
@@ -168,9 +162,9 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   void _inviteUndentifiedMember(BuildContext context) {
     final work = Future<String>(() async {
       try {
-        return await widget.syncModel.createInviteLink();
+        return await widget.syncModel.createUnidentifiedMemberInviteLink();
       } catch (e) {
-        logger.e('Failed to create invite link: $e');
+        logger.e('Failed to create unidentified invite link: $e');
         rethrow;
       }
     });
@@ -180,54 +174,17 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
   Future<void> _inviteContactMember(Contact contact) async {
     final future = Future(() async {
-      // try {
-      //   final firstSpk = contact.spks.firstOrNull;
-      //   final spkPublicKey = firstSpk != null
-      //       ? Uint8List.fromList(firstSpk)
-      //       : null;
-
-      //   final payload = Payload(
-      //     crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-      //   ).writeToBuffer();
-
-      //   logger.i('epoch ${await widget.syncModel.groupContext.epoch()}');
-
-      //   final (frame, invite) = await widget.syncModel.groupContext
-      //       .addIdentifiedMember(
-      //         identityPublicKey: contact.account.rawPublicKey,
-      //         spkPublicKey: spkPublicKey,
-      //         payloads: [payload],
-      //       );
-
-      //   await GroupApiClient.instance.sendFrame(
-      //     groupId: widget.doc.id,
-      //     frame: frame,
-      //   );
-
-      //   logger.i('Member invite sent');
-      //   final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-      //   await DB.instance.updateDocument(
-      //     doc: widget.syncModel.document,
-      //     parts: await widget.syncModel.groupContext.asParts(),
-      //   );
-
-      //   if (spkPublicKey != null) {
-      //     logger.i('Removing spk contact spk..');
-      //     await ContactsManager.instance.removeSpk(
-      //       contact.account.actorId,
-      //       spkPublicKey.toList(),
-      //     );
-      //   }
-
-      //   return inviteLink;
-      // } catch (e) {
-      //   logger.e('Failed to invite member: $e');
-      //   rethrow;
-      // }
+      try {
+        return await widget.syncModel.createIdentifiedMemberLink(
+          contact: contact,
+        );
+      } catch (e) {
+        logger.e('Failed to create indentified invite link: $e');
+        rethrow;
+      }
     });
 
-    // showInviteDialog(future);
+    showInviteDialog(future);
   }
 
   @override
