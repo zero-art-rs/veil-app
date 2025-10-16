@@ -65,7 +65,7 @@ class DocumentMember {
 class DocumentMemberRole {}
 
 class Document {
-  final String id;
+  String id;
   BAutoCommit automergeDoc;
   DateTime createdAt;
   GroupContextParts groupContextParts;

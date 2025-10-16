@@ -2,18 +2,11 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
-import 'package:veil/managers/sharing/deeplink_manager.dart';
-import 'package:veil/managers/sync_provider/sync_model_executor.dart';
-import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/contacts_page.dart';
-import 'package:veil/screens/editor/frame_processor/executor.dart';
 import 'package:veil/storage/models.dart' as m;
-import 'package:veil/storage/sqlite/db.dart';
-import 'package:veil/utils/group_context_factory.dart';
-import 'package:veil/utils/secret_factory.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/ays_modal.dart';
 
@@ -33,14 +26,11 @@ class DocumentMemberListScreen extends StatefulWidget {
   const DocumentMemberListScreen({
     super.key,
     required this.members,
-    required this.doc,
-    required this.executor,
+    required this.syncModel,
   });
 
   final List<MemberScreenModel> members;
-  final SyncModelExecutor executor;
-
-  final m.Document doc;
+  final SyncModel syncModel;
 
   @override
   State<DocumentMemberListScreen> createState() =>
@@ -142,44 +132,25 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  void _removeMember(BuildContext context, m.DocumentMember user) {
-    final work = Future<void>(() async {
-      await widget.executor.operate((syncModel) async {
-        logger.i('Removing member in group context..');
-        final (frame, member) = await syncModel.groupContext.removeMember(
-          userId: user.account.actorId,
-          payloads: [],
-        );
-
-        logger.i('Sending remove member frame...');
-        await GroupApiClient.instance.sendFrame(
-          groupId: widget.doc.id,
-          frame: frame,
-        );
-
-        logger.i('Committing state...');
-        syncModel.groupContext.commitState();
-
-        logger.i('Member removed from document');
-        await DB.instance.updateDocument(
-          doc: widget.doc,
-          parts: syncModel.groupContext.asParts(),
-        );
-      }, priority: TaskPriority.low);
-      setState(() {
-        widget.members.removeWhere(
-          (e) => e.member.account.actorId == user.account.actorId,
-        );
-      });
-    });
-
-    aysAsyncModal(
+  Future<void> _removeMember(
+    BuildContext context,
+    m.DocumentMember user,
+  ) async {
+    await aysAsyncModal(
       context: context,
       title: 'Are you sure to remove ${user.account.name} from group?',
       content: 'This action cannot be undone.',
       callback: () async {
         try {
-          await work;
+          logger.i('Removing member in group context..');
+
+          await widget.syncModel.removeMember(actorId: user.account.actorId);
+
+          setState(() {
+            widget.members.removeWhere(
+              (e) => e.member.account.actorId == user.account.actorId,
+            );
+          });
         } catch (e) {
           logger.e('Failed to remove member: $e');
           rethrow;
@@ -189,90 +160,28 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   }
 
   void _inviteUndentifiedMember(BuildContext context) {
-    final inviteLink = Future(() async {
-      return await widget.executor.operate((syncModel) async {
-        final secretKey = SecretManager.intance.generateSecretKey();
-
-        final payload = Payload(
-          crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-        ).writeToBuffer();
-
-        logger.i('Creating unidentified member invite...');
-        final (frame, invite) = await syncModel.groupContext
-            .addUnidentifiedMember(secretKey: secretKey, payloads: [payload]);
-
-        logger.i('Sending unidentified member invite frame...');
-        await GroupApiClient.instance.sendFrame(
-          groupId: widget.doc.id,
-          frame: frame,
-        );
-
-        logger.i('Committing state...');
-        syncModel.groupContext.commitState();
-        logger.i('Unidentified member invite sent');
-        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-        await DB.instance.updateDocument(
-          doc: syncModel.document,
-          parts: syncModel.groupContext.asParts(),
-        );
-
-        return inviteLink;
-      }, priority: TaskPriority.low);
+    final work = Future<String>(() async {
+      try {
+        return await widget.syncModel.createUnidentifiedMemberInviteLink();
+      } catch (e) {
+        logger.e('Failed to create unidentified invite link: $e');
+        rethrow;
+      }
     });
 
-    showInviteDialog(inviteLink);
+    showInviteDialog(work);
   }
 
   Future<void> _inviteContactMember(Contact contact) async {
     final future = Future(() async {
-      return await widget.executor.operate((syncModel) async {
-        try {
-          final firstSpk = contact.spks.firstOrNull;
-          final spkPublicKey = firstSpk != null
-              ? Uint8List.fromList(firstSpk)
-              : null;
-
-          final payload = Payload(
-            crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-          ).writeToBuffer();
-
-          final (frame, invite) = await syncModel.groupContext
-              .addIdentifiedMember(
-                identityPublicKey: contact.account.rawPublicKey,
-                spkPublicKey: spkPublicKey,
-                payloads: [payload],
-              );
-
-          await GroupApiClient.instance.sendFrame(
-            groupId: widget.doc.id,
-            frame: frame,
-          );
-
-          syncModel.groupContext.commitState();
-
-          logger.i('Member invite sent');
-          final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-          await DB.instance.updateDocument(
-            doc: syncModel.document,
-            parts: syncModel.groupContext.asParts(),
-          );
-
-          if (spkPublicKey != null) {
-            logger.i('Removing spk contact spk..');
-            await ContactsManager.instance.removeSpk(
-              contact.account.actorId,
-              spkPublicKey.toList(),
-            );
-          }
-
-          return inviteLink;
-        } catch (e) {
-          logger.e('Failed to invite member: $e');
-          rethrow;
-        }
-      }, priority: TaskPriority.low);
+      try {
+        return await widget.syncModel.createIdentifiedMemberLink(
+          contact: contact,
+        );
+      } catch (e) {
+        logger.e('Failed to create indentified invite link: $e');
+        rethrow;
+      }
     });
 
     showInviteDialog(future);
@@ -394,7 +303,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       children: [
         if (currentAccountIsOwner && !g.isYou)
           IconButton(
-            onPressed: () => _removeMember(context, g.member),
+            onPressed: () async => await _removeMember(context, g.member),
             icon: Icon(Icons.delete),
           ),
 

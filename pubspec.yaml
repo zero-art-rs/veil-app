@@ -69,6 +69,8 @@ dependencies:
   crypto: ^3.0.3
   collection: ^1.19.1
   dio: ^5.9.0
+  quiver: ^3.2.2
+  synchronized: ^3.4.0
 
 
 dev_dependencies:

@@ -27,6 +27,7 @@ class User extends $pb.GeneratedMessage {
     $core.List<$core.int>? publicKey,
     $core.List<$core.int>? picture,
     Role? role,
+    $core.List<$core.int>? leafKey,
   }) {
     final $result = create();
     if (id != null) {
@@ -44,6 +45,9 @@ class User extends $pb.GeneratedMessage {
     if (role != null) {
       $result.role = role;
     }
+    if (leafKey != null) {
+      $result.leafKey = leafKey;
+    }
     return $result;
   }
   User._() : super();
@@ -56,6 +60,7 @@ class User extends $pb.GeneratedMessage {
     ..a<$core.List<$core.int>>(3, _omitFieldNames ? '' : 'publicKey', $pb.PbFieldType.OY)
     ..a<$core.List<$core.int>>(4, _omitFieldNames ? '' : 'picture', $pb.PbFieldType.OY)
     ..e<Role>(5, _omitFieldNames ? '' : 'role', $pb.PbFieldType.OE, defaultOrMaker: Role.READ, valueOf: Role.valueOf, enumValues: Role.values)
+    ..a<$core.List<$core.int>>(10, _omitFieldNames ? '' : 'leafKey', $pb.PbFieldType.OY)
     ..hasRequiredFields = false
   ;
 
@@ -124,6 +129,15 @@ class User extends $pb.GeneratedMessage {
   $core.bool hasRole() => $_has(4);
   @$pb.TagNumber(5)
   void clearRole() => clearField(5);
+
+  @$pb.TagNumber(10)
+  $core.List<$core.int> get leafKey => $_getN(5);
+  @$pb.TagNumber(10)
+  set leafKey($core.List<$core.int> v) { $_setBytes(5, v); }
+  @$pb.TagNumber(10)
+  $core.bool hasLeafKey() => $_has(5);
+  @$pb.TagNumber(10)
+  void clearLeafKey() => clearField(10);
 }
 
 class ContentAttachment extends $pb.GeneratedMessage {
@@ -692,10 +706,54 @@ class GroupActionPayload extends $pb.GeneratedMessage {
   User ensureFinalizeRemoval() => $_ensure(7);
 }
 
+/// vector of Payloads
+class Payloads extends $pb.GeneratedMessage {
+  factory Payloads({
+    $core.Iterable<Payload>? payloads,
+  }) {
+    final $result = create();
+    if (payloads != null) {
+      $result.payloads.addAll(payloads);
+    }
+    return $result;
+  }
+  Payloads._() : super();
+  factory Payloads.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory Payloads.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Payloads', package: const $pb.PackageName(_omitMessageNames ? '' : 'zero_art_proto'), createEmptyInstance: create)
+    ..pc<Payload>(1, _omitFieldNames ? '' : 'payloads', $pb.PbFieldType.PM, subBuilder: Payload.create)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  Payloads clone() => Payloads()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  Payloads copyWith(void Function(Payloads) updates) => super.copyWith((message) => updates(message as Payloads)) as Payloads;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static Payloads create() => Payloads._();
+  Payloads createEmptyInstance() => create();
+  static $pb.PbList<Payloads> createRepeated() => $pb.PbList<Payloads>();
+  @$core.pragma('dart2js:noInline')
+  static Payloads getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Payloads>(create);
+  static Payloads? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<Payload> get payloads => $_getList(0);
+}
+
 enum Payload_Content {
   crdt, 
   chat, 
-  action, 
   notSet
 }
 
@@ -704,7 +762,6 @@ class Payload extends $pb.GeneratedMessage {
   factory Payload({
     CRDTPayload? crdt,
     ChatPayload? chat,
-    GroupActionPayload? action,
   }) {
     final $result = create();
     if (crdt != null) {
@@ -712,9 +769,6 @@ class Payload extends $pb.GeneratedMessage {
     }
     if (chat != null) {
       $result.chat = chat;
-    }
-    if (action != null) {
-      $result.action = action;
     }
     return $result;
   }
@@ -725,14 +779,12 @@ class Payload extends $pb.GeneratedMessage {
   static const $core.Map<$core.int, Payload_Content> _Payload_ContentByTag = {
     1 : Payload_Content.crdt,
     2 : Payload_Content.chat,
-    10 : Payload_Content.action,
     0 : Payload_Content.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Payload', package: const $pb.PackageName(_omitMessageNames ? '' : 'zero_art_proto'), createEmptyInstance: create)
-    ..oo(0, [1, 2, 10])
+    ..oo(0, [1, 2])
     ..aOM<CRDTPayload>(1, _omitFieldNames ? '' : 'crdt', subBuilder: CRDTPayload.create)
     ..aOM<ChatPayload>(2, _omitFieldNames ? '' : 'chat', subBuilder: ChatPayload.create)
-    ..aOM<GroupActionPayload>(10, _omitFieldNames ? '' : 'action', subBuilder: GroupActionPayload.create)
     ..hasRequiredFields = false
   ;
 
@@ -781,18 +833,6 @@ class Payload extends $pb.GeneratedMessage {
   void clearChat() => clearField(2);
   @$pb.TagNumber(2)
   ChatPayload ensureChat() => $_ensure(1);
-
-  /// TODO: consider adding new payload types: message, media file, etc
-  @$pb.TagNumber(10)
-  GroupActionPayload get action => $_getN(2);
-  @$pb.TagNumber(10)
-  set action(GroupActionPayload v) { setField(10, v); }
-  @$pb.TagNumber(10)
-  $core.bool hasAction() => $_has(2);
-  @$pb.TagNumber(10)
-  void clearAction() => clearField(10);
-  @$pb.TagNumber(10)
-  GroupActionPayload ensureAction() => $_ensure(2);
 }
 
 enum GroupOperation_Operation {
@@ -802,6 +842,7 @@ enum GroupOperation_Operation {
   keyUpdate, 
   leaveGroup, 
   dropGroup, 
+  aggregated, 
   notSet
 }
 
@@ -814,6 +855,7 @@ class GroupOperation extends $pb.GeneratedMessage {
     $core.List<$core.int>? keyUpdate,
     $core.List<$core.int>? leaveGroup,
     $core.List<$core.int>? dropGroup,
+    $core.List<$core.int>? aggregated,
   }) {
     final $result = create();
     if (init != null) {
@@ -834,6 +876,9 @@ class GroupOperation extends $pb.GeneratedMessage {
     if (dropGroup != null) {
       $result.dropGroup = dropGroup;
     }
+    if (aggregated != null) {
+      $result.aggregated = aggregated;
+    }
     return $result;
   }
   GroupOperation._() : super();
@@ -847,16 +892,18 @@ class GroupOperation extends $pb.GeneratedMessage {
     4 : GroupOperation_Operation.keyUpdate,
     5 : GroupOperation_Operation.leaveGroup,
     10 : GroupOperation_Operation.dropGroup,
+    11 : GroupOperation_Operation.aggregated,
     0 : GroupOperation_Operation.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GroupOperation', package: const $pb.PackageName(_omitMessageNames ? '' : 'zero_art_proto'), createEmptyInstance: create)
-    ..oo(0, [1, 2, 3, 4, 5, 10])
+    ..oo(0, [1, 2, 3, 4, 5, 10, 11])
     ..a<$core.List<$core.int>>(1, _omitFieldNames ? '' : 'init', $pb.PbFieldType.OY)
     ..a<$core.List<$core.int>>(2, _omitFieldNames ? '' : 'addMember', $pb.PbFieldType.OY)
     ..a<$core.List<$core.int>>(3, _omitFieldNames ? '' : 'removeMember', $pb.PbFieldType.OY)
     ..a<$core.List<$core.int>>(4, _omitFieldNames ? '' : 'keyUpdate', $pb.PbFieldType.OY)
     ..a<$core.List<$core.int>>(5, _omitFieldNames ? '' : 'leaveGroup', $pb.PbFieldType.OY)
     ..a<$core.List<$core.int>>(10, _omitFieldNames ? '' : 'dropGroup', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(11, _omitFieldNames ? '' : 'aggregated', $pb.PbFieldType.OY)
     ..hasRequiredFields = false
   ;
 
@@ -937,6 +984,15 @@ class GroupOperation extends $pb.GeneratedMessage {
   $core.bool hasDropGroup() => $_has(5);
   @$pb.TagNumber(10)
   void clearDropGroup() => clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.List<$core.int> get aggregated => $_getN(6);
+  @$pb.TagNumber(11)
+  set aggregated($core.List<$core.int> v) { $_setBytes(6, v); }
+  @$pb.TagNumber(11)
+  $core.bool hasAggregated() => $_has(6);
+  @$pb.TagNumber(11)
+  void clearAggregated() => clearField(11);
 }
 
 class FrameTBS extends $pb.GeneratedMessage {
@@ -1254,7 +1310,8 @@ class ProtectedPayloadTBS extends $pb.GeneratedMessage {
     $core.String? userId,
     $core.String? leafId,
     $0.Timestamp? created,
-    $core.Iterable<Payload>? payload,
+    $core.Iterable<GroupActionPayload>? groupActions,
+    $core.List<$core.int>? content,
   }) {
     final $result = create();
     if (seqNum != null) {
@@ -1269,8 +1326,11 @@ class ProtectedPayloadTBS extends $pb.GeneratedMessage {
     if (created != null) {
       $result.created = created;
     }
-    if (payload != null) {
-      $result.payload.addAll(payload);
+    if (groupActions != null) {
+      $result.groupActions.addAll(groupActions);
+    }
+    if (content != null) {
+      $result.content = content;
     }
     return $result;
   }
@@ -1289,7 +1349,8 @@ class ProtectedPayloadTBS extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'userId')
     ..aOS(3, _omitFieldNames ? '' : 'leafId')
     ..aOM<$0.Timestamp>(4, _omitFieldNames ? '' : 'created', subBuilder: $0.Timestamp.create)
-    ..pc<Payload>(5, _omitFieldNames ? '' : 'payload', $pb.PbFieldType.PM, subBuilder: Payload.create)
+    ..pc<GroupActionPayload>(10, _omitFieldNames ? '' : 'groupActions', $pb.PbFieldType.PM, subBuilder: GroupActionPayload.create)
+    ..a<$core.List<$core.int>>(11, _omitFieldNames ? '' : 'content', $pb.PbFieldType.OY)
     ..hasRequiredFields = false
   ;
 
@@ -1355,8 +1416,17 @@ class ProtectedPayloadTBS extends $pb.GeneratedMessage {
   @$pb.TagNumber(4)
   $0.Timestamp ensureCreated() => $_ensure(3);
 
-  @$pb.TagNumber(5)
-  $core.List<Payload> get payload => $_getList(4);
+  @$pb.TagNumber(10)
+  $core.List<GroupActionPayload> get groupActions => $_getList(4);
+
+  @$pb.TagNumber(11)
+  $core.List<$core.int> get content => $_getN(5);
+  @$pb.TagNumber(11)
+  set content($core.List<$core.int> v) { $_setBytes(5, v); }
+  @$pb.TagNumber(11)
+  $core.bool hasContent() => $_has(5);
+  @$pb.TagNumber(11)
+  void clearContent() => clearField(11);
 }
 
 /// protected application layer message(decrypted Frame.protected_payload)

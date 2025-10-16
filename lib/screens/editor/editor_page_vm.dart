@@ -1,60 +1,94 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:async/async.dart';
-import 'package:async_queue/async_queue.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
-import 'package:veil/managers/change_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/managers/sync_provider/sync_model_executor.dart';
-import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/consts.dart';
-import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
-import 'package:veil/utils/group_context_factory.dart';
-import 'package:veil/utils/payload.dart';
 import 'package:veil/widgets/banner.dart';
 
 enum EditorModes { edit, view }
 
 class EditorPageVm extends ChangeNotifier {
+  final SyncModel syncModel;
   final mdEditor = TextEditingController();
-  final _changeManager = ChangeManager.instance;
 
-  final SyncProviderModel syncModel;
-  String? _hashBeforeEditing;
-
-  bool isEditingFlow = false;
+  String? _documentContentBeforeEditing;
   bool isSinking = false;
   var selectedMode = EditorModes.view;
+  bool allowWriteEvents = true;
 
-  final crdtBufferController = StreamController<ExposedCRDTPayload>();
-  late final crdtBuffer = StreamQueue(crdtBufferController.stream);
+  StreamSubscription? _isProcessingSubscription;
+  StreamSubscription? _removeFromGroupSubscription;
+  StreamSubscription? _crdtUpdatesSubscription;
+  Timer? _waitForJoinGroupTicker;
 
-  final SyncModelExecutor executor;
-  StreamSubscription<SPFrame>? _centrifugoSubscription;
+  EditorPageVm(this.syncModel);
 
-  final processEventQueue = AsyncQueue();
+  void init(BuildContext context) async {
+    allowWriteEvents = !syncModel.isLocal;
 
-  get isLocalOnly => syncModel.isLocal;
+    _isProcessingSubscription = syncModel.isProcessing.listen((e) {
+      isSinking = e;
+      notifyListeners();
+    });
 
-  EditorPageVm(this.syncModel, this.executor);
+    _removeFromGroupSubscription = syncModel.removedFromGroupEvent.listen((_) {
+      if (context.mounted) _handleRemoveMember(context);
+    });
 
-  void init(BuildContext context) {
+    _crdtUpdatesSubscription = syncModel.crdtUpdatesEvent.listen((e) {
+      mdEditor.text = EditorAutomergeUtils.instance.toText(e);
+      _documentContentBeforeEditing = sha256Hash(mdEditor.text);
+      notifyListeners();
+    });
+
     switch (syncModel.isLocal) {
       case true:
         _localInit();
       case false:
-        _networkInit(context);
+        await _joinGroupIfNeeded(context);
+        await _networkInit();
+        notifyListeners();
     }
+  }
+
+  Future<void> _joinGroupIfNeeded(BuildContext context) async {
+    if (!syncModel.isUserInGroup()) {
+      allowWriteEvents = false;
+      try {
+        await syncModel.sendJoinGroupFrame(
+          AccountSecureStorage.instance.account,
+        );
+        _startWaitForJoinGroupTicker();
+      } catch (e) {
+        logger.e('Failed to join group: $e');
+        if (!context.mounted) return;
+        TopBanner.show(
+          context: context,
+          message: 'Failed to join group',
+          kind: TopBannerCases.error,
+        );
+      }
+    }
+  }
+
+  void _startWaitForJoinGroupTicker() {
+    _waitForJoinGroupTicker = Timer.periodic(Duration(seconds: 1), (_) {
+      if (syncModel.isUserInGroup()) {
+        _waitForJoinGroupTicker?.cancel();
+        allowWriteEvents = true;
+        notifyListeners();
+      }
+    });
   }
 
   void _localInit() {
@@ -64,104 +98,22 @@ class EditorPageVm extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _networkInit(BuildContext context) async {
+  Future<void> _networkInit() async {
     syncModel.document.automergeDoc.setActorId(
       uuid: AccountSecureStorage.instance.account.actorId,
     );
 
-    processEventQueue.addQueueListener((e) {
-      logger.i('Queue listener: ${e.currentQueueSize}');
-      isSinking = !(e.currentQueueSize == 0);
-      notifyListeners();
-    });
-
     mdEditor.text = EditorAutomergeUtils.instance.toText(
       syncModel.document.automergeDoc,
     );
-    notifyListeners();
 
-    // ---- Init buffer
-    var initialBuffer = true;
-    final initialCentrifugoBuffer = [];
-
-    _changeManager.stream(executor.syncModel.document.id).listen((
-      spFrame,
-    ) async {
-      initialCentrifugoBuffer.add(spFrame);
-
-      if (!initialBuffer) {
-        for (final frame in initialCentrifugoBuffer) {
-          processEventQueue.addJob(() => processFrame(context, frame));
-        }
-        initialCentrifugoBuffer.clear();
-        await processEventQueue.start();
-      }
-    });
-
-    final frames = _changeManager.getFrames(executor.syncModel.document.id);
-    for (final frame in frames.values) {
-      processEventQueue.addJob(() => processFrame(context, frame));
-    }
-    await processEventQueue.start();
-
-    initialBuffer = false;
+    _documentContentBeforeEditing = sha256Hash(mdEditor.text);
   }
 
-  // ---
-  Future<void> processFrame(BuildContext context, SPFrame frame) async {
-    try {
-      final (crdtPayloadList, isCurrentUser) = await executor.processFrame(
-        frame,
-      );
-
-      if (isCurrentUser) {
-        logger.i('Received frame sent by current user, omitting...');
-        return;
-      }
-
-      logger.i('Processing incoming frame...');
-
-      for (final payload in crdtPayloadList) {
-        crdtBufferController.add(payload);
-      }
-
-      if (selectedMode != EditorModes.edit) {
-        final crdtPayloads = await loadBuffer();
-        if (crdtPayloads.isEmpty) {
-          return;
-        }
-
-        mdEditor.text = await executor.appyCrdtOperation(crdtPayloads);
-
-        hashBeforeEditing(mdEditor.text);
-
-        logger.i(
-          'Document state after sync ${syncModel.document.automergeDoc.getBlocks()}',
-        );
-
-        notifyListeners();
-      }
-    } catch (e) {
-      if (e.toString().contains('User removed from group')) {
-        // ignore: use_build_context_synchronously
-        await _handleRemoveMember(context);
-      } else {
-        logger.e('Error processing frame: $e');
-      }
-    }
-  }
-
-  // --- INIT ---
-
-  Future<void> _handleRemoveMember(BuildContext context) async {
-    logger.i('User removed from group, adding as local');
-
-    await executor.makeLocalOperation();
-    await selectMode(EditorModes.view);
-    await _centrifugoSubscription?.cancel();
+  void _handleRemoveMember(BuildContext context) {
+    allowWriteEvents = false;
     notifyListeners();
-
-    if (!context.mounted) return;
+    logger.i('User removed from group, adding handling on ui');
     TopBanner.show(
       context: context,
       message: 'You have been removed from the group',
@@ -173,69 +125,40 @@ class EditorPageVm extends ChangeNotifier {
     final runSync =
         selectedMode == EditorModes.edit && mode == EditorModes.view;
 
+    if (mode == EditorModes.edit) {
+      logger.d('Bufferizing frames trigger on ui');
+      syncModel.bufferizeFrames();
+    }
+
     if (runSync) {
-      await editorTextSynchronize();
+      await syncLocalAndNetworkState();
     }
 
     selectedMode = mode;
-
     notifyListeners();
   }
 
-  Future<void> editorTextSynchronize() async {
-    var hashAfterEditing = sha256
+  Future<void> syncLocalAndNetworkState() async {
+    var documentContentAfterEditing = sha256
         .convert(utf8.encode(mdEditor.text))
         .toString();
 
-    if (_hashBeforeEditing != hashAfterEditing) {
-      logger.i('Uploading new changes..');
-
-      final crdtPayloadList = await loadBuffer();
-      await executor.sendFrame(mdEditor.text, crdtPayloadList);
-      hashBeforeEditing(mdEditor.text);
-
-      logger.i(
-        'Document state after changing mode ${syncModel.document.automergeDoc.getBlocks()}',
-      );
-    } else {
-      final crdtPayloadList = await loadBuffer();
-
-      if (crdtPayloadList.isNotEmpty) {
-        logger.i('Syncing buffered changes..');
-
-        mdEditor.text = await executor.appyCrdtOperation(crdtPayloadList);
-
-        hashBeforeEditing(mdEditor.text);
-      } else {
-        logger.i('No buffered changes, no local changes, nothing to sync');
-      }
+    if (_documentContentBeforeEditing != documentContentAfterEditing) {
+      await syncModel.sendCrdtFrame(mdEditor.text);
     }
 
-    isSinking = false;
+    await syncModel.applyBufferedFrames();
+  }
+
+  String sha256Hash(String text) {
+    return sha256.convert(utf8.encode(text)).toString();
+  }
+
+  void notify() {
     notifyListeners();
   }
 
-  Future<List<ExposedCRDTPayload>> loadBuffer() async {
-    final buffer = <ExposedCRDTPayload>[];
-
-    while (await crdtBuffer.hasNext.timeout(
-      Durations.short3,
-      onTimeout: () => false,
-    )) {
-      buffer.add(await crdtBuffer.next);
-    }
-    return buffer;
-  }
-
-  void hashBeforeEditing(String text) {
-    _hashBeforeEditing = sha256.convert(utf8.encode(text)).toString();
-  }
-
-  void editMD() {
-    notifyListeners();
-  }
-
-  Future<List<MemberScreenModel>> prepareMembers() async {
+  Future<List<MemberScreenModel>> prepareMemberList() async {
     final groupInfo = syncModel.groupContext.retrieveGroupInfo();
 
     final members = groupInfo.members
@@ -260,7 +183,7 @@ class EditorPageVm extends ChangeNotifier {
     return members;
   }
 
-  List<ChangeEvent> prepareChanges() {
+  List<ChangeEvent> prepareChangeList() {
     final members = syncModel.groupContext.retrieveGroupInfo().members;
 
     return syncModel.document.automergeDoc
@@ -286,18 +209,11 @@ class EditorPageVm extends ChangeNotifier {
   }
 
   @override
-  void dispose() async {
-    _centrifugoSubscription?.cancel();
-
-    final crdtPayloadList = await loadBuffer();
-    if (crdtPayloadList.isNotEmpty) {
-      await executor.appyCrdtOperation(crdtPayloadList);
-    }
-
-    await DB.instance.updateDocument(
-      doc: syncModel.document,
-      parts: syncModel.groupContext.asParts(),
-    );
+  void dispose() {
+    syncModel.applyBufferedFrames();
+    _isProcessingSubscription?.cancel();
+    _crdtUpdatesSubscription?.cancel();
+    _removeFromGroupSubscription?.cancel();
     super.dispose();
   }
 }

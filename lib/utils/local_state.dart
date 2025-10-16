@@ -1,3 +1,4 @@
+import 'package:uuid/v4.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
 
@@ -7,7 +8,12 @@ class LocalStateUtils {
   LocalStateUtils._();
 
   Future<void> makeDocumentLocal(Document document) async {
+    final oldId = document.id;
+    final newId = UuidV4().generate();
     document.localOnly = true;
-    await DB.instance.makeDocumentLocalOnly(id: document.id);
+    document.id = newId;
+
+    await DB.instance.deleteDocument(oldId);
+    await DB.instance.insertDocument(document: document);
   }
 }

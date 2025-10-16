@@ -14,8 +14,8 @@ import 'package:veil/utils/group_context_factory.dart';
 class DocsPageViewModel extends ChangeNotifier {
   final _syncProvider = SyncProvider.instance;
 
-  late StreamSubscription<List<SyncProviderModel>> _docsListener;
-  List<SyncProviderModel> syncModels = [];
+  late StreamSubscription<List<SyncModel>> _docsListener;
+  List<SyncModel> syncModels = [];
 
   Future<void> sink() async {
     _docsListener = _syncProvider.subject.listen((event) {
@@ -32,7 +32,7 @@ class DocsPageViewModel extends ChangeNotifier {
       actorId: AccountSecureStorage.instance.account.actorId,
     );
 
-    final (groupContext, frame) = GroupContextFactory.createGroupContext(
+    final (groupContext, frame) = await GroupContextFactory.createGroupContext(
       groupName: resTitle,
       groupID: docID,
       owner: AccountSecureStorage.instance.account,
@@ -42,11 +42,10 @@ class DocsPageViewModel extends ChangeNotifier {
       id: docID,
       createdAt: DateTime.now(),
       automergeDoc: content,
-      groupContextParts: groupContext.asParts(),
+      groupContextParts: await groupContext.asParts(),
     );
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-
     await _syncProvider.add(document, groupContext, insertToDb: true);
   }
 

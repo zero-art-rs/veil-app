@@ -1,23 +1,20 @@
 import 'dart:convert';
 
 import 'package:veil/api/group_api_client.dart';
-import 'package:veil/extensions/group_context.dart';
-import 'package:veil/main.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
+import 'package:veil/utils/group_context_factory.dart';
 
 class InviteManager {
   final accountStorage = AccountSecureStorage.instance;
-
   static final InviteManager instance = InviteManager._();
-
   InviteManager._();
 
-  Future<(BPendingGroupContext, Document)> join(String base64Invite) async {
+  Future<(BGroupContext, Document)> join(String base64Invite) async {
     final inviteBytes = base64Decode(base64Invite);
     final invite = Invite.fromBuffer(inviteBytes);
 
@@ -32,9 +29,6 @@ class InviteManager {
     if (spkPublicKey != null) {
       spkSecretKey = await DB.instance.getOwnSpkSecret(spkPublicKey) ?? [];
     }
-
-    logger.i('SPK public key: ${base64Encode(spkPublicKey ?? [])}');
-    logger.i('SPK secret key: ${base64Encode(spkSecretKey)}');
 
     final inviteContext = BInviteContext(
       identitySecretKey:
@@ -62,14 +56,14 @@ class InviteManager {
       publicKey: base64UrlEncode(inviteContext.leafPublicKey()),
     );
 
-    final pendingGroupContext = inviteContext.upgrade(
+    final groupContext = inviteContext.upgrade(
       publicArt: base64Decode(artBase64),
     );
 
     final document = Document(
       id: groupId,
       automergeDoc: BAutoCommit(),
-      groupContextParts: pendingGroupContext.asParts(),
+      groupContextParts: await groupContext.asParts(),
       createdAt: DateTime.now(),
     );
 
@@ -77,6 +71,6 @@ class InviteManager {
       await DB.instance.removeSpk(spkPublicKey);
     }
 
-    return (pendingGroupContext, document);
+    return (groupContext, document);
   }
 }

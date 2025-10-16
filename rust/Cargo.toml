@@ -12,7 +12,7 @@ flutter_rust_bridge = "=2.11.1"
 automerge = { version = "0.6.1", features = ["optree-visualisation"]}
 anyhow = "1.0.99"
 sha2 = "0.10.9"
-zrt-client-sdk = { git = "ssh://git@github.com/zero-art-rs/client-sdk.git", branch = "refactoring" }
+zrt-client-sdk = { git = "ssh://git@github.com/zero-art-rs/client-sdk.git", branch = "dev" }
 zrt-zk = { git = "ssh://git@github.com/zero-art-rs/core.git" }
 zrt-art = { git = "ssh://git@github.com/zero-art-rs/core.git" }
 zrt-crypto = { git = "ssh://git@github.com/zero-art-rs/core.git" }

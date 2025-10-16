@@ -4,7 +4,6 @@ import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/managers/sync_provider/sync_model_executor.dart';
 import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
 import 'package:veil/widgets/square_rounded_btn.dart';
@@ -13,7 +12,7 @@ import 'editor_page_vm.dart';
 import 'package:veil/utils/platform.dart';
 
 class EditorPage extends StatelessWidget {
-  final SyncProviderModel syncModel;
+  final SyncModel syncModel;
   final bool isMemberListAccessible;
   final bool isHistoryAccessible;
   final bool readOnly;
@@ -29,8 +28,7 @@ class EditorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<EditorPageVm>(
-      create: (_) =>
-          EditorPageVm(syncModel, SyncModelExecutor(syncModel))..init(context),
+      create: (_) => EditorPageVm(syncModel)..init(context),
       child: _EditorPageView(
         isMemberListAccessible: isMemberListAccessible,
         isHistoryAccessible: isHistoryAccessible,
@@ -64,7 +62,7 @@ class _EditorPageView extends StatelessWidget {
           child: Text(vm.syncModel.groupContext.retrieveGroupInfo().name),
         ),
         actions: [
-          if (!vm.isLocalOnly)
+          if (vm.allowWriteEvents)
             SegmentedButton<EditorModes>(
               showSelectedIcon: false,
               segments: const <ButtonSegment<EditorModes>>[
@@ -82,7 +80,7 @@ class _EditorPageView extends StatelessWidget {
                 await vm.selectMode(newSelection.first);
               },
             ),
-          if (vm.isLocalOnly)
+          if (!vm.allowWriteEvents)
             IconButton(
               icon: const Icon(Icons.help_outline),
               onPressed: () {
@@ -126,7 +124,7 @@ class _EditorPageView extends StatelessWidget {
                           ),
                           keyboardType: TextInputType.multiline,
                           maxLines: null,
-                          onChanged: (_) => vm.editMD(),
+                          onChanged: (_) => vm.notify(),
                         ),
                       ),
                     ],
@@ -154,19 +152,23 @@ class _EditorPageView extends StatelessWidget {
               ModalSquareRoundedButton(
                 iconData: Icons.group_outlined,
                 onPressed: (ctx) async {
-                  final members = await vm.prepareMembers();
+                  final members = await vm.prepareMemberList();
                   if (!context.mounted) return;
                   if (isDesktop) {
                     showPopover(
                       context: ctx,
-                      width: 360,
-                      height: 680,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      constraints: BoxConstraints(
+                        maxHeight: 640,
+                        maxWidth: 360,
+                        minHeight: 16,
+                        minWidth: 9,
+                      ),
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
                           builder: (_) => DocumentMemberListScreen(
                             members: members,
-                            doc: vm.syncModel.document,
-                            executor: vm.executor,
+                            syncModel: vm.syncModel,
                           ),
                         ),
                       ),
@@ -177,8 +179,7 @@ class _EditorPageView extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => DocumentMemberListScreen(
                           members: members,
-                          doc: vm.syncModel.document,
-                          executor: vm.executor,
+                          syncModel: vm.syncModel,
                         ),
                       ),
                     );
@@ -188,13 +189,18 @@ class _EditorPageView extends StatelessWidget {
               ModalSquareRoundedButton(
                 iconData: Icons.history_sharp,
                 onPressed: (ctx) {
-                  final changes = vm.prepareChanges();
+                  final changes = vm.prepareChangeList();
 
                   if (isDesktop) {
                     showPopover(
                       context: ctx,
-                      width: 360,
-                      height: 680,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      constraints: BoxConstraints(
+                        maxHeight: 640,
+                        maxWidth: 360,
+                        minHeight: 16,
+                        minWidth: 9,
+                      ),
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
                           builder: (_) => HistoryPage(

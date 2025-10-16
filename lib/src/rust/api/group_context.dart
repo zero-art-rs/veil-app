@@ -33,7 +33,7 @@ Uint8List publicKeyFromSecretKey({required List<int> secretKey}) => RustLib
     .api
     .crateApiGroupContextPublicKeyFromSecretKey(secretKey: secretKey);
 
-(BGroupContext, Uint8List) createGroup({
+Future<(BGroupContext, Uint8List)> createGroup({
   required List<int> identitySecretKey,
   required BUser user,
   required BGroupInfo groupInfo,
@@ -51,54 +51,59 @@ abstract class BGroupContext implements RustOpaqueInterface {
   Future<(Uint8List, Uint8List)> addIdentifiedMember({
     required List<int> identityPublicKey,
     Uint8List? spkPublicKey,
-    required List<Uint8List> payloads,
+    required List<int> content,
   });
 
   Future<(Uint8List, Uint8List)> addUnidentifiedMember({
     required List<int> secretKey,
-    required List<Uint8List> payloads,
+    required List<int> content,
   });
 
-  void commitState();
+  Future<Uint8List> changeGroup({String? name, Uint8List? picture});
 
-  Uint8List createFrame({required List<Uint8List> payloads});
+  Future<Uint8List> changeUser({String? name, Uint8List? picture});
+
+  Future<Uint8List> createFrame({required List<int> content});
+
+  Future<BigInt> epoch();
 
   static BGroupContext fromParts({
     required List<int> identitySecretKey,
-    required List<int> leafSecret,
-    required List<int> art,
-    required List<int> stk,
-    required BigInt epoch,
+    required List<int> validator,
     required List<int> groupInfo,
-    required bool isLastSender,
+    required BigInt epoch,
+    required BigInt nonce,
   }) => RustLib.instance.api.crateApiGroupContextBGroupContextFromParts(
     identitySecretKey: identitySecretKey,
-    leafSecret: leafSecret,
-    art: art,
-    stk: stk,
-    epoch: epoch,
+    validator: validator,
     groupInfo: groupInfo,
-    isLastSender: isLastSender,
+    epoch: epoch,
+    nonce: nonce,
   );
 
-  BigInt getEpoch();
+  Uint8List groupInfo();
 
-  Uint8List getGroupInfo();
+  Future<(Uint8List, Uint8List, BigInt, BigInt)> intoParts();
 
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) intoParts();
+  Future<Uint8List> joinGroupAs({required BUser user});
 
-  List<Uint8List> processFrame({required List<int> frame});
+  Future<Uint8List> leaveGroup();
 
-  Future<(Uint8List, BUser?)> removeMember({
+  Future<Uint8List> processFrame({required List<int> frame});
+
+  Future<Uint8List> removeMember({
     required String userId,
-    required List<Uint8List> payloads,
+    required List<int> content,
   });
 
-  Uint8List signChallenge({required List<int> challenge});
+  Future<Uint8List> signChallenge({required List<int> challenge});
 
-  Uint8List signWithTk({required String groupId, required List<int> nonce});
+  Future<Uint8List> signWithTk({
+    required String groupId,
+    required List<int> nonce,
+  });
 
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) toParts();
+  Future<(Uint8List, Uint8List, BigInt, BigInt)> toParts();
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BGroupInfo>>
@@ -140,46 +145,7 @@ abstract class BInviteContext implements RustOpaqueInterface {
     required List<int> challenge,
   });
 
-  BPendingGroupContext upgrade({required List<int> publicArt});
-}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BPendingGroupContext>>
-abstract class BPendingGroupContext implements RustOpaqueInterface {
-  static BPendingGroupContext fromParts({
-    required List<int> identitySecretKey,
-    required List<int> leafSecret,
-    required List<int> art,
-    required List<int> stk,
-    required BigInt epoch,
-    required List<int> groupInfo,
-    required bool isLastSender,
-  }) => RustLib.instance.api.crateApiGroupContextBPendingGroupContextFromParts(
-    identitySecretKey: identitySecretKey,
-    leafSecret: leafSecret,
-    art: art,
-    stk: stk,
-    epoch: epoch,
-    groupInfo: groupInfo,
-    isLastSender: isLastSender,
-  );
-
-  BigInt getEpoch();
-
-  Uint8List getGroupInfo();
-
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) intoParts();
-
-  Uint8List joinGroupAs({required BUser user});
-
-  List<Uint8List> processFrame({required List<int> frame});
-
-  Uint8List signChallenge({required List<int> challenge});
-
-  Uint8List signWithTk({required String groupId, required List<int> nonce});
-
-  (Uint8List, Uint8List, Uint8List, BigInt, Uint8List, bool) toParts();
-
-  BGroupContext upgrade();
+  BGroupContext upgrade({required List<int> publicArt});
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BSecretsFactory>>

@@ -3,7 +3,6 @@ mod frb_generated;
 
 pub(crate) mod test {
     use std::{
-        any,
         fs::File,
         io::Write,
         str::FromStr,
