@@ -161,8 +161,6 @@ class SyncProvider {
 
         final frame = SPFrame.fromBuffer(frameBytes);
 
-        logger.i('receive frame');
-
         syncModel.processFrame(frame);
       },
       onError: (error, [stackTrace]) {

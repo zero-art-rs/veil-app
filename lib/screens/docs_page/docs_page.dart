@@ -9,7 +9,7 @@ import 'package:veil/screens/editor/editor_page.dart';
 import 'package:veil/widgets/banner.dart';
 import 'package:veil/widgets/ays_modal.dart';
 
-enum _DocAction { edit, delete, share }
+enum _DocAction { delete }
 
 class DocsPage extends StatelessWidget {
   const DocsPage({super.key});
@@ -105,7 +105,6 @@ class DocsPage extends StatelessWidget {
                     }
                   },
                 ),
-                onEdit: () => {},
               ),
             ),
     );
@@ -130,9 +129,8 @@ class _NodocumentsYet extends StatelessWidget {
 }
 
 class _DocCard extends StatelessWidget {
-  const _DocCard({required this.doc, this.onEdit, this.onDelete});
+  const _DocCard({required this.doc, this.onDelete});
   final SyncModel doc;
-  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   GroupInfo get groupInfo => doc.groupContext.retrieveGroupInfo();
@@ -193,37 +191,11 @@ class _DocCard extends StatelessWidget {
                           tooltip: 'More options',
                           onSelected: (value) {
                             switch (value) {
-                              case _DocAction.edit:
-                                onEdit?.call();
                               case _DocAction.delete:
                                 onDelete?.call();
-                              case _DocAction.share:
-                                break;
                             }
                           },
                           itemBuilder: (context) => [
-                            PopupMenuItem(
-                              enabled: false,
-                              value: _DocAction.delete,
-                              child: ListTile(
-                                leading: const Icon(Icons.ios_share_outlined),
-                                title: const Text('Share'),
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                              ),
-                            ),
-                            const PopupMenuDivider(),
-                            PopupMenuItem(
-                              enabled: false,
-                              value: _DocAction.edit,
-                              child: ListTile(
-                                leading: const Icon(Icons.edit),
-                                title: const Text('Edit'),
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                              ),
-                            ),
-                            const PopupMenuDivider(),
                             PopupMenuItem(
                               value: _DocAction.delete,
                               child: ListTile(

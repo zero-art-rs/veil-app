@@ -94,15 +94,6 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
     BuildContext context,
     PrimaryPageViewModel vm,
   ) async {
-    // final result = await showLoaderDialog<String>(
-    //   context: context,
-    //   initial: const Text("Create document"),
-    //   work: () async {
-    //     await Future.delayed(const Duration(seconds: 2));
-    //     return "Done!";
-    //   },
-    // );
-
     final style = Theme.of(context).textTheme;
 
     await showLoaderDialog(
@@ -118,7 +109,6 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
               child: Text('Create document', style: style.titleLarge),
             ),
 
-            // Spacer(),
             TextField(
               controller: _vm.textEditingController,
               decoration: InputDecoration(label: Text('Input document title')),
@@ -197,15 +187,6 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                     icon: Icon(Icons.more_vert_rounded),
                     itemBuilder: (context) {
                       return [
-                        PopupMenuItem(
-                          enabled: false,
-                          value: 0,
-                          child: Row(
-                            spacing: 16,
-                            children: [Icon(Icons.edit), Text('Edit')],
-                          ),
-                          onTap: () => {},
-                        ),
                         PopupMenuItem(
                           value: 1,
                           child: Row(

@@ -13,16 +13,7 @@ class LocalStateUtils {
     document.localOnly = true;
     document.id = newId;
 
-    final localDocument = Document(
-      automergeDoc: document.automergeDoc,
-      id: newId,
-      createdAt: document.createdAt,
-      groupContextParts: document.groupContextParts,
-      sequenceNumber: document.sequenceNumber,
-      localOnly: true,
-    );
-
     await DB.instance.deleteDocument(oldId);
-    await DB.instance.insertDocument(document: localDocument);
+    await DB.instance.insertDocument(document: document);
   }
 }

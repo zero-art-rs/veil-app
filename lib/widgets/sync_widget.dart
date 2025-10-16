@@ -17,7 +17,7 @@ class _SyncCircleViewState extends State<SyncCircleView>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
-    )..repeat(); // крутится бесконечно
+    )..repeat();
   }
 
   @override
