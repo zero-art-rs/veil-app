@@ -86,6 +86,11 @@ impl BUser {
     pub fn id(&self) -> String {
         self.user.id().to_string()
     }
+
+    #[flutter_rust_bridge::frb(sync)]
+    pub fn status(&self) -> i32 {
+        self.user.status as i32
+    }
 }
 
 pub struct BGroupInfo {
@@ -267,7 +272,7 @@ impl BGroupContext {
     }
 
 
-    pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<Vec<u8>> {
+    pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<(Vec<u8>, bool)> {
         // let mut group_context = self.group_context.lock().unwrap();
 
         let frame = Frame::decode(&frame)

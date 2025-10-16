@@ -2907,7 +2907,7 @@ dependencies = [
 [[package]]
 name = "zrt-client-sdk"
 version = "0.1.0"
-source = "git+ssh://git@github.com/zero-art-rs/client-sdk.git?branch=dev#ef5dca633333ded014b62321689393261a9dfb33"
+source = "git+ssh://git@github.com/zero-art-rs/client-sdk.git?branch=dev#ad6cd382cdf0d6a3bac440a585f052450cd625bd"
 dependencies = [
  "aes-gcm",
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
