@@ -159,6 +159,10 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
+  void changeName() {
+    // widget.syncModel.groupContext.changeUser(name: widget.syncModel.name);
+  }
+
   void _inviteUndentifiedMember(BuildContext context) {
     final work = Future<String>(() async {
       try {
