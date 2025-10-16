@@ -1,13 +1,11 @@
-import 'package:collection/collection.dart';
+
 import 'package:flutter/material.dart';
 import 'package:uuid/v4.dart';
 import 'package:veil/api/group_api_client.dart';
-import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/screens/account_page.dart';
 import 'package:veil/screens/editor/editor_page.dart';
-import 'package:veil/screens/history_page.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
@@ -25,8 +23,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
   Widget _selectedPage = AccountPage();
   Widget get selectedPage => _selectedPage;
 
-  List<SyncProviderModel> _syncModels = [];
-  List<SyncProviderModel> get syncModels => _syncModels;
+  List<SyncModel> _syncModels = [];
+  List<SyncModel> get syncModels => _syncModels;
 
   final TextEditingController textEditingController = TextEditingController();
 
@@ -117,7 +115,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
         setSelectedIndex(constantTabs + 1);
         setSelectedPage(
           EditorPage(
-            key: _syncModels.first.document.key,
+            // key: _syncModels.first.document.key,
             syncModel: _syncModels.first,
           ),
         );
@@ -134,33 +132,5 @@ class PrimaryPageViewModel extends ChangeNotifier {
         kind: TopBannerCases.error,
       );
     }
-  }
-
-  (List<ChangeEvent>, Document) prepareChanges() {
-    final syncModel = _syncModels[selectedIndex - constantTabs];
-    final members = syncModel.groupContext.retrieveGroupInfo().members;
-
-    final changes = syncModel.document.automergeDoc
-        .getChangeList()
-        .indexed
-        .map(
-          (e) => ChangeEvent(
-            title: 'Change',
-            actorIdHex: e.$2.actorIdHex(),
-            changeHashHex: e.$2.changeHash(),
-            date: e.$2.timestamp(),
-            name:
-                members
-                    .firstWhereOrNull((elem) => elem.id == e.$2.actorIdHex())
-                    ?.name ??
-                e.$2.actorIdHex(),
-            isInitial: e.$1 == 0,
-          ),
-        )
-        .toList()
-        .reversed
-        .toList();
-
-    return (changes, syncModel.document);
   }
 }

@@ -24,7 +24,8 @@ use tracing_subscriber;
 #[flutter_rust_bridge::frb(sync)]
 pub fn init_tracing() {
     let _ = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::TRACE) // щоб бачили trace/debug/info
+        // .with_max_level(tracing::Level::TRACE) // щоб бачили trace/debug/info
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .try_init();
 }
 
@@ -66,7 +67,7 @@ pub fn schnorr_verify(pk: Vec<u8>, message: Vec<u8>, signature: Vec<u8>) -> Resu
 impl BUser {
     #[flutter_rust_bridge::frb(sync)]
     pub fn name(&self) -> String {
-        self.user.name().to_string()
+        self.user.name.to_string()
     }
 
     #[flutter_rust_bridge::frb(sync)]
@@ -112,7 +113,7 @@ impl BGroupInfo {
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn name(&self) -> String {
-        self.group_info.name().to_string()
+        self.group_info.name.to_string()
     }
 }
 
@@ -266,25 +267,25 @@ impl BGroupContext {
     }
 
 
-    pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<Vec<Vec<u8>>> {
+    pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<Vec<u8>> {
         // let mut group_context = self.group_context.lock().unwrap();
 
         let frame = Frame::decode(&frame)
             .map_err(|e| anyhow!("failed to deserialize frame: {}", e.to_string()))?;
 
-        let payloads = self
+        let content = self
             .group_context
             .process_frame(frame)
             .map_err(|e| anyhow!("failed to process_frame: {}", e.to_string()))?;
-        let payloads = payloads.into_iter().map(|v| v.encode_to_vec()).collect();
-        Ok(payloads)
+
+        Ok(content)
     }
 
     pub fn add_identified_member(
         &mut self,
         identity_public_key: Vec<u8>,
         spk_public_key: Option<Vec<u8>>,
-        payloads: Vec<Vec<u8>>,
+        content: Vec<u8>,
     ) -> Result<(Vec<u8>, Vec<u8>)> {
         // let mut group_context = self.group_context.lock().unwrap();
 
@@ -300,16 +301,6 @@ impl BGroupContext {
             None
         };
 
-        let payloads = payloads
-            .into_iter()
-            .map(|v| {
-                zero_art_proto::Payload::decode(&v[..])
-                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
-                    .try_into()
-                    .map_err(|_| anyhow!("failed to deserialize"))
-            })
-            .collect::<Result<Vec<models::payload::Payload>>>()?;
-
         let (frame, invite) = self
             .group_context
             .add_member(
@@ -317,7 +308,7 @@ impl BGroupContext {
                     identity_public_key,
                     spk_public_key,
                 },
-                payloads,
+                content,
             )
             .map_err(|e| anyhow!("failed to add member: {}", e.to_string()))?;
 
@@ -334,26 +325,16 @@ impl BGroupContext {
     pub fn add_unidentified_member(
         &mut self,
         secret_key: Vec<u8>,
-        payloads: Vec<Vec<u8>>,
+        content: Vec<u8>,
     ) -> Result<(Vec<u8>, Vec<u8>)> {
         // let mut group_context = self.group_context.lock().unwrap();
 
         let secret_key = ScalarField::deserialize_compressed(&secret_key[..])
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
-        let payloads = payloads
-            .into_iter()
-            .map(|v| {
-                zero_art_proto::Payload::decode(&v[..])
-                    .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
-                    .try_into()
-                    .map_err(|_| anyhow!("failed to deserialize"))
-            })
-            .collect::<Result<Vec<models::payload::Payload>>>()?;
-
         let (frame, invite) = self
             .group_context
-            .add_member(Invitee::Unidentified(secret_key), payloads)
+            .add_member(Invitee::Unidentified(secret_key), content)
             .map_err(|e| anyhow!("failed to add member: {}", e.to_string()))?;
 
         Ok((
@@ -369,20 +350,13 @@ impl BGroupContext {
     pub fn remove_member(
         &mut self,
         user_id: String,
-        payloads: Vec<Vec<u8>>,
+        content: Vec<u8>,
     ) -> Result<Vec<u8>> {
         // let mut group_context = self.group_context.lock().unwrap();
 
-        let payloads = payloads
-            .into_iter()
-            .map(|v| {
-                Payload::decode(&v).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
-            })
-            .collect::<Result<Vec<Payload>>>()?;
-
         let frame = self
             .group_context
-            .remove_member(&user_id, payloads)
+            .remove_member(&user_id, content)
             .map_err(|e| anyhow!("failed to remove member: {}", e.to_string()))?;
 
         Ok(
@@ -392,19 +366,45 @@ impl BGroupContext {
         )
     }
 
-    pub fn create_frame(&mut self, payloads: Vec<Vec<u8>>) -> Result<Vec<u8>> {
+    pub fn create_frame(&mut self, content: Vec<u8>) -> Result<Vec<u8>> {
         // let mut group_context = self.group_context.lock().unwrap();
-
-        let payloads = payloads
-            .into_iter()
-            .map(|v| {
-                Payload::decode(&v).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))
-            })
-            .collect::<Result<Vec<Payload>>>()?;
 
         let frame = self
             .group_context
-            .create_frame(payloads)
+            .create_frame(content)
+            .map_err(|e| anyhow!("failed to create frame: {}", e.to_string()))?;
+
+        Ok(frame
+            .encode_to_vec()
+            .map_err(|_| anyhow!("failed to deserialize"))?)
+    }
+
+    pub fn leave_group(&mut self) -> Result<Vec<u8>> {
+        let frame = self
+            .group_context
+            .leave_group()
+            .map_err(|e| anyhow!("failed to create frame: {}", e.to_string()))?;
+
+        Ok(frame
+            .encode_to_vec()
+            .map_err(|_| anyhow!("failed to deserialize"))?)
+    }
+
+    pub fn change_user(&mut self, name: Option<String>, picture: Option<Vec<u8>>) -> Result<Vec<u8>> {
+        let frame = self
+            .group_context
+            .change_user(name, picture)
+            .map_err(|e| anyhow!("failed to create frame: {}", e.to_string()))?;
+
+        Ok(frame
+            .encode_to_vec()
+            .map_err(|_| anyhow!("failed to deserialize"))?)
+    }
+
+    pub fn change_group(&mut self, name: Option<String>, picture: Option<Vec<u8>>) -> Result<Vec<u8>> {
+        let frame = self
+            .group_context
+            .change_group(name, picture)
             .map_err(|e| anyhow!("failed to create frame: {}", e.to_string()))?;
 
         Ok(frame

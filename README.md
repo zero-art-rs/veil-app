@@ -5,7 +5,7 @@
 flutter run -d <platform>
 -----------
 # On linux
-cd rust && cargo build --release && cd .. && flutter run -d linux
+make linux
 -----------
 # To list available devices/platforms:
 flutter devices

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// ---------- Public API ----------
-
 sealed class SideNavEntry {
   const SideNavEntry();
 }
@@ -163,8 +161,6 @@ class SideNav extends StatelessWidget {
     );
   }
 }
-
-/// ---------- Internals ----------
 
 class _Header extends StatelessWidget {
   final String label;
