@@ -18,6 +18,11 @@ import 'package:veil/widgets/ays_modal.dart';
 import 'package:veil/widgets/banner.dart';
 import 'package:veil/widgets/loader_dialog.dart';
 
+const _pendingForRemovalStatus = 3;
+const _wantsToLeaveStatus = 2;
+const _invitedStatus = 1;
+const _inGroupStatus = 0;
+
 class MemberScreenModel {
   final m.DocumentMember member;
   final bool isYou;
@@ -312,13 +317,13 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
 
   String status(int status) {
     switch (status) {
-      case 0:
+      case _inGroupStatus:
         return 'In group';
-      case 1:
+      case _invitedStatus:
         return 'Invited';
-      case 2:
+      case _wantsToLeaveStatus:
         return 'Wants to leave';
-      case 3:
+      case _pendingForRemovalStatus:
         return 'Pending for removal confrimation';
       default:
         return 'Unknown';
@@ -455,7 +460,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
             icon: Icon(Icons.edit),
           ),
 
-        if (currentAccountIsOwner && !g.isYou)
+        if ((currentAccountIsOwner && !g.isYou) ||
+            (!g.isYou && g.member.status == _pendingForRemovalStatus))
           IconButton(
             onPressed: () async => await _removeMember(context, g.member),
             icon: Icon(Icons.delete),
