@@ -188,8 +188,6 @@ class _EditorPageView extends StatelessWidget {
               ModalSquareRoundedButton(
                 iconData: Icons.history_sharp,
                 onPressed: (ctx) {
-                  final changes = vm.prepareChangeList();
-
                   if (isDesktop) {
                     showPopover(
                       context: ctx,
@@ -202,10 +200,7 @@ class _EditorPageView extends StatelessWidget {
                       ),
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
-                          builder: (_) => HistoryPage(
-                            items: changes,
-                            doc: vm.syncModel.document,
-                          ),
+                          builder: (_) => HistoryPage(syncModel: vm.syncModel),
                         ),
                       ),
                     );
@@ -213,10 +208,7 @@ class _EditorPageView extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => HistoryPage(
-                          items: changes,
-                          doc: vm.syncModel.document,
-                        ),
+                        builder: (_) => HistoryPage(syncModel: vm.syncModel),
                       ),
                     );
                   }
