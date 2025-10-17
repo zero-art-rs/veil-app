@@ -240,7 +240,7 @@ extension SyncModelProcessOperations on SyncModel {
     });
 
     try {
-      _processQueue.start();
+      await _processQueue.start();
     } catch (e) {
       if (e.toString().contains('User removed from group')) {
         logger.i('User removed from group, making local only');
@@ -451,8 +451,6 @@ extension SyncModelSendOperations on SyncModel {
   }
 
   Future<void> removeMember({required String actorId}) async {
-    final executedHandle = StreamController<bool>();
-
     _sendQueue.addJob(() async {
       logger.i('Removing member in group context..');
       final frame = await groupContext.removeMember(
@@ -471,12 +469,9 @@ extension SyncModelSendOperations on SyncModel {
         doc: document,
         parts: await groupContext.asParts(),
       );
-
-      executedHandle.add(true);
     });
 
     await _sendQueue.start();
-    await executedHandle.stream.first;
   }
 
   Future<void> sendJoinGroupFrame(Account user) async {
