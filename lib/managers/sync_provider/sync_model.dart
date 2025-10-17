@@ -218,7 +218,8 @@ extension SyncModelProcessOperations on SyncModel {
           .convert(groupContext.groupInfo())
           .toString();
 
-      if (currentGroupInfoHash != _previousGroupInfoHash) {
+      if (currentGroupInfoHash != _previousGroupInfoHash &&
+          !_groupInfoUpdatesEvent.isClosed) {
         logger.i('Group info changed, sending update..');
         _groupInfoUpdatesEvent.add(true);
       }
