@@ -28,6 +28,22 @@ const Role$json = {
 final $typed_data.Uint8List roleDescriptor = $convert.base64Decode(
     'CgRSb2xlEggKBFJFQUQQABIJCgVXUklURRABEg0KCU9XTkVSU0hJUBACEgkKBUFETUlOEAM=');
 
+@$core.Deprecated('Use statusDescriptor instead')
+const Status$json = {
+  '1': 'Status',
+  '2': [
+    {'1': 'ACTIVE', '2': 0},
+    {'1': 'INVITED', '2': 1},
+    {'1': 'LEFT', '2': 2},
+    {'1': 'PENDING_REMOVAL', '2': 3},
+  ],
+};
+
+/// Descriptor for `Status`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List statusDescriptor = $convert.base64Decode(
+    'CgZTdGF0dXMSCgoGQUNUSVZFEAASCwoHSU5WSVRFRBABEggKBExFRlQQAhITCg9QRU5ESU5HX1'
+    'JFTU9WQUwQAw==');
+
 @$core.Deprecated('Use contentAttachmentTypeDescriptor instead')
 const ContentAttachmentType$json = {
   '1': 'ContentAttachmentType',
@@ -53,6 +69,7 @@ const User$json = {
     {'1': 'picture', '3': 4, '4': 1, '5': 12, '10': 'picture'},
     {'1': 'role', '3': 5, '4': 1, '5': 14, '6': '.zero_art_proto.Role', '10': 'role'},
     {'1': 'leaf_key', '3': 10, '4': 1, '5': 12, '10': 'leafKey'},
+    {'1': 'status', '3': 11, '4': 1, '5': 14, '6': '.zero_art_proto.Status', '10': 'status'},
   ],
 };
 
@@ -61,7 +78,7 @@ final $typed_data.Uint8List userDescriptor = $convert.base64Decode(
     'CgRVc2VyEg4KAmlkGAEgASgJUgJpZBISCgRuYW1lGAIgASgJUgRuYW1lEh0KCnB1YmxpY19rZX'
     'kYAyABKAxSCXB1YmxpY0tleRIYCgdwaWN0dXJlGAQgASgMUgdwaWN0dXJlEigKBHJvbGUYBSAB'
     'KA4yFC56ZXJvX2FydF9wcm90by5Sb2xlUgRyb2xlEhkKCGxlYWZfa2V5GAogASgMUgdsZWFmS2'
-    'V5');
+    'V5Ei4KBnN0YXR1cxgLIAEoDjIWLnplcm9fYXJ0X3Byb3RvLlN0YXR1c1IGc3RhdHVz');
 
 @$core.Deprecated('Use contentAttachmentDescriptor instead')
 const ContentAttachment$json = {

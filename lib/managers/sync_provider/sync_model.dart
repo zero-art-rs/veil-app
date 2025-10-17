@@ -165,6 +165,8 @@ extension SyncModelInit on SyncModel {
 
   Future<void> dispose() async {
     logger.i('Sync provider disposed');
+    _processQueue.clear();
+    _sendQueue.clear();
     await listener?.cancel();
     await _removedFromGroupEvent.close();
     await _groupInfoUpdatesEvent.close();
@@ -215,7 +217,7 @@ extension SyncModelProcessOperations on SyncModel {
           .toString();
 
       if (currentGroupInfoHash != _previousGroupInfoHash) {
-        logger.i('Group info changed, making local only');
+        logger.i('Group info changed, sending update..');
         _groupInfoUpdatesEvent.add(true);
       }
 

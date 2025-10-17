@@ -188,6 +188,7 @@ class EditorPageVm extends ChangeNotifier {
                 name: e.name,
                 rawPublicKey: e.publicKey,
               ),
+              status: e.status.value,
               role: e.role.value,
               roleName: e.role.name,
             ),
@@ -195,7 +196,6 @@ class EditorPageVm extends ChangeNotifier {
             isOwner: e.role.value == ownerRole,
           ),
         )
-        .where((e) => e.member.account.name != 'Invited')
         .toList();
 
     return members;

@@ -28,6 +28,7 @@ class User extends $pb.GeneratedMessage {
     $core.List<$core.int>? picture,
     Role? role,
     $core.List<$core.int>? leafKey,
+    Status? status,
   }) {
     final $result = create();
     if (id != null) {
@@ -48,6 +49,9 @@ class User extends $pb.GeneratedMessage {
     if (leafKey != null) {
       $result.leafKey = leafKey;
     }
+    if (status != null) {
+      $result.status = status;
+    }
     return $result;
   }
   User._() : super();
@@ -61,6 +65,7 @@ class User extends $pb.GeneratedMessage {
     ..a<$core.List<$core.int>>(4, _omitFieldNames ? '' : 'picture', $pb.PbFieldType.OY)
     ..e<Role>(5, _omitFieldNames ? '' : 'role', $pb.PbFieldType.OE, defaultOrMaker: Role.READ, valueOf: Role.valueOf, enumValues: Role.values)
     ..a<$core.List<$core.int>>(10, _omitFieldNames ? '' : 'leafKey', $pb.PbFieldType.OY)
+    ..e<Status>(11, _omitFieldNames ? '' : 'status', $pb.PbFieldType.OE, defaultOrMaker: Status.ACTIVE, valueOf: Status.valueOf, enumValues: Status.values)
     ..hasRequiredFields = false
   ;
 
@@ -138,6 +143,15 @@ class User extends $pb.GeneratedMessage {
   $core.bool hasLeafKey() => $_has(5);
   @$pb.TagNumber(10)
   void clearLeafKey() => clearField(10);
+
+  @$pb.TagNumber(11)
+  Status get status => $_getN(6);
+  @$pb.TagNumber(11)
+  set status(Status v) { setField(11, v); }
+  @$pb.TagNumber(11)
+  $core.bool hasStatus() => $_has(6);
+  @$pb.TagNumber(11)
+  void clearStatus() => clearField(11);
 }
 
 class ContentAttachment extends $pb.GeneratedMessage {

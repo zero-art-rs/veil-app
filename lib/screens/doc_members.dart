@@ -262,6 +262,21 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     showInviteDialog(future);
   }
 
+  String status(int status) {
+    switch (status) {
+      case 0:
+        return 'In group';
+      case 1:
+        return 'Invited';
+      case 2:
+        return 'Wants to leave';
+      case 3:
+        return 'Pending for removal confrimation';
+      default:
+        return 'Unknown';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -303,17 +318,14 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
             title: Row(
               spacing: 12,
               children: [
-                Expanded(
-                  child: Text(
-                    g.member.account.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                Text(
+                  g.member.account.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-
                 if (g.isYou)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -334,17 +346,30 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
                   ),
               ],
             ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 2.0),
-              child: Text(
-                g.member.account.actorId,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  color: theme.colorScheme.onSurfaceVariant,
+            subtitle: Column(
+              // mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2.0),
+                  child: Text(
+                    g.member.account.actorId,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-              ),
+                Text(
+                  'Status: ${status(g.member.status)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
             trailing: buildTrailing(theme, g),
           );
