@@ -9,6 +9,8 @@ import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/models.dart' as m;
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/ays_modal.dart';
+import 'package:veil/widgets/banner.dart';
+import 'package:veil/widgets/loader_dialog.dart';
 
 class MemberScreenModel {
   final m.DocumentMember member;
@@ -23,7 +25,7 @@ class MemberScreenModel {
 }
 
 class DocumentMemberListScreen extends StatefulWidget {
-  const DocumentMemberListScreen({
+  DocumentMemberListScreen({
     super.key,
     required this.members,
     required this.syncModel,
@@ -31,6 +33,8 @@ class DocumentMemberListScreen extends StatefulWidget {
 
   final List<MemberScreenModel> members;
   final SyncModel syncModel;
+
+  final updateUserNameTextController = TextEditingController();
 
   @override
   State<DocumentMemberListScreen> createState() =>
@@ -153,14 +157,81 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           });
         } catch (e) {
           logger.e('Failed to remove member: $e');
+          if (!context.mounted) return;
+          TopBanner.show(
+            context: context,
+            message: 'Failed to remove member',
+            kind: TopBannerCases.error,
+          );
           rethrow;
         }
       },
     );
   }
 
-  void changeName() {
-    // widget.syncModel.groupContext.changeUser(name: widget.syncModel.name);
+  Future<void> _openChangeNameModal() async {
+    final style = Theme.of(context).textTheme;
+
+    await showLoaderDialog(
+      context: context,
+      work: () async {
+        try {
+          await widget.syncModel.updateUserName(
+            name: widget.updateUserNameTextController.text,
+          );
+        } catch (e) {
+          if (!mounted) return;
+          logger.e('Failed to update name: $e');
+          TopBanner.show(
+            context: context,
+            message: 'Failed to update name',
+            kind: TopBannerCases.error,
+          );
+        } finally {
+          widget.updateUserNameTextController.clear();
+        }
+      },
+      initialBuilder: (context, start) => SizedBox(
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 24,
+          children: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: Text('Update your name in group', style: style.titleLarge),
+            ),
+
+            TextField(
+              controller: widget.updateUserNameTextController,
+              decoration: InputDecoration(label: Text('Input your new name')),
+            ),
+
+            Row(
+              spacing: 16,
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Cancel'),
+                  ),
+                ),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      start();
+                    },
+                    child: Text('Update'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _inviteUndentifiedMember(BuildContext context) {
@@ -305,6 +376,12 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       mainAxisSize: MainAxisSize.min,
       spacing: 12,
       children: [
+        if (g.isYou)
+          IconButton(
+            onPressed: () async => await _openChangeNameModal(),
+            icon: Icon(Icons.edit),
+          ),
+
         if (currentAccountIsOwner && !g.isYou)
           IconButton(
             onPressed: () async => await _removeMember(context, g.member),

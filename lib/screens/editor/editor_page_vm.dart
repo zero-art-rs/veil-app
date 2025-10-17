@@ -26,6 +26,7 @@ class EditorPageVm extends ChangeNotifier {
   var selectedMode = EditorModes.view;
   bool allowWriteEvents = true;
 
+  final groupNameController = TextEditingController();
   StreamSubscription? _isProcessingSubscription;
   StreamSubscription? _removeFromGroupSubscription;
   StreamSubscription? _crdtUpdatesSubscription;
@@ -35,6 +36,8 @@ class EditorPageVm extends ChangeNotifier {
 
   void init(BuildContext context) async {
     allowWriteEvents = !syncModel.isLocal;
+
+    groupNameController.text = syncModel.groupContext.retrieveGroupInfo().name;
 
     _isProcessingSubscription = syncModel.isProcessing.listen((e) {
       isSinking = e;
@@ -57,7 +60,22 @@ class EditorPageVm extends ChangeNotifier {
       case false:
         await _joinGroupIfNeeded(context);
         await _networkInit();
-        notifyListeners();
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> updateGroupName(BuildContext context, String groupName) async {
+    try {
+      await syncModel.updateGroupName(name: groupNameController.text);
+    } catch (e) {
+      logger.e('Failed to update group name: $e');
+      if (!context.mounted) return;
+      TopBanner.show(
+        context: context,
+        message: 'Failed to update group name',
+        kind: TopBannerCases.error,
+      );
     }
   }
 

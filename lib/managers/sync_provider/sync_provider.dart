@@ -61,7 +61,7 @@ class SyncProvider {
         await LocalStateUtils.instance.makeDocumentLocal(doc);
         _addLocal(doc, groupContext);
       } else {
-        logger.e('Failed to add from invite: $e\n$st');
+        logger.e('Failed to add sync model: $e\n$st');
       }
     }
   }
