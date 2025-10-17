@@ -7,11 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
-import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/widgets/banner.dart';
 
@@ -174,31 +171,6 @@ class EditorPageVm extends ChangeNotifier {
 
   void notify() {
     notifyListeners();
-  }
-
-  Future<List<MemberScreenModel>> prepareMemberList() async {
-    final groupInfo = syncModel.groupContext.retrieveGroupInfo();
-
-    final members = groupInfo.members
-        .map(
-          (e) => MemberScreenModel(
-            member: DocumentMember(
-              account: ExternalAccount(
-                actorId: e.id,
-                name: e.name,
-                rawPublicKey: e.publicKey,
-              ),
-              status: e.status.value,
-              role: e.role.value,
-              roleName: e.role.name,
-            ),
-            isYou: AccountSecureStorage.instance.account.actorId == e.id,
-            isOwner: e.role.value == ownerRole,
-          ),
-        )
-        .toList();
-
-    return members;
   }
 
   List<ChangeEvent> prepareChangeList() {

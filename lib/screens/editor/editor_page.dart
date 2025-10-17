@@ -157,8 +157,6 @@ class _EditorPageView extends StatelessWidget {
               ModalSquareRoundedButton(
                 iconData: Icons.group_outlined,
                 onPressed: (ctx) async {
-                  final members = await vm.prepareMemberList();
-                  if (!context.mounted) return;
                   if (isDesktop) {
                     showPopover(
                       context: ctx,
@@ -171,10 +169,8 @@ class _EditorPageView extends StatelessWidget {
                       ),
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
-                          builder: (_) => DocumentMemberListScreen(
-                            members: members,
-                            syncModel: vm.syncModel,
-                          ),
+                          builder: (_) =>
+                              DocumentMemberListScreen(syncModel: vm.syncModel),
                         ),
                       ),
                     );
@@ -182,10 +178,8 @@ class _EditorPageView extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => DocumentMemberListScreen(
-                          members: members,
-                          syncModel: vm.syncModel,
-                        ),
+                        builder: (_) =>
+                            DocumentMemberListScreen(syncModel: vm.syncModel),
                       ),
                     );
                   }

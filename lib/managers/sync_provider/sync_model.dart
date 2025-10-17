@@ -79,10 +79,12 @@ class SyncModel {
 extension SyncModelInit on SyncModel {
   void listenProcess() {
     _processQueue.addQueueListener((e) {
+      if (_isProcessing.isClosed) return;
       _isProcessing.add(e.currentQueueSize != 0 && _sendQueue.size != 0);
     });
 
     _sendQueue.addQueueListener((e) {
+      if (_isProcessing.isClosed) return;
       _isProcessing.add(e.currentQueueSize != 0 && _processQueue.size != 0);
     });
   }

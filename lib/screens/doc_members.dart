@@ -1,12 +1,18 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/contacts_page.dart';
+import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart' as m;
+import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/ays_modal.dart';
 import 'package:veil/widgets/banner.dart';
@@ -25,13 +31,8 @@ class MemberScreenModel {
 }
 
 class DocumentMemberListScreen extends StatefulWidget {
-  DocumentMemberListScreen({
-    super.key,
-    required this.members,
-    required this.syncModel,
-  });
+  DocumentMemberListScreen({super.key, required this.syncModel});
 
-  final List<MemberScreenModel> members;
   final SyncModel syncModel;
 
   final updateUserNameTextController = TextEditingController();
@@ -42,6 +43,9 @@ class DocumentMemberListScreen extends StatefulWidget {
 }
 
 class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
+  StreamSubscription? _groupInfoUpdates;
+  var members = <MemberScreenModel>[];
+
   void _onAddMember(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -53,8 +57,52 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
+  List<MemberScreenModel> _prepareMemberList() {
+    final groupInfo = widget.syncModel.groupContext.retrieveGroupInfo();
+
+    final members = groupInfo.members
+        .map(
+          (e) => MemberScreenModel(
+            member: DocumentMember(
+              account: ExternalAccount(
+                actorId: e.id,
+                name: e.name,
+                rawPublicKey: e.publicKey,
+              ),
+              status: e.status.value,
+              role: e.role.value,
+              roleName: e.role.name,
+            ),
+            isYou: AccountSecureStorage.instance.account.actorId == e.id,
+            isOwner: e.role.value == ownerRole,
+          ),
+        )
+        .toList();
+
+    return members;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    members = _prepareMemberList();
+
+    _groupInfoUpdates = widget.syncModel.groupInfoUpdateEvent.listen((_) {
+      setState(() {
+        members = _prepareMemberList();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _groupInfoUpdates?.cancel();
+    super.dispose();
+  }
+
   get currentAccountIsOwner {
-    final owner = widget.members.firstWhereOrNull((e) {
+    final owner = members.firstWhereOrNull((e) {
       return e.isOwner && e.isYou;
     });
 
@@ -151,7 +199,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           await widget.syncModel.removeMember(actorId: user.account.actorId);
 
           setState(() {
-            widget.members.removeWhere(
+            members.removeWhere(
               (e) => e.member.account.actorId == user.account.actorId,
             );
           });
@@ -294,13 +342,13 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       ),
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 4),
-        itemCount: widget.members.length,
+        itemCount: members.length,
         separatorBuilder: (_, __) => Padding(
           padding: const EdgeInsets.only(left: 16, right: 16),
           child: Divider(height: 1, thickness: 1.2, color: dividerColor),
         ),
         itemBuilder: (context, i) {
-          final g = widget.members[i];
+          final g = members[i];
           return ListTile(
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -347,7 +395,6 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
               ],
             ),
             subtitle: Column(
-              // mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
