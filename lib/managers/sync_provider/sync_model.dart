@@ -249,6 +249,35 @@ extension SyncModelProcessOperations on SyncModel {
 }
 
 extension SyncModelSendOperations on SyncModel {
+  Future<void> leaveGroup() async {
+    final executedStream = StreamController<bool>();
+
+    _sendQueue.addJob(() async {
+      try {
+        logger.i('Sending leave group frame..');
+        final frame = await groupContext.leaveGroup();
+        await GroupApiClient.instance.sendFrame(
+          groupId: document.id,
+          frame: frame,
+        );
+        logger.i('Sent leave group frame');
+
+        await _db.updateDocument(
+          doc: document,
+          parts: await groupContext.asParts(),
+        );
+
+        executedStream.add(true);
+      } catch (e) {
+        logger.e('Failed to send leave group frame: $e');
+        _sendQueue.retry();
+      }
+    }, retryTime: 3);
+
+    _sendQueue.start();
+    await executedStream.stream.first;
+  }
+
   Future<void> sendCrdtFrame(String md) async {
     _sendQueue.addJob(() async {
       try {

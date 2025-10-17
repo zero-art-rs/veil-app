@@ -1,4 +1,3 @@
-import 'package:veil/main.dart';
 import 'package:veil/protos/zero_art.pbserver.dart';
 
 enum ExposedCRDTPayloadKind { incrementalChange, fullDocument }

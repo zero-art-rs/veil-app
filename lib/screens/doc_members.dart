@@ -303,12 +303,14 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
             title: Row(
               spacing: 12,
               children: [
-                Text(
-                  g.member.account.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                Expanded(
+                  child: Text(
+                    g.member.account.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
 
@@ -374,7 +376,6 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   Widget buildTrailing(ThemeData theme, MemberScreenModel g) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      spacing: 12,
       children: [
         if (g.isYou)
           IconButton(

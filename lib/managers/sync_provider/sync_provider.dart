@@ -111,6 +111,7 @@ class SyncProvider {
       return;
     }
 
+    await syncModel.leaveGroup();
     await syncModel.dispose();
     await _db.deleteDocument(syncModel.document.id);
 
