@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:async_queue/async_queue.dart';
+import 'package:collection/collection.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
@@ -14,6 +16,7 @@ import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
+import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/utils/group_context_factory.dart';
@@ -34,16 +37,19 @@ class SyncModel {
   final _sendQueue = AsyncQueue();
 
   bool bufferFrames = true;
+  get isLocal => document.localOnly;
 
+  final _groupInfoUpdatesEvent = StreamController<bool>.broadcast();
   final _crdtUpdatesEvent = StreamController<BAutoCommit>.broadcast();
   final _removedFromGroupEvent = StreamController<bool>.broadcast();
   final _isProcessing = StreamController<bool>.broadcast();
 
+  Stream<bool> get groupInfoUpdateEvent => _groupInfoUpdatesEvent.stream;
   Stream<BAutoCommit> get crdtUpdatesEvent => _crdtUpdatesEvent.stream;
   Stream<bool> get removedFromGroupEvent => _removedFromGroupEvent.stream;
   Stream<bool> get isProcessing => _isProcessing.stream;
 
-  get isLocal => document.localOnly;
+  String _previousGroupInfoHash = '';
 
   SyncModel({
     required this.document,
@@ -56,15 +62,29 @@ class SyncModel {
       (e) => e.id == AccountSecureStorage.instance.account.actorId,
     );
   }
+
+  bool isChangingGroupMetaAllowed() {
+    return groupContext
+            .retrieveGroupInfo()
+            .members
+            .firstWhereOrNull(
+              (e) => e.id == AccountSecureStorage.instance.account.actorId,
+            )
+            ?.role
+            .value ==
+        ownerRole;
+  }
 }
 
 extension SyncModelInit on SyncModel {
   void listenProcess() {
     _processQueue.addQueueListener((e) {
+      if (_isProcessing.isClosed) return;
       _isProcessing.add(e.currentQueueSize != 0 && _sendQueue.size != 0);
     });
 
     _sendQueue.addQueueListener((e) {
+      if (_isProcessing.isClosed) return;
       _isProcessing.add(e.currentQueueSize != 0 && _processQueue.size != 0);
     });
   }
@@ -97,13 +117,13 @@ extension SyncModelInit on SyncModel {
 
       for (final spFrame in result.spFrames.reversed) {
         try {
-          final rawFramePayloads = await groupContext.processFrame(
+          final (rawFramePayloads, _) = await groupContext.processFrame(
             frame: spFrame.frame.writeToBuffer(),
           );
 
           final payloads = Payloads.fromBuffer(rawFramePayloads);
           for (final payload in payloads.payloads) {
-            final crdt = PayloadUtils.instance.exposePayload(payload);
+            final crdt = FrameUtils.instance.exposeCrdtPayload(payload);
 
             if (crdt == null) continue;
 
@@ -113,6 +133,7 @@ extension SyncModelInit on SyncModel {
                   bytes: crdt.crdt.incrementalChange,
                 );
               case ExposedCRDTPayloadKind.fullDocument:
+                if (!allowFullDocument) continue;
                 logger.d('Received crdt full document');
                 document.automergeDoc = BAutoCommit.load(
                   data: crdt.crdt.fullDocument,
@@ -146,16 +167,24 @@ extension SyncModelInit on SyncModel {
 
   Future<void> dispose() async {
     logger.i('Sync provider disposed');
+    _processQueue.clear();
+    _sendQueue.clear();
     await listener?.cancel();
+    await _removedFromGroupEvent.close();
+    await _groupInfoUpdatesEvent.close();
+    await _crdtUpdatesEvent.close();
+    await _isProcessing.close();
   }
 }
 
 extension SyncModelHandle on SyncModel {
-  void bufferizeFrames() {
-    return _processQueue.addJob(() async {
+  void bufferizeFrames() async {
+    _processQueue.addJob(() async {
       logger.i('Change process frames to buffer mode');
       bufferFrames = true;
     });
+
+    await _processQueue.start();
   }
 
   Future<void> applyBufferedFrames() async {
@@ -167,6 +196,8 @@ extension SyncModelHandle on SyncModel {
       bufferFrames = false;
       logger.i('Change process frames to process mode');
     });
+
+    await _processQueue.start();
   }
 }
 
@@ -177,39 +208,81 @@ extension SyncModelProcessOperations on SyncModel {
       logger.d('Received frame, frame epoch: ${spframe.frame.frame.epoch}..');
       logger.d('Received frame, frame seqNum: ${spframe.seqNum}..');
 
-      try {
-        final (crdtList, _) = await _processFrame(spframe);
+      _previousGroupInfoHash = sha256
+          .convert(groupContext.groupInfo())
+          .toString();
 
-        if (bufferFrames) {
-          logger.d('Buffering crdt frames...');
-          for (final payload in crdtList) {
-            await _crdtBuffer.push(payload);
-          }
-        } else {
-          logger.d('Applying crdt frames...');
-          final snapshot = await _crdtBuffer.snapshot();
-          snapshot.addAll(crdtList);
-          await applyCrdtListOperation(snapshot);
-          await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-          _crdtUpdatesEvent.add(document.automergeDoc);
+      final (crdtList, _) = await _processFrame(spframe);
+
+      final currentGroupInfoHash = sha256
+          .convert(groupContext.groupInfo())
+          .toString();
+
+      if (currentGroupInfoHash != _previousGroupInfoHash &&
+          !_groupInfoUpdatesEvent.isClosed) {
+        logger.i('Group info changed, sending update..');
+        _groupInfoUpdatesEvent.add(true);
+      }
+
+      if (bufferFrames) {
+        logger.d('Buffering crdt frames...');
+        for (final payload in crdtList) {
+          await _crdtBuffer.push(payload);
         }
-      } catch (e) {
-        if (e.toString().contains('User removed from group')) {
-          logger.i('User removed from group, making local only');
-          _removedFromGroupEvent.add(true);
-          await disableNetworkSyncOperation();
-          await LocalStateUtils.instance.makeDocumentLocal(document);
-        } else {
-          rethrow;
-        }
+      } else {
+        logger.d('Applying crdt frames...');
+        final snapshot = await _crdtBuffer.snapshot();
+        snapshot.addAll(crdtList);
+        await applyCrdtListOperation(snapshot);
+        await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
+        _crdtUpdatesEvent.add(document.automergeDoc);
       }
     });
 
-    _processQueue.start();
+    try {
+      await _processQueue.start();
+    } catch (e) {
+      if (e.toString().contains('User removed from group')) {
+        logger.i('User removed from group, making local only');
+        _removedFromGroupEvent.add(true);
+        await disableNetworkSyncOperation();
+      } else {
+        rethrow;
+      }
+    }
   }
 }
 
 extension SyncModelSendOperations on SyncModel {
+  Future<void> leaveGroup() async {
+    final executedStream = StreamController<bool>();
+
+    _sendQueue.addJob(() async {
+      try {
+        logger.i('Sending leave group frame..');
+        final frame = await groupContext.leaveGroup();
+        await GroupApiClient.instance.sendFrame(
+          groupId: document.id,
+          frame: frame,
+        );
+        logger.i('Sent leave group frame');
+
+        await _db.updateDocument(
+          doc: document,
+          parts: await groupContext.asParts(),
+        );
+
+        executedStream.add(true);
+      } catch (e) {
+        logger.e('Failed to send leave group frame: $e');
+        _sendQueue.retry();
+      }
+    }, retryTime: 3);
+
+    _sendQueue.start();
+    await executedStream.stream.first;
+  }
+
   Future<void> sendCrdtFrame(String md) async {
     _sendQueue.addJob(() async {
       try {
@@ -226,6 +299,48 @@ extension SyncModelSendOperations on SyncModel {
         _sendQueue.retry();
       }
     }, retryTime: 3);
+
+    await _sendQueue.start();
+  }
+
+  Future<void> updateGroupName({required String name}) async {
+    _sendQueue.addJob(() async {
+      logger.i('Creating change group frame...');
+      final frame = await groupContext.changeGroup(name: name);
+
+      logger.i('Sending change group frame...');
+      await GroupApiClient.instance.sendFrame(
+        groupId: document.id,
+        frame: frame,
+      );
+      logger.i('Change group frame was sent');
+
+      await _db.updateDocument(
+        doc: document,
+        parts: await groupContext.asParts(),
+      );
+    });
+
+    await _sendQueue.start();
+  }
+
+  Future<void> updateUserName({required String name}) async {
+    _sendQueue.addJob(() async {
+      logger.i('Creating change user frame...');
+      final frame = await groupContext.changeUser(name: name);
+
+      logger.i('Sending change user frame...');
+      await GroupApiClient.instance.sendFrame(
+        groupId: document.id,
+        frame: frame,
+      );
+      logger.i('Change user frame was sent');
+
+      await _db.updateDocument(
+        doc: document,
+        parts: await groupContext.asParts(),
+      );
+    });
 
     await _sendQueue.start();
   }
@@ -336,8 +451,6 @@ extension SyncModelSendOperations on SyncModel {
   }
 
   Future<void> removeMember({required String actorId}) async {
-    final executedHandle = StreamController<bool>();
-
     _sendQueue.addJob(() async {
       logger.i('Removing member in group context..');
       final frame = await groupContext.removeMember(
@@ -356,12 +469,9 @@ extension SyncModelSendOperations on SyncModel {
         doc: document,
         parts: await groupContext.asParts(),
       );
-
-      executedHandle.add(true);
     });
 
     await _sendQueue.start();
-    await executedHandle.stream.first;
   }
 
   Future<void> sendJoinGroupFrame(Account user) async {
@@ -399,16 +509,13 @@ extension SyncModelOperations on SyncModel {
     await listener?.cancel();
     document.localOnly = true;
 
-    await _db.updateDocument(
-      doc: document,
-      parts: await groupContext.asParts(),
-    );
+    LocalStateUtils.instance.makeDocumentLocal(document);
   }
 
   Future<(List<ExposedCRDTPayload> payloads, bool fromCurrentUser)>
   _processFrame(SPFrame spframe) async {
     List<ExposedCRDTPayload> exposedCrdtPayload = [];
-    final rawPayloads = await groupContext.processFrame(
+    final (rawPayloads, _) = await groupContext.processFrame(
       frame: spframe.frame.writeToBuffer(),
     );
 
@@ -417,9 +524,8 @@ extension SyncModelOperations on SyncModel {
     }
 
     final payloads = Payloads.fromBuffer(rawPayloads);
-
     for (final payload in payloads.payloads) {
-      final crdt = PayloadUtils.instance.exposePayload(payload);
+      final crdt = FrameUtils.instance.exposeCrdtPayload(payload);
       if (crdt == null) continue;
 
       exposedCrdtPayload.add(crdt);

@@ -43,26 +43,15 @@ class DocumentMember {
   final ExternalAccount account;
   final int role;
   final String roleName;
-
-  DocumentMember.fromJson(Map<String, dynamic> json)
-    : account = ExternalAccount.fromJson(json['account']),
-      role = json['role'],
-      roleName = json['role_name'];
-
-  toJson() => Map<String, dynamic>.from({
-    'account': account.toJson(),
-    'role': int,
-    'role_name': roleName,
-  });
+  final int status;
 
   DocumentMember({
     required this.account,
     required this.role,
     required this.roleName,
+    required this.status,
   });
 }
-
-class DocumentMemberRole {}
 
 class Document {
   String id;

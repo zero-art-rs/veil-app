@@ -1,17 +1,40 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:veil/extensions/group_context.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/difference_page.dart';
-import 'package:veil/storage/models.dart';
+
+List<ChangeEvent> _prepareChangeList(SyncModel syncModel) {
+  final members = syncModel.groupContext.retrieveGroupInfo().members;
+
+  return syncModel.document.automergeDoc
+      .getChangeList()
+      .indexed
+      .map(
+        (e) => ChangeEvent(
+          title: 'Change',
+          actorIdHex: e.$2.actorIdHex(),
+          changeHashHex: e.$2.changeHash(),
+          date: e.$2.timestamp(),
+          name:
+              members
+                  .firstWhereOrNull((elem) => elem.id == e.$2.actorIdHex())
+                  ?.name ??
+              e.$2.actorIdHex(),
+          isInitial: e.$1 == 0,
+        ),
+      )
+      .toList()
+      .reversed
+      .toList();
+}
 
 class HistoryPage extends StatelessWidget {
-  const HistoryPage({
-    super.key,
-    required this.items,
-    required this.doc,
-    this.onChangeTap,
-  });
+  HistoryPage({super.key, required this.syncModel, this.onChangeTap})
+    : _items = _prepareChangeList(syncModel);
 
-  final List<ChangeEvent> items;
-  final Document doc;
+  final SyncModel syncModel;
+  final List<ChangeEvent> _items;
   final void Function(BuildContext context, ChangeEvent change)? onChangeTap;
 
   @override
@@ -24,19 +47,18 @@ class HistoryPage extends StatelessWidget {
       body: SafeArea(
         child: ListView.separated(
           padding: const EdgeInsets.all(16),
-          itemCount: items.length,
+          itemCount: _items.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final change = items[index];
+            final change = _items[index];
             return _ChangeEventCard(
               event: change,
               onTap: () {
                 if (onChangeTap != null) {
                   onChangeTap?.call(context, change);
                 } else {
-                  var (before, after) = doc.automergeDoc.docsBeforeAfter(
-                    changeHash: change.changeHashHex,
-                  );
+                  var (before, after) = syncModel.document.automergeDoc
+                      .docsBeforeAfter(changeHash: change.changeHashHex);
 
                   final oldDoc = before.getBlocks();
                   final newDoc = after.getBlocks();
@@ -198,8 +220,7 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color:
-            actorColor ?? theme.colorScheme.secondaryContainer.withAlpha(60),
+        color: actorColor ?? theme.colorScheme.secondaryContainer.withAlpha(60),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(

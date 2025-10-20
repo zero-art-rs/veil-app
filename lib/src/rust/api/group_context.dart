@@ -89,7 +89,7 @@ abstract class BGroupContext implements RustOpaqueInterface {
 
   Future<Uint8List> leaveGroup();
 
-  Future<Uint8List> processFrame({required List<int> frame});
+  Future<(Uint8List, bool)> processFrame({required List<int> frame});
 
   Future<Uint8List> removeMember({
     required String userId,
@@ -174,6 +174,8 @@ abstract class BUser implements RustOpaqueInterface {
       .instance
       .api
       .crateApiGroupContextBUserNew(name: name, publicKey: publicKey);
+
+  int status();
 }
 
 class U8Array32 extends NonGrowableListView<int> {

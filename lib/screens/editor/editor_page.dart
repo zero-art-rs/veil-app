@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
-import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
@@ -59,7 +58,13 @@ class _EditorPageView extends StatelessWidget {
       appBar: AppBar(
         title: Align(
           alignment: Alignment.centerLeft,
-          child: Text(vm.syncModel.groupContext.retrieveGroupInfo().name),
+          child: TextField(
+            decoration: const InputDecoration.collapsed(hintText: null),
+            controller: vm.groupNameController,
+            enabled: vm.syncModel.isChangingGroupMetaAllowed(),
+            onSubmitted: (name) async =>
+                await vm.updateGroupName(context, name),
+          ),
         ),
         actions: [
           if (vm.allowWriteEvents)
@@ -152,8 +157,6 @@ class _EditorPageView extends StatelessWidget {
               ModalSquareRoundedButton(
                 iconData: Icons.group_outlined,
                 onPressed: (ctx) async {
-                  final members = await vm.prepareMemberList();
-                  if (!context.mounted) return;
                   if (isDesktop) {
                     showPopover(
                       context: ctx,
@@ -166,10 +169,8 @@ class _EditorPageView extends StatelessWidget {
                       ),
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
-                          builder: (_) => DocumentMemberListScreen(
-                            members: members,
-                            syncModel: vm.syncModel,
-                          ),
+                          builder: (_) =>
+                              DocumentMemberListScreen(syncModel: vm.syncModel),
                         ),
                       ),
                     );
@@ -177,10 +178,8 @@ class _EditorPageView extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => DocumentMemberListScreen(
-                          members: members,
-                          syncModel: vm.syncModel,
-                        ),
+                        builder: (_) =>
+                            DocumentMemberListScreen(syncModel: vm.syncModel),
                       ),
                     );
                   }
@@ -189,8 +188,6 @@ class _EditorPageView extends StatelessWidget {
               ModalSquareRoundedButton(
                 iconData: Icons.history_sharp,
                 onPressed: (ctx) {
-                  final changes = vm.prepareChangeList();
-
                   if (isDesktop) {
                     showPopover(
                       context: ctx,
@@ -203,10 +200,7 @@ class _EditorPageView extends StatelessWidget {
                       ),
                       bodyBuilder: (_) => Navigator(
                         onGenerateRoute: (_) => MaterialPageRoute(
-                          builder: (_) => HistoryPage(
-                            items: changes,
-                            doc: vm.syncModel.document,
-                          ),
+                          builder: (_) => HistoryPage(syncModel: vm.syncModel),
                         ),
                       ),
                     );
@@ -214,10 +208,7 @@ class _EditorPageView extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => HistoryPage(
-                          items: changes,
-                          doc: vm.syncModel.document,
-                        ),
+                        builder: (_) => HistoryPage(syncModel: vm.syncModel),
                       ),
                     );
                   }

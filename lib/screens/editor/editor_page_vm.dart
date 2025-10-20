@@ -1,17 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/screens/doc_members.dart';
-import 'package:veil/screens/history_page.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
-import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/widgets/banner.dart';
 
@@ -26,6 +21,7 @@ class EditorPageVm extends ChangeNotifier {
   var selectedMode = EditorModes.view;
   bool allowWriteEvents = true;
 
+  final groupNameController = TextEditingController();
   StreamSubscription? _isProcessingSubscription;
   StreamSubscription? _removeFromGroupSubscription;
   StreamSubscription? _crdtUpdatesSubscription;
@@ -35,6 +31,8 @@ class EditorPageVm extends ChangeNotifier {
 
   void init(BuildContext context) async {
     allowWriteEvents = !syncModel.isLocal;
+
+    groupNameController.text = syncModel.groupContext.retrieveGroupInfo().name;
 
     _isProcessingSubscription = syncModel.isProcessing.listen((e) {
       isSinking = e;
@@ -57,7 +55,22 @@ class EditorPageVm extends ChangeNotifier {
       case false:
         await _joinGroupIfNeeded(context);
         await _networkInit();
-        notifyListeners();
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> updateGroupName(BuildContext context, String groupName) async {
+    try {
+      await syncModel.updateGroupName(name: groupNameController.text);
+    } catch (e) {
+      logger.e('Failed to update group name: $e');
+      if (!context.mounted) return;
+      TopBanner.show(
+        context: context,
+        message: 'Failed to update group name',
+        kind: TopBannerCases.error,
+      );
     }
   }
 
@@ -156,56 +169,6 @@ class EditorPageVm extends ChangeNotifier {
 
   void notify() {
     notifyListeners();
-  }
-
-  Future<List<MemberScreenModel>> prepareMemberList() async {
-    final groupInfo = syncModel.groupContext.retrieveGroupInfo();
-
-    final members = groupInfo.members
-        .map(
-          (e) => MemberScreenModel(
-            member: DocumentMember(
-              account: ExternalAccount(
-                actorId: e.id,
-                name: e.name,
-                rawPublicKey: e.publicKey,
-              ),
-              role: e.role.value,
-              roleName: e.role.name,
-            ),
-            isYou: AccountSecureStorage.instance.account.actorId == e.id,
-            isOwner: e.role.value == ownerRole,
-          ),
-        )
-        .where((e) => e.member.account.name != 'Invited')
-        .toList();
-
-    return members;
-  }
-
-  List<ChangeEvent> prepareChangeList() {
-    final members = syncModel.groupContext.retrieveGroupInfo().members;
-
-    return syncModel.document.automergeDoc
-        .getChangeList()
-        .indexed
-        .map(
-          (e) => ChangeEvent(
-            title: 'Change',
-            actorIdHex: e.$2.actorIdHex(),
-            changeHashHex: e.$2.changeHash(),
-            date: e.$2.timestamp(),
-            name:
-                members
-                    .firstWhereOrNull((elem) => elem.id == e.$2.actorIdHex())
-                    ?.name ??
-                e.$2.actorIdHex(),
-            isInitial: e.$1 == 0,
-          ),
-        )
-        .toList()
-        .reversed
-        .toList();
   }
 
   @override

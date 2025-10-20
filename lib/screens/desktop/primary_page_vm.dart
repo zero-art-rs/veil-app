@@ -1,3 +1,4 @@
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:uuid/v4.dart';
@@ -27,12 +28,30 @@ class PrimaryPageViewModel extends ChangeNotifier {
   List<SyncModel> get syncModels => _syncModels;
 
   final TextEditingController textEditingController = TextEditingController();
+  final _syncModelUiUpdatesListeners = <String, StreamSubscription<bool>>{};
 
   static const constantTabs = 5;
 
   void init() async {
     _syncProvider.subject.listen((event) {
       _syncModels = event;
+
+      // remove listeners for removed sync models
+      _syncModelUiUpdatesListeners.keys
+          .where((key) => !_syncModels.map((e) => e.document.id).contains(key))
+          .forEach((key) {
+            _syncModelUiUpdatesListeners[key]?.cancel();
+          });
+
+      // add listeners for new sync models
+      for (final syncModel in _syncModels) {
+        if (_syncModelUiUpdatesListeners[syncModel.document.id] == null) {
+          _syncModelUiUpdatesListeners[syncModel.document.id] = syncModel
+              .groupInfoUpdateEvent
+              .listen((event) => notifyListeners());
+        }
+      }
+
       notifyListeners();
     });
   }
@@ -105,20 +124,10 @@ class PrimaryPageViewModel extends ChangeNotifier {
         setSelectedPage(AccountPage());
       } else if (index > 0) {
         setSelectedIndex(constantTabs + index - 1);
-        setSelectedPage(
-          EditorPage(
-            key: _syncModels[index - 1].document.key,
-            syncModel: _syncModels[index - 1],
-          ),
-        );
+        setSelectedPage(EditorPage(syncModel: _syncModels[index - 1]));
       } else {
         setSelectedIndex(constantTabs + 1);
-        setSelectedPage(
-          EditorPage(
-            // key: _syncModels.first.document.key,
-            syncModel: _syncModels.first,
-          ),
-        );
+        setSelectedPage(EditorPage(syncModel: _syncModels.first));
       }
 
       notifyListeners();

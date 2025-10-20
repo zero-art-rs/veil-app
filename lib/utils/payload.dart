@@ -9,12 +9,12 @@ class ExposedCRDTPayload {
   ExposedCRDTPayload({required this.crdt, required this.kind});
 }
 
-class PayloadUtils {
-  static final instance = PayloadUtils._();
+class FrameUtils {
+  static final instance = FrameUtils._();
 
-  PayloadUtils._();
+  FrameUtils._();
 
-  ExposedCRDTPayload? exposePayload(Payload payload) {
+  ExposedCRDTPayload? exposeCrdtPayload(Payload payload) {
     switch (payload.whichContent()) {
       case Payload_Content.crdt:
         return _handleCRDT(payload.crdt);
