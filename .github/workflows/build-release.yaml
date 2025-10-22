@@ -50,6 +50,9 @@ jobs:
     needs: build
     name: Create Release
     steps:
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | buildah login ghcr.io -u ${{ github.repository_owner }} --password-stdin
       - uses: shrink/actions-docker-extract@v3
         name: Extract package
         id: extract
