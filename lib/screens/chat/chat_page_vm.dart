@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:uuid/v4.dart';
 import 'package:veil/extensions/group_context.dart';
@@ -10,7 +8,7 @@ import 'package:veil/managers/chat/chat_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/storage/account_storage.dart';
 
-class ChatPageViewModel extends ChangeNotifier {
+class ChatPageViewModel {
   final SyncModel syncModel;
 
   ChatPageViewModel(this.syncModel);
@@ -36,7 +34,7 @@ class ChatPageViewModel extends ChangeNotifier {
   ChatManager get chatManager => syncModel.chatManager;
   String get currentUserId => AccountSecureStorage.instance.account.actorId;
 
-  User resolveUser(String actorId) {
+  Future<User> resolveUser(String actorId) async {
     final user = syncModel.groupContext
         .retrieveGroupInfo()
         .members

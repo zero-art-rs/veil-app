@@ -23,17 +23,11 @@ class EditorContainerViewModel extends ChangeNotifier {
 
   EditorContainerViewModel({required this.syncModel}) {
     pages = [
-      HistoryPage(
-        syncModel: syncModel,
-        onBackPressed: closeSideBar,
-        onChangeTap: (context, event) {
-          
-        },
-      ),
       DocumentMemberListScreen(
         syncModel: syncModel,
         onBackPressed: closeSideBar,
       ),
+      HistoryPage(syncModel: syncModel, onBackPressed: closeSideBar),
       ChatPage(syncModel: syncModel, onBackPressed: closeSideBar),
     ];
 
@@ -47,7 +41,7 @@ class EditorContainerViewModel extends ChangeNotifier {
 
   void setSidebarWidth(DragUpdateDetails details) {
     sidebarWidth -= details.delta.dx;
-    sidebarWidth = sidebarWidth.clamp(400, 1200);
+    sidebarWidth = sidebarWidth.clamp(360, 1200);
     notifyListeners();
   }
 
