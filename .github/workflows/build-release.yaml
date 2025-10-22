@@ -2,14 +2,12 @@ name: Build and Release
 
 on:
   push:
-    # tags:
-    # - 'v?[0-9]+.[0-9]+.[0-9]+'
-    # - 'v?[0-9]+.[0-9]+.[0-9]+-[0-9]+'
-    branches:
-      - "**"
+    tags:
+    - 'v?[0-9]+.[0-9]+.[0-9]+'
+    - 'v?[0-9]+.[0-9]+.[0-9]+-[0-9]+'
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}:${{ github.sha }} # replace to github.ref_name
+  IMAGE_NAME: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
   CACHE_REPO: ghcr.io/${{ github.repository }}/cache
 
 jobs:
@@ -57,12 +55,11 @@ jobs:
         id: extract
         with:
           image: $IMAGE_NAME
-          path: dist/1.1.0/. # replace to github.ref_name
+          path: dist/${{ github.ref_name }}/.
           destination: "packages"
       - name: Show Extracted Files
         run: ls -R packages
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
           files: packages/*
