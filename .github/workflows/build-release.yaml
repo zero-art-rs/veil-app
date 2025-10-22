@@ -57,7 +57,7 @@ jobs:
         id: extract
         with:
           image: $IMAGE_NAME
-          path: /dist/1.1.0/* # replace to github.ref_name
+          path: dist/1.1.0/. # replace to github.ref_name
           destination: "packages"
       - name: Show Extracted Files
         run: ls -R packages
