@@ -24,10 +24,9 @@ class ChatPageViewModel extends ChangeNotifier {
     );
 
     await chatManager.addMessage(textMessage);
-    final json = jsonEncode(message);
-    final base64Json = base64Encode(utf8.encode(json));
+    final json = jsonEncode(textMessage);
 
-    await syncModel.sendChatFrame(base64Json);
+    await syncModel.sendChatFrame(utf8.encode(json));
   }
 
   ChatManager get chatManager => syncModel.chatManager;

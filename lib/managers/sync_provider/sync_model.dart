@@ -314,9 +314,9 @@ extension SyncModelSendOperations on SyncModel {
     await _sendQueue.start();
   }
 
-  Future<void> sendChatFrame(String message) async {
+  Future<void> sendChatFrame(List<int> messageBytes) async {
     _sendQueue.addJob(() async {
-      await _sendChatFrame(message);
+      await _sendChatFrame(messageBytes);
     });
 
     await _sendQueue.start();
@@ -559,10 +559,10 @@ extension SyncModelOperations on SyncModel {
     return exposedCrdtPayload;
   }
 
-  Future<void> _sendChatFrame(String message) async {
+  Future<void> _sendChatFrame(List<int> messageBytes) async {
     final frame = await groupContext.createFrame(
       content: Payloads(
-        payloads: [Payload(chat: ChatPayload(text: utf8.encode(message)))],
+        payloads: [Payload(chat: ChatPayload(text: messageBytes))],
       ).writeToBuffer(),
     );
 

@@ -17,7 +17,7 @@ class FrameUtils {
 
   FrameUtils._();
 
-  (ExposedCRDTPayload?, TextMessage?) exposePayload(Payload payload) {
+  (ExposedCRDTPayload?, Message?) exposePayload(Payload payload) {
     switch (payload.whichContent()) {
       case Payload_Content.crdt:
         return (_handleCRDT(payload.crdt), null);
@@ -28,7 +28,7 @@ class FrameUtils {
     }
   }
 
-  TextMessage _handleChatPayload(ChatPayload payload) {
+  Message _handleChatPayload(ChatPayload payload) {
     switch (payload.whichPayload()) {
       case ChatPayload_Payload.text:
         return TextMessage.fromJson(jsonDecode(utf8.decode(payload.text)));

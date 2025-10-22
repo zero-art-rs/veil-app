@@ -37,6 +37,7 @@ Future<void> main() async {
     await Hive.initFlutter();
     await AccountSecureStorage.instance.init();
     await DB.instance.open();
+    // await DB.instance.removeAll();
     await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
     logger.d('Db path: ${await getDatabasesPath()}');
