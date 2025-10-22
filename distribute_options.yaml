@@ -1,4 +1,4 @@
-output: linux/packaging/dist
+output: linux/packaging/dist/
 releases:
   - name: veil
     jobs:
