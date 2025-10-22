@@ -16,6 +16,10 @@ class ChatPageViewModel extends ChangeNotifier {
   ChatPageViewModel(this.syncModel);
 
   Future<void> sendMessage(String message) async {
+    if (syncModel.isLocal) {
+      return;
+    }
+
     final textMessage = TextMessage(
       id: UuidV4().generate(),
       authorId: currentUserId,
@@ -30,7 +34,7 @@ class ChatPageViewModel extends ChangeNotifier {
   }
 
   ChatManager get chatManager => syncModel.chatManager;
-  get currentUserId => AccountSecureStorage.instance.account.actorId;
+  String get currentUserId => AccountSecureStorage.instance.account.actorId;
 
   User resolveUser(String actorId) {
     final user = syncModel.groupContext
