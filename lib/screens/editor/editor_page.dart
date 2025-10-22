@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
-import 'package:popover/popover.dart';
 import 'package:provider/provider.dart';
+
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/screens/doc_members.dart';
-import 'package:veil/screens/history_page.dart';
-import 'package:veil/widgets/square_rounded_btn.dart';
 import 'package:veil/widgets/sync_widget.dart';
 import 'editor_page_vm.dart';
 import 'package:veil/utils/platform.dart';
@@ -148,72 +145,6 @@ class _EditorPageView extends StatelessWidget {
                     ),
                   ),
                 ),
-            ],
-          ),
-
-          Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              ModalSquareRoundedButton(
-                iconData: Icons.group_outlined,
-                onPressed: (ctx) async {
-                  if (isDesktop) {
-                    showPopover(
-                      context: ctx,
-                      backgroundColor: Theme.of(context).colorScheme.surface,
-                      constraints: BoxConstraints(
-                        maxHeight: 640,
-                        maxWidth: 360,
-                        minHeight: 16,
-                        minWidth: 9,
-                      ),
-                      bodyBuilder: (_) => Navigator(
-                        onGenerateRoute: (_) => MaterialPageRoute(
-                          builder: (_) =>
-                              DocumentMemberListScreen(syncModel: vm.syncModel),
-                        ),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            DocumentMemberListScreen(syncModel: vm.syncModel),
-                      ),
-                    );
-                  }
-                },
-              ),
-              ModalSquareRoundedButton(
-                iconData: Icons.history_sharp,
-                onPressed: (ctx) {
-                  if (isDesktop) {
-                    showPopover(
-                      context: ctx,
-                      backgroundColor: Theme.of(context).colorScheme.surface,
-                      constraints: BoxConstraints(
-                        maxHeight: 640,
-                        maxWidth: 360,
-                        minHeight: 16,
-                        minWidth: 9,
-                      ),
-                      bodyBuilder: (_) => Navigator(
-                        onGenerateRoute: (_) => MaterialPageRoute(
-                          builder: (_) => HistoryPage(syncModel: vm.syncModel),
-                        ),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => HistoryPage(syncModel: vm.syncModel),
-                      ),
-                    );
-                  }
-                },
-              ),
             ],
           ),
         ],

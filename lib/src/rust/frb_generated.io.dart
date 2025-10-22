@@ -251,15 +251,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  (Uint8List, bool) dco_decode_record_list_prim_u_8_strict_bool(dynamic raw);
-
-  @protected
   (Uint8List, Uint8List)
   dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict(dynamic raw);
 
   @protected
   (Uint8List, Uint8List, BigInt, BigInt)
   dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_u_64(
+    dynamic raw,
+  );
+
+  @protected
+  (Uint8List, String, bool) dco_decode_record_list_prim_u_8_strict_string_bool(
     dynamic raw,
   );
 
@@ -477,11 +479,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  (Uint8List, bool) sse_decode_record_list_prim_u_8_strict_bool(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   (Uint8List, Uint8List)
   sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict(
     SseDeserializer deserializer,
@@ -490,6 +487,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   (Uint8List, Uint8List, BigInt, BigInt)
   sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_u_64(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  (Uint8List, String, bool) sse_decode_record_list_prim_u_8_strict_string_bool(
     SseDeserializer deserializer,
   );
 
@@ -744,12 +746,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_record_list_prim_u_8_strict_bool(
-    (Uint8List, bool) self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict(
     (Uint8List, Uint8List) self,
     SseSerializer serializer,
@@ -758,6 +754,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict_u_64_u_64(
     (Uint8List, Uint8List, BigInt, BigInt) self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_record_list_prim_u_8_strict_string_bool(
+    (Uint8List, String, bool) self,
     SseSerializer serializer,
   );
 

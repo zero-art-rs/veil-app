@@ -89,7 +89,7 @@ abstract class BGroupContext implements RustOpaqueInterface {
 
   Future<Uint8List> leaveGroup();
 
-  Future<(Uint8List, bool)> processFrame({required List<int> frame});
+  Future<(Uint8List, String, bool)> processFrame({required List<int> frame});
 
   Future<Uint8List> removeMember({
     required String userId,

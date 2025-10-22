@@ -6,7 +6,7 @@ import 'package:veil/api/group_api_client.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/screens/account_page.dart';
-import 'package:veil/screens/editor/editor_page.dart';
+import 'package:veil/screens/editor_container/editor_container_page.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
@@ -124,10 +124,10 @@ class PrimaryPageViewModel extends ChangeNotifier {
         setSelectedPage(AccountPage());
       } else if (index > 0) {
         setSelectedIndex(constantTabs + index - 1);
-        setSelectedPage(EditorPage(syncModel: _syncModels[index - 1]));
+        setSelectedPage(EditorContainerPage(syncModel: _syncModels[index - 1]));
       } else {
         setSelectedIndex(constantTabs + 1);
-        setSelectedPage(EditorPage(syncModel: _syncModels.first));
+        setSelectedPage(EditorContainerPage(syncModel: _syncModels.first));
       }
 
       notifyListeners();

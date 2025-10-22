@@ -272,9 +272,7 @@ impl BGroupContext {
     }
 
 
-    pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<(Vec<u8>, bool)> {
-        // let mut group_context = self.group_context.lock().unwrap();
-
+    pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<(Vec<u8>, String, bool)> {
         let frame = Frame::decode(&frame)
             .map_err(|e| anyhow!("failed to deserialize frame: {}", e.to_string()))?;
 

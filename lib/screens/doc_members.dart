@@ -36,9 +36,14 @@ class MemberScreenModel {
 }
 
 class DocumentMemberListScreen extends StatefulWidget {
-  DocumentMemberListScreen({super.key, required this.syncModel});
+  DocumentMemberListScreen({
+    super.key,
+    required this.syncModel,
+    this.onBackPressed,
+  });
 
   final SyncModel syncModel;
+  final void Function()? onBackPressed;
 
   final updateUserNameTextController = TextEditingController();
 
@@ -339,10 +344,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       appBar: AppBar(
         title: const Text('Document members'),
         leading: PlatformUtils.isDesktop
-            ? CloseButton(
-                onPressed: () =>
-                    Navigator.of(context, rootNavigator: true).pop(),
-              )
+            ? CloseButton(onPressed: () => widget.onBackPressed?.call())
             : BackButton(),
       ),
       body: ListView.separated(

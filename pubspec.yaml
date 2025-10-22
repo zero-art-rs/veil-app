@@ -71,6 +71,10 @@ dependencies:
   dio: ^5.9.0
   quiver: ^3.2.2
   synchronized: ^3.4.0
+  flutter_chat_ui: ^2.9.1
+  flutter_chat_core: ^2.8.0
+  hive_ce: ^2.14.0
+  hive_ce_flutter: ^2.3.2
 
 
 dev_dependencies:

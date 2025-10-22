@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:veil/protos/zero_art.pbserver.dart';
 
 enum ExposedCRDTPayloadKind { incrementalChange, fullDocument }
@@ -14,12 +17,27 @@ class FrameUtils {
 
   FrameUtils._();
 
-  ExposedCRDTPayload? exposeCrdtPayload(Payload payload) {
+  (ExposedCRDTPayload?, TextMessage?) exposePayload(Payload payload) {
     switch (payload.whichContent()) {
       case Payload_Content.crdt:
-        return _handleCRDT(payload.crdt);
+        return (_handleCRDT(payload.crdt), null);
+      case Payload_Content.chat:
+        return (null, _handleChatPayload(payload.chat));
       default:
-        return null;
+        return (null, null);
+    }
+  }
+
+  TextMessage _handleChatPayload(ChatPayload payload) {
+    switch (payload.whichPayload()) {
+      case ChatPayload_Payload.text:
+        return TextMessage.fromJson(jsonDecode(utf8.decode(payload.text)));
+      case ChatPayload_Payload.img:
+        throw UnimplementedError('Image attachments not supported');
+      case ChatPayload_Payload.file:
+        throw UnimplementedError('File attachments not supported');
+      case ChatPayload_Payload.notSet:
+        throw UnimplementedError('Chat payload not set');
     }
   }
 

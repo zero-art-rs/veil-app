@@ -8,6 +8,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_client_sse/flutter_client_sse.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
+import 'package:veil/managers/chat/chat_manager.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sync_provider/sync_buffer.dart';
@@ -29,6 +30,7 @@ import '../../main.dart';
 class SyncModel {
   final Document document;
   final BGroupContext groupContext;
+  final ChatManager chatManager;
   StreamSubscription<SSEModel>? listener;
   final _db = DB.instance;
 
@@ -55,6 +57,7 @@ class SyncModel {
     required this.document,
     required this.groupContext,
     required this.listener,
+    required this.chatManager,
   });
 
   bool isUserInGroup() {
@@ -77,6 +80,19 @@ class SyncModel {
 }
 
 extension SyncModelInit on SyncModel {
+  void _handleCrdt(ExposedCRDTPayload crdt, bool allowFullDocument) {
+    switch (crdt.kind) {
+      case ExposedCRDTPayloadKind.incrementalChange:
+        document.automergeDoc.loadIncremental(
+          bytes: crdt.crdt.incrementalChange,
+        );
+      case ExposedCRDTPayloadKind.fullDocument:
+        if (!allowFullDocument) return;
+        logger.d('Received crdt full document');
+        document.automergeDoc = BAutoCommit.load(data: crdt.crdt.fullDocument);
+    }
+  }
+
   void listenProcess() {
     _processQueue.addQueueListener((e) {
       if (_isProcessing.isClosed) return;
@@ -117,27 +133,22 @@ extension SyncModelInit on SyncModel {
 
       for (final spFrame in result.spFrames.reversed) {
         try {
-          final (rawFramePayloads, _) = await groupContext.processFrame(
+          final (rawFramePayloads, _, _) = await groupContext.processFrame(
             frame: spFrame.frame.writeToBuffer(),
           );
 
           final payloads = Payloads.fromBuffer(rawFramePayloads);
           for (final payload in payloads.payloads) {
-            final crdt = FrameUtils.instance.exposeCrdtPayload(payload);
+            final (crdt, chatMessage) = FrameUtils.instance.exposePayload(
+              payload,
+            );
 
-            if (crdt == null) continue;
+            if (chatMessage != null) {
+              chatManager.addMessage(chatMessage);
+            }
 
-            switch (crdt.kind) {
-              case ExposedCRDTPayloadKind.incrementalChange:
-                document.automergeDoc.loadIncremental(
-                  bytes: crdt.crdt.incrementalChange,
-                );
-              case ExposedCRDTPayloadKind.fullDocument:
-                if (!allowFullDocument) continue;
-                logger.d('Received crdt full document');
-                document.automergeDoc = BAutoCommit.load(
-                  data: crdt.crdt.fullDocument,
-                );
+            if (crdt != null) {
+              _handleCrdt(crdt, allowFullDocument);
             }
           }
         } catch (e) {
@@ -212,7 +223,7 @@ extension SyncModelProcessOperations on SyncModel {
           .convert(groupContext.groupInfo())
           .toString();
 
-      final (crdtList, _) = await _processFrame(spframe);
+      final crdtList = await _processFrame(spframe);
 
       final currentGroupInfoHash = sha256
           .convert(groupContext.groupInfo())
@@ -299,6 +310,14 @@ extension SyncModelSendOperations on SyncModel {
         _sendQueue.retry();
       }
     }, retryTime: 3);
+
+    await _sendQueue.start();
+  }
+
+  Future<void> sendChatFrame(String message) async {
+    _sendQueue.addJob(() async {
+      await _sendChatFrame(message);
+    });
 
     await _sendQueue.start();
   }
@@ -512,23 +531,23 @@ extension SyncModelOperations on SyncModel {
     LocalStateUtils.instance.makeDocumentLocal(document);
   }
 
-  Future<(List<ExposedCRDTPayload> payloads, bool fromCurrentUser)>
-  _processFrame(SPFrame spframe) async {
+  Future<List<ExposedCRDTPayload>> _processFrame(SPFrame spframe) async {
     List<ExposedCRDTPayload> exposedCrdtPayload = [];
-    final (rawPayloads, _) = await groupContext.processFrame(
+    final (rawPayloads, _, _) = await groupContext.processFrame(
       frame: spframe.frame.writeToBuffer(),
     );
 
-    if (rawPayloads.isEmpty) {
-      return (exposedCrdtPayload, true);
-    }
-
     final payloads = Payloads.fromBuffer(rawPayloads);
     for (final payload in payloads.payloads) {
-      final crdt = FrameUtils.instance.exposeCrdtPayload(payload);
-      if (crdt == null) continue;
+      final (crdt, chatMessage) = FrameUtils.instance.exposePayload(payload);
 
-      exposedCrdtPayload.add(crdt);
+      if (crdt != null) {
+        exposedCrdtPayload.add(crdt);
+      }
+
+      if (chatMessage != null) {
+        chatManager.addMessage(chatMessage);
+      }
     }
 
     document.sequenceNumber = spframe.seqNum.toInt();
@@ -537,7 +556,17 @@ extension SyncModelOperations on SyncModel {
       doc: document,
       parts: await groupContext.asParts(),
     );
-    return (exposedCrdtPayload, false);
+    return exposedCrdtPayload;
+  }
+
+  Future<void> _sendChatFrame(String message) async {
+    final frame = await groupContext.createFrame(
+      content: Payloads(
+        payloads: [Payload(chat: ChatPayload(text: utf8.encode(message)))],
+      ).writeToBuffer(),
+    );
+
+    await GroupApiClient.instance.sendFrame(groupId: document.id, frame: frame);
   }
 
   Future<void> _sendCrdtFrame(

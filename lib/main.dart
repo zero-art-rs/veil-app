@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:veil/assets/util.dart';
@@ -33,9 +34,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    await Hive.initFlutter();
     await AccountSecureStorage.instance.init();
     await DB.instance.open();
-    // await DB.instance.removeAll();
     await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
     logger.d('Db path: ${await getDatabasesPath()}');
