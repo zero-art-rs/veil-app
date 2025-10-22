@@ -44,6 +44,6 @@ RUN . "${HOME}/.cargo/env" && \
     protoc -Ilib/protos --dart_out=lib/protos lib/protos/*.proto google/protobuf/timestamp.proto && \
     fastforge release --name veil
 
-FROM scratch AS artifacts
+FROM alpine:3.19 AS artifacts
 
 COPY --from=builder /app/linux/packaging/dist/ /dist
