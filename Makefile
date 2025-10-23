@@ -20,3 +20,12 @@ update-deps:
 build-packages:
 	@echo "Building packages"
 	fastforge release --name veil
+
+list: 
+	@echo ""
+	@echo "Commands list:"
+	@echo ""
+	@echo "run               - runs app" 
+	@echo "update-deps       - updates rust dependencies and regenerates Flutter Rust bindings"
+	@echo "build-packages    - builds packages for distribution"
+	@echo ""
