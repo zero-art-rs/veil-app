@@ -1,10 +1,22 @@
-default: update
+default: run
 
-run: 
-	RUST_LOG='zrt_client_sdk=debug' flutter run -d macos
+PLATFORM ?= macos
+RUST_LOG ?= zrt_client_sdk=debug
 
-update:
-	cd rust && git pull && cargo update && cd .. && RUST_LOG='zrt_client_sdk=debug' flutter run -d macos
+run:
+	@echo "Running Flutter app for $(PLATFORM)..."
+ifeq ($(PLATFORM),linux)
+	@echo "Building release rust library for linux"
+	cd rust && cargo build --release && cd ..
+endif
+	RUST_LOG='$(RUST_LOG)' flutter run -d $(PLATFORM)
 
-lnx:
-	cd rust && git pull && cargo update && cargo build --release && cd .. && RUST_LOG='zrt_client_sdk=debug' flutter run -d linux
+update-deps:
+	@echo "Updating Rust deps"
+	cd rust && git pull && cargo update && cd ..
+	@echo "Regenerating Flutter_Rust bindings"
+	flutter_rust_bridge_codegen generate
+
+build-packages:
+	@echo "Building packages"
+	fastforge release --name veil
