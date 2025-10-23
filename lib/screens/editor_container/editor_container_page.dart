@@ -71,20 +71,20 @@ class _EditorContainerDesktopView extends StatelessWidget {
                 ModalSquareRoundedButton(
                   iconData: Icons.group_outlined,
                   onPressed: (ctx) async {
-                    vm.changeIndexPage(0);
+                    vm.changePage(EditorContainerPages.members);
                   },
                 ),
                 ModalSquareRoundedButton(
                   iconData: Icons.history_sharp,
                   onPressed: (ctx) {
-                    vm.changeIndexPage(1);
+                    vm.changePage(EditorContainerPages.history);
                   },
                 ),
 
                 ModalSquareRoundedButton(
                   iconData: Icons.chat,
                   onPressed: (ctx) {
-                    vm.changeIndexPage(2);
+                    vm.changePage(EditorContainerPages.chat);
                   },
                 ),
               ],

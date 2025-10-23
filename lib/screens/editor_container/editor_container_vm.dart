@@ -16,8 +16,8 @@ class EditorContainerViewModel extends ChangeNotifier {
 
   bool get isDesktop => PlatformUtils.isDesktop;
 
-  void changeIndexPage(int index) {
-    currentPage = pages[index];
+  void changePage(EditorContainerPages page) {
+    currentPage = pages[page.index];
     notifyListeners();
   }
 
