@@ -1,8 +1,11 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/chat/chat_page.dart';
 import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
+import 'package:veil/utils/platform.dart';
+
+enum EditorContainerPages { members, history, chat }
 
 class EditorContainerViewModel extends ChangeNotifier {
   double sidebarWidth = 400;
@@ -10,6 +13,8 @@ class EditorContainerViewModel extends ChangeNotifier {
   final SyncModel syncModel;
   List<Widget> pages = [];
   Widget? currentPage;
+
+  bool get isDesktop => PlatformUtils.isDesktop;
 
   void changeIndexPage(int index) {
     currentPage = pages[index];
@@ -48,5 +53,18 @@ class EditorContainerViewModel extends ChangeNotifier {
   void setIsDragging(bool value) {
     isDragging = value;
     notifyListeners();
+  }
+
+  void openModal(BuildContext context, EditorContainerPages page) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.8,
+          child: pages[page.index],
+        );
+      },
+    );
   }
 }
