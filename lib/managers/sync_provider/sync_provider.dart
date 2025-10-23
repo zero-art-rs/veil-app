@@ -114,8 +114,10 @@ class SyncProvider {
       return;
     }
 
-    await syncModel.leaveGroup();
-    await syncModel.dispose();
+    if (!syncModel.isLocal) {
+      await syncModel.leaveGroup();
+      await syncModel.dispose();
+    }
     await _db.deleteDocument(syncModel.document.id);
 
     current.removeWhere((element) => element.document.id == chatId);

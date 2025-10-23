@@ -106,7 +106,7 @@ class _EditorContainerMobileView extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          Expanded(child: EditorPage(syncModel: vm.syncModel)),
+          EditorPage(syncModel: vm.syncModel),
 
           Container(
             margin: const EdgeInsets.only(right: 4, bottom: 32),

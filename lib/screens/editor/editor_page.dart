@@ -65,22 +65,25 @@ class _EditorPageView extends StatelessWidget {
         ),
         actions: [
           if (vm.allowWriteEvents)
-            SegmentedButton<EditorModes>(
-              showSelectedIcon: false,
-              segments: const <ButtonSegment<EditorModes>>[
-                ButtonSegment<EditorModes>(
-                  value: EditorModes.view,
-                  label: Icon(Icons.menu_book),
-                ),
-                ButtonSegment<EditorModes>(
-                  value: EditorModes.edit,
-                  label: Icon(Icons.edit),
-                ),
-              ],
-              selected: <EditorModes>{vm.selectedMode},
-              onSelectionChanged: (newSelection) async {
-                await vm.selectMode(newSelection.first);
-              },
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: SegmentedButton<EditorModes>(
+                showSelectedIcon: false,
+                segments: const <ButtonSegment<EditorModes>>[
+                  ButtonSegment<EditorModes>(
+                    value: EditorModes.view,
+                    label: Icon(Icons.menu_book),
+                  ),
+                  ButtonSegment<EditorModes>(
+                    value: EditorModes.edit,
+                    label: Icon(Icons.edit),
+                  ),
+                ],
+                selected: <EditorModes>{vm.selectedMode},
+                onSelectionChanged: (newSelection) async {
+                  await vm.selectMode(newSelection.first);
+                },
+              ),
             ),
           if (!vm.allowWriteEvents)
             IconButton(

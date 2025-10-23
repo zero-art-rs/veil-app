@@ -15,11 +15,35 @@ class DocsPageViewModel extends ChangeNotifier {
   final _syncProvider = SyncProvider.instance;
 
   late StreamSubscription<List<SyncModel>> _docsListener;
+  final _syncModelUiUpdatesListeners = <String, StreamSubscription<bool>>{};
+
   List<SyncModel> syncModels = [];
 
   Future<void> sink() async {
     _docsListener = _syncProvider.subject.listen((event) {
       syncModels = event;
+      notifyListeners();
+    });
+
+    _syncProvider.subject.listen((event) {
+      syncModels = event;
+
+      // remove listeners for removed sync models
+      _syncModelUiUpdatesListeners.keys
+          .where((key) => !syncModels.map((e) => e.document.id).contains(key))
+          .forEach((key) {
+            _syncModelUiUpdatesListeners[key]?.cancel();
+          });
+
+      // add listeners for new sync models
+      for (final syncModel in syncModels) {
+        if (_syncModelUiUpdatesListeners[syncModel.document.id] == null) {
+          _syncModelUiUpdatesListeners[syncModel.document.id] = syncModel
+              .groupInfoUpdateEvent
+              .listen((event) => notifyListeners());
+        }
+      }
+
       notifyListeners();
     });
   }
