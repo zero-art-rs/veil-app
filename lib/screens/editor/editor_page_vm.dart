@@ -25,6 +25,7 @@ class EditorPageVm extends ChangeNotifier {
   StreamSubscription? _isProcessingSubscription;
   StreamSubscription? _removeFromGroupSubscription;
   StreamSubscription? _crdtUpdatesSubscription;
+  StreamSubscription? _groupInfoUpdatesEventSubscription;
   Timer? _waitForJoinGroupTicker;
 
   EditorPageVm(this.syncModel);
@@ -33,6 +34,14 @@ class EditorPageVm extends ChangeNotifier {
     allowWriteEvents = !syncModel.isLocal;
 
     groupNameController.text = syncModel.groupContext.retrieveGroupInfo().name;
+
+    _groupInfoUpdatesEventSubscription = syncModel.groupInfoUpdateEvent.listen((
+      e,
+    ) {
+      groupNameController.text = syncModel.groupContext
+          .retrieveGroupInfo()
+          .name;
+    });
 
     _isProcessingSubscription = syncModel.isProcessing.listen((e) {
       isSinking = e;
@@ -177,6 +186,7 @@ class EditorPageVm extends ChangeNotifier {
     _isProcessingSubscription?.cancel();
     _crdtUpdatesSubscription?.cancel();
     _removeFromGroupSubscription?.cancel();
+    _groupInfoUpdatesEventSubscription?.cancel();
     super.dispose();
   }
 }

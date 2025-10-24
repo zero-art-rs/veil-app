@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:hive_ce/hive.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:veil/api/centrifuge.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
+import 'package:veil/managers/chat/chat_manager.dart';
+import 'package:veil/managers/chat/hive_chat_controller.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/group_context.dart';
@@ -37,18 +40,14 @@ class SyncProvider {
       );
 
       if (doc.localOnly) {
-        await _handleLocal(doc, groupContext);
+        await _addLocal(doc, groupContext);
       } else {
-        await _handleRemote(doc, groupContext);
+        await _addRemote(doc, groupContext);
       }
     }
   }
 
-  Future<void> _handleLocal(Document doc, BGroupContext groupContext) async {
-    _addLocal(doc, groupContext);
-  }
-
-  Future<void> _handleRemote(Document doc, BGroupContext groupContext) async {
+  Future<void> _addRemote(Document doc, BGroupContext groupContext) async {
     try {
       await add(doc, groupContext);
       await DB.instance.updateDocument(
@@ -59,7 +58,7 @@ class SyncProvider {
       if (_isUserRemovedError(e)) {
         logger.i('User removed from group, making local only');
         await LocalStateUtils.instance.makeDocumentLocal(doc);
-        _addLocal(doc, groupContext);
+        await _addLocal(doc, groupContext);
       } else {
         logger.e('Failed to add sync model: $e\n$st');
       }
@@ -90,11 +89,15 @@ class SyncProvider {
     subject.add(current);
   }
 
-  void _addLocal(Document document, BGroupContext groupContext) {
+  Future<void> _addLocal(Document document, BGroupContext groupContext) async {
+    final hive = await Hive.openBox(document.id);
+    final hiveChatController = HiveChatController(hive);
+
     final syncModel = SyncModel(
       document: document,
       groupContext: groupContext,
       listener: null,
+      chatManager: ChatManager(controller: hiveChatController),
     );
 
     current.add(syncModel);
@@ -111,8 +114,10 @@ class SyncProvider {
       return;
     }
 
-    await syncModel.leaveGroup();
-    await syncModel.dispose();
+    if (!syncModel.isLocal) {
+      await syncModel.leaveGroup();
+      await syncModel.dispose();
+    }
     await _db.deleteDocument(syncModel.document.id);
 
     current.removeWhere((element) => element.document.id == chatId);
@@ -144,11 +149,14 @@ class SyncProvider {
     );
 
     final stream = await _centrifugo.connect(jwt);
+    final hive = await Hive.openBox(doc.id);
+    final hiveChatController = HiveChatController(hive);
 
     final syncModel = SyncModel(
       document: doc,
       groupContext: groupContext,
       listener: null,
+      chatManager: ChatManager(controller: hiveChatController),
     );
 
     final listener = stream.listen(

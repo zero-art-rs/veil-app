@@ -5,7 +5,7 @@ import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/account_page.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/screens/desktop/primary_page_vm.dart';
-import 'package:veil/screens/editor/editor_page.dart';
+import 'package:veil/screens/editor_container/editor_container_page.dart';
 import 'package:veil/widgets/banner.dart';
 import 'package:veil/widgets/loader_dialog.dart';
 import 'package:veil/widgets/sidebar.dart';
@@ -181,7 +181,10 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   icon: Icons.description_outlined,
                   label: doc.$2.groupContext.retrieveGroupInfo().name,
                   onTap: () => vm.setSelectedPage(
-                    EditorPage(key: doc.$2.document.key, syncModel: doc.$2),
+                    EditorContainerPage(
+                      key: doc.$2.document.key,
+                      syncModel: doc.$2,
+                    ),
                   ),
                   trailingBuilder: () => PopupMenuButton(
                     icon: Icon(Icons.more_vert_rounded),

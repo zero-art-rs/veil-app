@@ -1,21 +1,38 @@
 ## 🚀 How to Run
 
 ```bash
-# On macOS && iOS
-flutter run -d <platform>
------------
-# On linux
-make linux
------------
+# Download flutter project dependencies
+flutter pub get
+# Runs the application, PLATFORM by default is macos
+make run PLATFORM={platform}
+
+# Use it to update rust dependencies
+make update 
+
 # To list available devices/platforms:
 flutter devices
 ```
 
 ## 🧩 Supported Platforms
-
 * macOS
 * iOS
 * Linux (Ubuntu)
+
+## 📦 Create `.deb` for Linux and `.dmg` for MacOS
+Everything is already configured — just run:
+
+```bash
+# Install Fastforge to pack application
+dart pub global activate fastforge
+
+# Needed to construct .dmg
+npm install -g appdmg
+
+# Build a release package
+fastforge release --name veil 
+# or 
+make build-packages
+```
 
 ## 🛠 Development Tips (Optional)
 
@@ -39,21 +56,6 @@ protoc \
   google/protobuf/timestamp.proto
 ```
 
-### 📦 Create `.deb` Package for Linux
-
-Everything is already configured — just run:
-
-```bash
-# Install Fastforge
-dart pub global activate fastforge
-
-# Build a release package
-fastforge release --name veil
-```
-
-If you want another package format, see the
-👉 [Fastforge Documentation](https://fastforge.dev/getting-started)
-
 ### ⚙️ Rust Bridge (Flutter ↔ Rust)
 
 This project uses [`flutter_rust_bridge`](https://cjycode.com/flutter_rust_bridge/quickstart)
@@ -63,7 +65,7 @@ If you modify or add Rust functionality, regenerate the bindings:
 
 ```bash
 # In the project root directory
-flutter_rust_bridge_codegen run
+flutter_rust_bridge_codegen generate
 ```
 
 > ⚠️ **Avoid Rust ownership moves in bindings.**

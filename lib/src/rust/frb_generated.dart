@@ -219,7 +219,8 @@ abstract class RustLibApi extends BaseApi {
     required BGroupContext that,
   });
 
-  Future<(Uint8List, bool)> crateApiGroupContextBGroupContextProcessFrame({
+  Future<(Uint8List, String, bool)>
+  crateApiGroupContextBGroupContextProcessFrame({
     required BGroupContext that,
     required List<int> frame,
   });
@@ -1578,7 +1579,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<(Uint8List, bool)> crateApiGroupContextBGroupContextProcessFrame({
+  Future<(Uint8List, String, bool)>
+  crateApiGroupContextBGroupContextProcessFrame({
     required BGroupContext that,
     required List<int> frame,
   }) {
@@ -1599,7 +1601,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_record_list_prim_u_8_strict_bool,
+          decodeSuccessData: sse_decode_record_list_prim_u_8_strict_string_bool,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGroupContextBGroupContextProcessFrameConstMeta,
@@ -3088,16 +3090,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  (Uint8List, bool) dco_decode_record_list_prim_u_8_strict_bool(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2) {
-      throw Exception('Expected 2 elements, got ${arr.length}');
-    }
-    return (dco_decode_list_prim_u_8_strict(arr[0]), dco_decode_bool(arr[1]));
-  }
-
-  @protected
   (Uint8List, Uint8List)
   dco_decode_record_list_prim_u_8_strict_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -3126,6 +3118,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       dco_decode_list_prim_u_8_strict(arr[1]),
       dco_decode_u_64(arr[2]),
       dco_decode_u_64(arr[3]),
+    );
+  }
+
+  @protected
+  (Uint8List, String, bool) dco_decode_record_list_prim_u_8_strict_string_bool(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3) {
+      throw Exception('Expected 3 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_list_prim_u_8_strict(arr[0]),
+      dco_decode_String(arr[1]),
+      dco_decode_bool(arr[2]),
     );
   }
 
@@ -3590,16 +3598,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  (Uint8List, bool) sse_decode_record_list_prim_u_8_strict_bool(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
-    var var_field1 = sse_decode_bool(deserializer);
-    return (var_field0, var_field1);
-  }
-
-  @protected
   (Uint8List, Uint8List)
   sse_decode_record_list_prim_u_8_strict_list_prim_u_8_strict(
     SseDeserializer deserializer,
@@ -3621,6 +3619,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_field2 = sse_decode_u_64(deserializer);
     var var_field3 = sse_decode_u_64(deserializer);
     return (var_field0, var_field1, var_field2, var_field3);
+  }
+
+  @protected
+  (Uint8List, String, bool) sse_decode_record_list_prim_u_8_strict_string_bool(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_field1 = sse_decode_String(deserializer);
+    var var_field2 = sse_decode_bool(deserializer);
+    return (var_field0, var_field1, var_field2);
   }
 
   @protected
@@ -4113,16 +4122,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_record_list_prim_u_8_strict_bool(
-    (Uint8List, bool) self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_prim_u_8_strict(self.$1, serializer);
-    sse_encode_bool(self.$2, serializer);
-  }
-
-  @protected
   void sse_encode_record_list_prim_u_8_strict_list_prim_u_8_strict(
     (Uint8List, Uint8List) self,
     SseSerializer serializer,
@@ -4142,6 +4141,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_prim_u_8_strict(self.$2, serializer);
     sse_encode_u_64(self.$3, serializer);
     sse_encode_u_64(self.$4, serializer);
+  }
+
+  @protected
+  void sse_encode_record_list_prim_u_8_strict_string_bool(
+    (Uint8List, String, bool) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.$1, serializer);
+    sse_encode_String(self.$2, serializer);
+    sse_encode_bool(self.$3, serializer);
   }
 
   @protected
@@ -4370,10 +4380,11 @@ class BGroupContextImpl extends RustOpaque implements BGroupContext {
   Future<Uint8List> leaveGroup() => RustLib.instance.api
       .crateApiGroupContextBGroupContextLeaveGroup(that: this);
 
-  Future<(Uint8List, bool)> processFrame({required List<int> frame}) => RustLib
-      .instance
-      .api
-      .crateApiGroupContextBGroupContextProcessFrame(that: this, frame: frame);
+  Future<(Uint8List, String, bool)> processFrame({required List<int> frame}) =>
+      RustLib.instance.api.crateApiGroupContextBGroupContextProcessFrame(
+        that: this,
+        frame: frame,
+      );
 
   Future<Uint8List> removeMember({
     required String userId,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/difference_page.dart';
+import 'package:veil/utils/platform.dart';
 
 List<ChangeEvent> _prepareChangeList(SyncModel syncModel) {
   final members = syncModel.groupContext.retrieveGroupInfo().members;
@@ -30,11 +31,16 @@ List<ChangeEvent> _prepareChangeList(SyncModel syncModel) {
 }
 
 class HistoryPage extends StatelessWidget {
-  HistoryPage({super.key, required this.syncModel, this.onChangeTap})
-    : _items = _prepareChangeList(syncModel);
+  HistoryPage({
+    super.key,
+    required this.syncModel,
+    this.onChangeTap,
+    this.onBackPressed,
+  }) : _items = _prepareChangeList(syncModel);
 
   final SyncModel syncModel;
   final List<ChangeEvent> _items;
+  final void Function()? onBackPressed;
   final void Function(BuildContext context, ChangeEvent change)? onChangeTap;
 
   @override
@@ -43,7 +49,12 @@ class HistoryPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(title: const Text('Change Events'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('History'),
+        leading: PlatformUtils.isDesktop
+            ? CloseButton(onPressed: () => onBackPressed?.call())
+            : BackButton(),
+      ),
       body: SafeArea(
         child: ListView.separated(
           padding: const EdgeInsets.all(16),
