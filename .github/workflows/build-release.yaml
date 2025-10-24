@@ -85,7 +85,7 @@ jobs:
       - name: Install Protocol Buffers Compiler
         run: brew install protobuf          
 
-      - name: ⬇️ Install Dart Tools & Fetch Dependencies
+      - name: Install Dart Tools & Fetch Dependencies
         run: |
           export PATH="$HOME/.pub-cache/bin:$PATH"
           
@@ -95,6 +95,14 @@ jobs:
           cd rust && cargo fetch --verbose && cd ..
           
           protoc -Ilib/protos --dart_out=lib/protos lib/protos/*.proto google/protobuf/timestamp.proto
+
+      - name: Disable Code Signing
+        run: |
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' macos/Runner.xcodeproj/project.pbxproj
+          
+          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' macos/Runner.xcodeproj/project.pbxproj
+          
+          sed -i '' 's/CODE_SIGN_IDENTITY = "[^"]*";/CODE_SIGN_IDENTITY = "-";/g' macos/Runner.xcodeproj/project.pbxproj
 
       - name: Build and Package DMG with Fastforge
         id: fastforge_build

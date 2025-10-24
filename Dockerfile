@@ -46,4 +46,4 @@ RUN . "${HOME}/.cargo/env" && \
 
 FROM alpine:3.19 AS artifacts
 
-COPY --from=builder /app/linux/packaging/dist/ /dist
+COPY --from=builder /app/dist/ /dist
