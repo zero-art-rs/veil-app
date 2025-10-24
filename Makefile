@@ -21,11 +21,10 @@ build-packages:
 	@echo "Building packages"
 	fastforge release --name veil
 
-list: 
-	@echo ""
-	@echo "Commands list:"
-	@echo ""
-	@echo "run               - runs app" 
-	@echo "update-deps       - updates rust dependencies and regenerates Flutter Rust bindings"
-	@echo "build-packages    - builds packages for distribution"
+help:
+	@echo "" 
+	@echo "[Command list]"
+	@echo "run PLATFORM={platform}     - runs app with specified platform, you can check available platforms with 'flutter devices' command" 
+	@echo "update-deps                 - updates rust dependencies and regenerates Flutter Rust bindings"
+	@echo "build-packages              - builds packages for distribution"
 	@echo ""

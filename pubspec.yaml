@@ -75,17 +75,11 @@ dependencies:
   flutter_chat_core: ^2.8.0
   hive_ce: ^2.14.0
   hive_ce_flutter: ^2.3.2
-  flutter_launcher_icons: ^0.14.4
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  
-flutter_launcher_icons:
-  macos:
-    generate: true
-    image_path: "assets/appicon_1024.png"
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
