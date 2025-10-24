@@ -49,7 +49,7 @@ jobs:
           
           MOUNT=$(buildah mount $CONTAINER)
           mkdir -p packages-linux
-          cp -r $MOUNT/dist/${{ github.ref_name }}/. packages-linux/
+          cp -r $MOUNT/dist/0.1.0/. packages-linux/ # need replace to ${{ github.ref_name }}
           
           buildah umount $CONTAINER
           buildah rm $CONTAINER
