@@ -9,7 +9,7 @@ on:
       - "**"
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+  IMAGE_NAME: ghcr.io/${{ github.repository }}:${{ github.sha }} # need replace to ${{ github.ref_name }}
   CACHE_REPO: ghcr.io/${{ github.repository }}/cache
 
 jobs:
