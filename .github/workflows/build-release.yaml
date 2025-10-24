@@ -44,14 +44,16 @@ jobs:
 
       - name: Extract Linux packages from image
         run: |
+          buildah unshare bash <<'EOF'
           CONTAINER=$(buildah from $IMAGE_NAME)
           
           MOUNT=$(buildah mount $CONTAINER)
           mkdir -p packages-linux
-          cp -r $MOUNT/dist/0.1.0/. packages-linux/ # need replace to ${{ github.ref_name }}
+          cp -r $MOUNT/dist/${{ github.ref_name }}/. packages-linux/
           
           buildah umount $CONTAINER
           buildah rm $CONTAINER
+          EOF
       
       - name: Show extracted Linux files
         run: ls -lR packages-linux
