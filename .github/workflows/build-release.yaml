@@ -96,13 +96,22 @@ jobs:
           
           protoc -Ilib/protos --dart_out=lib/protos lib/protos/*.proto google/protobuf/timestamp.proto
 
-      - name: Disable Code Signing
+      - name: Disable Code Signing and Capabilities
         run: |
+          # Switch to manual signing
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' macos/Runner.xcodeproj/project.pbxproj
           
-          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' macos/Runner.xcodeproj/project.pbxproj
+          # Clear any development team
+          sed -i '' -E 's/DEVELOPMENT_TEAM = [^;]+;/DEVELOPMENT_TEAM = "";/g' macos/Runner.xcodeproj/project.pbxproj
           
-          sed -i '' 's/CODE_SIGN_IDENTITY = "[^"]*";/CODE_SIGN_IDENTITY = "-";/g' macos/Runner.xcodeproj/project.pbxproj
+          # Set code sign identity to ad-hoc
+          sed -i '' -E 's/CODE_SIGN_IDENTITY = "[^"]*";/CODE_SIGN_IDENTITY = "-";/g' macos/Runner.xcodeproj/project.pbxproj
+          
+          # Remove entitlements file to skip all capability checks
+          sed -i '' -E 's/CODE_SIGN_ENTITLEMENTS = [^;]+;/CODE_SIGN_ENTITLEMENTS = "";/g' macos/Runner.xcodeproj/project.pbxproj
+          
+          # Clear provisioning profile
+          sed -i '' -E 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' macos/Runner.xcodeproj/project.pbxproj
 
       - name: Build and Package DMG with Fastforge
         id: fastforge_build
