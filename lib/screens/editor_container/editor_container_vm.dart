@@ -1,8 +1,11 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/chat/chat_page.dart';
 import 'package:veil/screens/doc_members.dart';
 import 'package:veil/screens/history_page.dart';
+import 'package:veil/utils/platform.dart';
+
+enum EditorContainerPages { members, history, chat }
 
 class EditorContainerViewModel extends ChangeNotifier {
   double sidebarWidth = 400;
@@ -11,8 +14,10 @@ class EditorContainerViewModel extends ChangeNotifier {
   List<Widget> pages = [];
   Widget? currentPage;
 
-  void changeIndexPage(int index) {
-    currentPage = pages[index];
+  bool get isDesktop => PlatformUtils.isDesktop;
+
+  void changePage(EditorContainerPages page) {
+    currentPage = pages[page.index];
     notifyListeners();
   }
 
@@ -23,17 +28,11 @@ class EditorContainerViewModel extends ChangeNotifier {
 
   EditorContainerViewModel({required this.syncModel}) {
     pages = [
-      HistoryPage(
-        syncModel: syncModel,
-        onBackPressed: closeSideBar,
-        onChangeTap: (context, event) {
-          
-        },
-      ),
       DocumentMemberListScreen(
         syncModel: syncModel,
         onBackPressed: closeSideBar,
       ),
+      HistoryPage(syncModel: syncModel, onBackPressed: closeSideBar),
       ChatPage(syncModel: syncModel, onBackPressed: closeSideBar),
     ];
 
@@ -47,12 +46,25 @@ class EditorContainerViewModel extends ChangeNotifier {
 
   void setSidebarWidth(DragUpdateDetails details) {
     sidebarWidth -= details.delta.dx;
-    sidebarWidth = sidebarWidth.clamp(400, 1200);
+    sidebarWidth = sidebarWidth.clamp(360, 1200);
     notifyListeners();
   }
 
   void setIsDragging(bool value) {
     isDragging = value;
     notifyListeners();
+  }
+
+  void openModal(BuildContext context, EditorContainerPages page) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.8,
+          child: pages[page.index],
+        );
+      },
+    );
   }
 }

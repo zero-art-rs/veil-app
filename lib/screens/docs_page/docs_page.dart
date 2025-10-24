@@ -5,7 +5,7 @@ import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/docs_page/docs_page_vm.dart';
-import 'package:veil/screens/editor/editor_page.dart';
+import 'package:veil/screens/editor_container/editor_container_page.dart';
 import 'package:veil/widgets/banner.dart';
 import 'package:veil/widgets/ays_modal.dart';
 
@@ -44,6 +44,7 @@ class DocsPage extends StatelessWidget {
                 TopBanner.show(
                   context: context,
                   message: 'Failed to create document',
+                  kind: TopBannerCases.error,
                 );
               }
             },
@@ -86,7 +87,7 @@ class DocsPage extends StatelessWidget {
               ),
               itemCount: vm.syncModels.length,
               itemBuilder: (context, i) => _DocCard(
-                doc: vm.syncModels[i],
+                syncModel: vm.syncModels[i],
                 onDelete: () => aysAsyncModal(
                   context: context,
                   title: 'Delete document',
@@ -129,11 +130,11 @@ class _NodocumentsYet extends StatelessWidget {
 }
 
 class _DocCard extends StatelessWidget {
-  const _DocCard({required this.doc, this.onDelete});
-  final SyncModel doc;
+  const _DocCard({required this.syncModel, this.onDelete});
+  final SyncModel syncModel;
   final VoidCallback? onDelete;
 
-  GroupInfo get groupInfo => doc.groupContext.retrieveGroupInfo();
+  GroupInfo get groupInfo => syncModel.groupContext.retrieveGroupInfo();
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +148,9 @@ class _DocCard extends StatelessWidget {
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => EditorPage(syncModel: doc)),
+          MaterialPageRoute(
+            builder: (context) => EditorContainerPage(syncModel: syncModel),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -228,7 +231,7 @@ class _DocCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      doc.groupContext.getOwner().name,
+                      syncModel.groupContext.getOwner().name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall,
