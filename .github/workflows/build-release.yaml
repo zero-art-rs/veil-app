@@ -2,21 +2,20 @@ name: Build and Release
 
 on:
   push:
-    tags:
-    - 'v?[0-9]+.[0-9]+.[0-9]+'
-    - 'v?[0-9]+.[0-9]+.[0-9]+-[0-9]+'
+    # tags:
+    # - 'v?[0-9]+.[0-9]+.[0-9]+'
+    # - 'v?[0-9]+.[0-9]+.[0-9]+-[0-9]+'
+    branches:
+      - "**"
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
   CACHE_REPO: ghcr.io/${{ github.repository }}/cache
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
-    name: Build App
-    permissions:
-      contents: read
-      packages: write
+    name: Build App (Linux)
 
     steps:
       - name: Checkout source
@@ -39,27 +38,104 @@ jobs:
           --cache-to $CACHE_REPO \
           -t $IMAGE_NAME .
 
-      - name: Push Image (tag)
+      # - name: Push Image (tag)
+      #   run: |
+      #     buildah push $IMAGE_NAME     
+
+      - name: Extract Linux packages from image
         run: |
-          buildah push $IMAGE_NAME          
+          CONTAINER=$(buildah from $IMAGE_NAME)
+          
+          MOUNT=$(buildah mount $CONTAINER)
+          mkdir -p packages-linux
+          cp -r $MOUNT/dist/0.1.0/. packages-linux/ # need replace to ${{ github.ref_name }}
+          
+          buildah umount $CONTAINER
+          buildah rm $CONTAINER
+      
+      - name: Show extracted Linux files
+        run: ls -lR packages-linux
+      
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: packages-linux/*
+          retention-days: 1              
+
+
+  build-mac:
+    runs-on: macos-latest
+    name: Build App (MacOS)
+    steps:  
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: ⬇️ Install Dart Tools & Fetch Dependencies
+        run: |
+          export PATH="$HOME/.pub-cache/bin:$PATH"
+          
+          dart pub global activate protoc_plugin 21.1.2
+          dart pub global activate fastforge
+          
+          cd rust && cargo fetch --verbose && cd ..
+          
+          protoc -Ilib/protos --dart_out=lib/protos lib/protos/*.proto google/protobuf/timestamp.proto
+
+      - name: Build and Package DMG with Fastforge
+        id: fastforge_build
+        run: |          
+          # Set the Rust environment variables
+          . $HOME/.cargo/env
+
+          fastforge release --name veil
+
+      - name: Show macOS build output
+        run: ls -lR dist/0.1.0 # need replace to ${{ github.ref_name }}
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: dist/0.1.0/*.dmg # need replace to ${{ github.ref_name }}
+          retention-days: 1       
+
 
   release:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build-linux, build-mac]
     name: Create Release
     steps:
-      - name: Login to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
-      - uses: shrink/actions-docker-extract@v3
-        name: Extract package
-        id: extract
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
         with:
-          image: $IMAGE_NAME
-          path: dist/${{ github.ref_name }}/.
-          destination: "packages"
-      - name: Show Extracted Files
-        run: ls -R packages
+          name: linux-packages
+          path: packages/linux
+      
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-packages
+          path: packages/macos
+      
+      - name: Show all packages
+        run: ls -lR packages
+      
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: packages/*
+          draft: true # test
+          files: |
+            packages/linux/*
+            packages/macos/*
