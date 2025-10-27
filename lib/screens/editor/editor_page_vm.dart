@@ -3,11 +3,14 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:printing/printing.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/utils/editor_automerge.dart';
+import 'package:veil/utils/markdown_2_pdf.dart';
 import 'package:veil/widgets/banner.dart';
 
 enum EditorModes { edit, view }
@@ -81,6 +84,24 @@ class EditorPageVm extends ChangeNotifier {
         kind: TopBannerCases.error,
       );
     }
+  }
+
+  Future<void> previewPdf(BuildContext context) async {
+    final pdf = await Markdown2PdfUtils.instance.convert(mdEditor.text);
+    final preview = PdfPreview(build: (format) => pdf.save(), allowSharing: false);
+
+    if (!context.mounted) return;
+    showDialog(context: context, builder: (context) => preview);
+  }
+
+  void copyMd(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: mdEditor.text));
+
+    TopBanner.show(
+      context: context,
+      message: 'Markdown is copied to clipboard',
+      kind: TopBannerCases.info,
+    );
   }
 
   Future<void> _joinGroupIfNeeded(BuildContext context) async {

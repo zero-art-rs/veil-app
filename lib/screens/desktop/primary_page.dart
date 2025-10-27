@@ -186,24 +186,53 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                       syncModel: doc.$2,
                     ),
                   ),
-                  trailingBuilder: () => PopupMenuButton(
-                    icon: Icon(Icons.more_vert_rounded),
-                    itemBuilder: (context) {
-                      return [
-                        PopupMenuItem(
-                          value: 1,
-                          child: Row(
-                            spacing: 16,
-                            children: [Icon(Icons.delete), Text('Delete')],
+                  trailingBuilder: () => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (doc.$2.isLocal)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
                           ),
-                          onTap: () => _areYouSureToDeleteDocumentModal(
-                            context,
-                            vm,
-                            doc.$2.groupContext.retrieveGroupInfo(),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Local',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ),
-                      ];
-                    },
+
+                      PopupMenuButton(
+                        icon: Icon(Icons.more_vert_rounded),
+                        itemBuilder: (context) {
+                          return [
+                            PopupMenuItem(
+                              value: 1,
+                              child: Row(
+                                spacing: 16,
+                                children: [Icon(Icons.delete), Text('Delete')],
+                              ),
+                              onTap: () => _areYouSureToDeleteDocumentModal(
+                                context,
+                                vm,
+                                doc.$2.groupContext.retrieveGroupInfo(),
+                              ),
+                            ),
+                          ];
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),

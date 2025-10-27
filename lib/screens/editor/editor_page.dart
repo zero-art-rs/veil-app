@@ -64,6 +64,22 @@ class _EditorPageView extends StatelessWidget {
           ),
         ),
         actions: [
+          IconButton(
+            onPressed: () async {
+              await vm.previewPdf(context);
+            },
+            icon: Icon(Icons.picture_as_pdf),
+            tooltip: 'Preview pdf',
+          ),
+
+          IconButton(
+            tooltip: 'Copy md text',
+            onPressed: () {
+              vm.copyMd(context);
+            },
+            icon: Icon(Icons.copy),
+          ),
+
           if (vm.allowWriteEvents)
             Container(
               margin: const EdgeInsets.only(right: 8),
