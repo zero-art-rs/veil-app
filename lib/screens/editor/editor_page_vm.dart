@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:htmltopdfwidgets/htmltopdfwidgets.dart' as html2pdf;
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
@@ -86,12 +90,61 @@ class EditorPageVm extends ChangeNotifier {
     }
   }
 
-  Future<void> previewPdf(BuildContext context) async {
+  Future<void> previewPdf(BuildContext parentContext) async {
     final pdf = await Markdown2PdfUtils.instance.convert(mdEditor.text);
-    final preview = PdfPreview(build: (format) => pdf.save(), allowSharing: false);
+
+    if (!parentContext.mounted) return;
+    showDialog(
+      context: parentContext,
+      builder: (context) => Dialog(
+        insetPadding: EdgeInsets.all(20),
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width / 2,
+          height: MediaQuery.of(context).size.height / 2 * 3,
+          child: PdfPreview(
+            build: (format) => pdf.save(),
+            allowSharing: true,
+            allowPrinting: false,
+            canDebug: false,
+            canChangeOrientation: false,
+            pdfFileName: groupNameController.text,
+            actions: [
+              IconButton(
+                onPressed: () async {
+                  await _savePdf(context, pdf);
+                },
+                icon: Icon(Icons.save_alt_rounded),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _savePdf(
+    BuildContext context,
+    html2pdf.Document document,
+  ) async {
+    final documentsDir = await getApplicationDocumentsDirectory();
+    final file = File('${documentsDir.path}/${groupNameController.text}.pdf');
+    await file.writeAsBytes(await document.save());
 
     if (!context.mounted) return;
-    showDialog(context: context, builder: (context) => preview);
+
+    Navigator.pop(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('PDF file saved'),
+        action: SnackBarAction(
+          label: 'Open',
+          onPressed: () {
+            OpenFilex.open(documentsDir.path);
+          },
+        ),
+      ),
+    );
   }
 
   void copyMd(BuildContext context) {

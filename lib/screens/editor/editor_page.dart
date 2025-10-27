@@ -160,7 +160,7 @@ class _EditorPageView extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: SingleChildScrollView(
-                      child: GptMarkdown(vm.mdEditor.text),
+                      child: GptMarkdown(vm.mdEditor.text, useDollarSignsForLatex: true,),
                     ),
                   ),
                 ),

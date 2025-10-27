@@ -77,6 +77,8 @@ dependencies:
   hive_ce_flutter: ^2.3.2
   printing: ^5.14.2
   htmltopdfwidgets: ^1.1.3
+  path_provider: ^2.1.5
+  open_filex: ^4.7.0
 
 
 dev_dependencies:
