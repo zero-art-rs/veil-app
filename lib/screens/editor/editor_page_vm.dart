@@ -143,6 +143,10 @@ class EditorPageVm extends ChangeNotifier {
   void _setCorrupted() {
     allowWriteEvents = false;
     documentStatus = EditorDocumentStatus.corrupted;
+    mdEditor.text = EditorAutomergeUtils.instance.toText(
+      syncModel.document.automergeDoc,
+    );
+
     notifyListeners();
   }
 

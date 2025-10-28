@@ -12,6 +12,7 @@ import 'package:veil/managers/chat/chat_manager.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sync_provider/sync_buffer.dart';
+import 'package:veil/managers/sync_provider/sync_model_errors.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
@@ -136,41 +137,18 @@ extension SyncModelInit on SyncModel {
       }
 
       for (final spFrame in result.spFrames.reversed) {
-        try {
-          final (rawFramePayloads, _, _) = await groupContext.processFrame(
-            frame: spFrame.frame.writeToBuffer(),
-          );
+        final crdtList = await _processFrame(spFrame);
 
-          final payloads = Payloads.fromBuffer(rawFramePayloads);
-          for (final payload in payloads.payloads) {
-            final (crdt, chatMessage) = FrameUtils.instance.exposePayload(
-              payload,
-            );
-
-            if (chatMessage != null) {
-              chatManager.addMessage(chatMessage);
-            }
-
-            if (crdt != null) {
-              _handleCrdt(crdt, allowFullDocument);
-            }
-          }
-        } catch (e) {
-          if (e.toString().contains('Changes already applied or merged')) {
-            continue;
-          } else {
-            rethrow;
-          }
+        for (final crdt in crdtList) {
+          _handleCrdt(crdt, allowFullDocument);
         }
       }
 
-      document.sequenceNumber = result.spFrames.first.seqNum.toInt();
+      await _db.updateDocument(
+        doc: document,
+        parts: await groupContext.asParts(),
+      );
     }
-
-    await _db.updateDocument(
-      doc: document,
-      parts: await groupContext.asParts(),
-    );
 
     logger.d(
       'Document sequence number after polling: ${document.sequenceNumber}',
@@ -266,7 +244,7 @@ extension SyncModelProcessOperations on SyncModel {
     try {
       await _processQueue.start();
     } catch (e) {
-      if (e.toString().contains('User removed from group')) {
+      if (isUserRemovedError(e)) {
         logger.i('User removed from group, making local only');
         _removedFromGroupEvent.add(true);
         await disableNetworkSyncOperation();
@@ -279,7 +257,7 @@ extension SyncModelProcessOperations on SyncModel {
 
 extension SyncModelSendOperations on SyncModel {
   Future<void> leaveGroup() async {
-    final executedStream = StreamController<bool>();
+    final opExecutionStream = StreamController<bool>();
 
     _sendQueue.addJob(() async {
       try {
@@ -296,7 +274,7 @@ extension SyncModelSendOperations on SyncModel {
           parts: await groupContext.asParts(),
         );
 
-        executedStream.add(true);
+        opExecutionStream.add(true);
       } catch (e) {
         logger.e('Failed to send leave group frame: $e');
         _sendQueue.retry();
@@ -304,7 +282,7 @@ extension SyncModelSendOperations on SyncModel {
     }, retryTime: 3);
 
     _sendQueue.start();
-    await executedStream.stream.first;
+    await opExecutionStream.stream.first;
   }
 
   Future<void> sendCrdtFrame(String md) async {
@@ -312,10 +290,8 @@ extension SyncModelSendOperations on SyncModel {
       try {
         logger.i('Sending crdt frame..');
         final snapshot = await _crdtBuffer.snapshot();
-        logger.d('Snapshot size: ${snapshot.length}');
         await _sendCrdtFrame(md, snapshot);
         await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-        logger.d('Buffer size after removal: ${await _crdtBuffer.length()}');
         _crdtUpdatesEvent.add(document.automergeDoc);
         logger.i('Sent crdt frame');
       } catch (e) {
@@ -346,11 +322,6 @@ extension SyncModelSendOperations on SyncModel {
         frame: frame,
       );
       logger.i('Change group frame was sent');
-
-      await _db.updateDocument(
-        doc: document,
-        parts: await groupContext.asParts(),
-      );
     });
 
     await _sendQueue.start();
@@ -367,11 +338,6 @@ extension SyncModelSendOperations on SyncModel {
         frame: frame,
       );
       logger.i('Change user frame was sent');
-
-      await _db.updateDocument(
-        doc: document,
-        parts: await groupContext.asParts(),
-      );
     });
 
     await _sendQueue.start();
@@ -409,11 +375,6 @@ extension SyncModelSendOperations on SyncModel {
         logger.i('Identified invite frame sent');
 
         final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-        await DB.instance.updateDocument(
-          doc: document,
-          parts: await groupContext.asParts(),
-        );
 
         if (spkPublicKey != null) {
           logger.i('Removing spk contact spk..');
@@ -465,11 +426,6 @@ extension SyncModelSendOperations on SyncModel {
 
         final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
-        await DB.instance.updateDocument(
-          doc: document,
-          parts: await groupContext.asParts(),
-        );
-
         inviteLinkStream.add(inviteLink);
       } catch (e) {
         logger.e('Failed to create invite link: $e');
@@ -496,11 +452,7 @@ extension SyncModelSendOperations on SyncModel {
         frame: frame,
       );
 
-      logger.i('Member removed from document');
-      await DB.instance.updateDocument(
-        doc: document,
-        parts: await groupContext.asParts(),
-      );
+      logger.i('Remove member frame sent');
     });
 
     await _sendQueue.start();
@@ -546,30 +498,35 @@ extension SyncModelOperations on SyncModel {
 
   Future<List<ExposedCRDTPayload>> _processFrame(SPFrame spframe) async {
     List<ExposedCRDTPayload> exposedCrdtPayload = [];
-    final (rawPayloads, _, _) = await groupContext.processFrame(
-      frame: spframe.frame.writeToBuffer(),
-    );
 
-    final payloads = Payloads.fromBuffer(rawPayloads);
-    for (final payload in payloads.payloads) {
-      final (crdt, chatMessage) = FrameUtils.instance.exposePayload(payload);
+    try {
+      final (rawPayloads, _, _) = await groupContext.processFrame(
+        frame: spframe.frame.writeToBuffer(),
+      );
 
-      if (crdt != null) {
-        exposedCrdtPayload.add(crdt);
+      final payloads = Payloads.fromBuffer(rawPayloads);
+      for (final payload in payloads.payloads) {
+        final (crdt, chatMessage) = FrameUtils.instance.exposePayload(payload);
+
+        if (crdt != null) {
+          exposedCrdtPayload.add(crdt);
+        }
+
+        if (chatMessage != null) {
+          chatManager.addMessage(chatMessage);
+        }
       }
 
-      if (chatMessage != null) {
-        chatManager.addMessage(chatMessage);
+      document.sequenceNumber = spframe.seqNum.toInt();
+
+      return exposedCrdtPayload;
+    } catch (e) {
+      if (!isChangesAlreadyAppliedOrMerged(e)) {
+        rethrow;
       }
+
+      return [];
     }
-
-    document.sequenceNumber = spframe.seqNum.toInt();
-
-    await _db.updateDocument(
-      doc: document,
-      parts: await groupContext.asParts(),
-    );
-    return exposedCrdtPayload;
   }
 
   Future<void> _sendChatFrame(List<int> messageBytes) async {
@@ -617,11 +574,6 @@ extension SyncModelOperations on SyncModel {
     );
 
     document.automergeDoc.loadIncremental(bytes: saveIncremential);
-
-    await _db.updateDocument(
-      doc: document,
-      parts: await groupContext.asParts(),
-    );
   }
 
   Future<void> _sendJoinGroupFrame(Account user) async {
@@ -632,11 +584,6 @@ extension SyncModelOperations on SyncModel {
 
     await GroupApiClient.instance.sendFrame(groupId: document.id, frame: frame);
     logger.i('Sent join group frame');
-
-    await _db.updateDocument(
-      doc: document,
-      parts: await groupContext.asParts(),
-    );
   }
 }
 

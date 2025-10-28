@@ -10,12 +10,12 @@ import 'package:veil/main.dart';
 import 'package:veil/managers/chat/chat_manager.dart';
 import 'package:veil/managers/chat/hive_chat_controller.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/managers/sync_provider/sync_model_errors.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
-import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/utils/local_state.dart';
 
 class SyncProvider {
@@ -50,12 +50,8 @@ class SyncProvider {
   Future<void> _addRemote(Document doc, BGroupContext groupContext) async {
     try {
       await add(doc, groupContext);
-      await DB.instance.updateDocument(
-        doc: doc,
-        parts: await groupContext.asParts(),
-      );
     } catch (e, st) {
-      if (_isUserRemovedError(e)) {
+      if (isUserRemovedError(e)) {
         logger.i('User removed from group, making local only');
         await LocalStateUtils.instance.makeDocumentLocal(doc);
         await _addLocal(doc, groupContext);
@@ -64,10 +60,6 @@ class SyncProvider {
         logger.e('Failed to add sync model, marking it as corrupted: $e\n$st');
       }
     }
-  }
-
-  bool _isUserRemovedError(Object e) {
-    return e.toString().contains('User removed from group');
   }
 
   Future<void> add(
@@ -134,7 +126,7 @@ class SyncProvider {
       return;
     }
 
-    if (!syncModel.isLocal) {
+    if (!syncModel.isLocal && !syncModel.corrupted) {
       await syncModel.leaveGroup();
       await syncModel.dispose();
     }

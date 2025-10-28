@@ -372,18 +372,6 @@ class DB {
     );
   }
 
-  Future<void> updateDocumentTitle({
-    required String id,
-    required String title,
-  }) async {
-    await _update(
-      documentsTable,
-      {'title': title},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
   Future<void> updateDocument({
     required Document doc,
     required GroupContextParts parts,
