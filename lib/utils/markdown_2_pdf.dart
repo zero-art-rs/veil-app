@@ -10,7 +10,10 @@ class Markdown2PdfUtils {
 
     final document = Document(theme: ThemeData.base());
     document.addPage(
-      MultiPage(build: (context) => pdfWidgets, pageFormat: PdfPageFormat.a4),
+      MultiPage(
+        build: (context) => pdfWidgets.isEmpty ? [Container()] : pdfWidgets,
+        pageFormat: PdfPageFormat.a4,
+      ),
     );
 
     return document;

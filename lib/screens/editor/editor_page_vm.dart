@@ -19,6 +19,8 @@ import 'package:veil/widgets/banner.dart';
 
 enum EditorModes { edit, view }
 
+enum EditorDocumentStatus { local, network, corrupted }
+
 class EditorPageVm extends ChangeNotifier {
   final SyncModel syncModel;
   final mdEditor = TextEditingController();
@@ -27,12 +29,14 @@ class EditorPageVm extends ChangeNotifier {
   bool isSinking = false;
   var selectedMode = EditorModes.view;
   bool allowWriteEvents = true;
+  EditorDocumentStatus documentStatus = EditorDocumentStatus.network;
 
   final groupNameController = TextEditingController();
   StreamSubscription? _isProcessingSubscription;
   StreamSubscription? _removeFromGroupSubscription;
   StreamSubscription? _crdtUpdatesSubscription;
   StreamSubscription? _groupInfoUpdatesEventSubscription;
+  StreamSubscription? _corruptedEventSubscription;
   Timer? _waitForJoinGroupTicker;
 
   EditorPageVm(this.syncModel);
@@ -41,6 +45,10 @@ class EditorPageVm extends ChangeNotifier {
     allowWriteEvents = !syncModel.isLocal;
 
     groupNameController.text = syncModel.groupContext.retrieveGroupInfo().name;
+
+    _corruptedEventSubscription = syncModel.corruptedEvent.listen((e) {
+      _setCorrupted();
+    });
 
     _groupInfoUpdatesEventSubscription = syncModel.groupInfoUpdateEvent.listen((
       e,
@@ -65,12 +73,22 @@ class EditorPageVm extends ChangeNotifier {
       notifyListeners();
     });
 
-    switch (syncModel.isLocal) {
-      case true:
+    if (syncModel.isLocal) {
+      documentStatus = EditorDocumentStatus.local;
+    }
+
+    if (syncModel.corrupted) {
+      documentStatus = EditorDocumentStatus.corrupted;
+    }
+
+    switch (documentStatus) {
+      case EditorDocumentStatus.local:
         _localInit();
-      case false:
+      case EditorDocumentStatus.network:
         await _joinGroupIfNeeded(context);
         await _networkInit();
+      case EditorDocumentStatus.corrupted:
+        _setCorrupted();
     }
 
     notifyListeners();
@@ -120,6 +138,12 @@ class EditorPageVm extends ChangeNotifier {
         ),
       ),
     );
+  }
+
+  void _setCorrupted() {
+    allowWriteEvents = false;
+    documentStatus = EditorDocumentStatus.corrupted;
+    notifyListeners();
   }
 
   Future<void> _savePdf(
@@ -257,6 +281,7 @@ class EditorPageVm extends ChangeNotifier {
   @override
   void dispose() {
     syncModel.applyBufferedFrames();
+    _corruptedEventSubscription?.cancel();
     _isProcessingSubscription?.cancel();
     _crdtUpdatesSubscription?.cancel();
     _removeFromGroupSubscription?.cancel();

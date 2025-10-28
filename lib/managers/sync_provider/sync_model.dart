@@ -39,13 +39,16 @@ class SyncModel {
   final _sendQueue = AsyncQueue();
 
   bool bufferFrames = true;
+  bool corrupted = false;
   get isLocal => document.localOnly;
 
+  final _corrupedEvent = StreamController<bool>.broadcast();
   final _groupInfoUpdatesEvent = StreamController<bool>.broadcast();
   final _crdtUpdatesEvent = StreamController<BAutoCommit>.broadcast();
   final _removedFromGroupEvent = StreamController<bool>.broadcast();
   final _isProcessing = StreamController<bool>.broadcast();
 
+  Stream<bool> get corruptedEvent => _corrupedEvent.stream;
   Stream<bool> get groupInfoUpdateEvent => _groupInfoUpdatesEvent.stream;
   Stream<BAutoCommit> get crdtUpdatesEvent => _crdtUpdatesEvent.stream;
   Stream<bool> get removedFromGroupEvent => _removedFromGroupEvent.stream;
@@ -58,6 +61,7 @@ class SyncModel {
     required this.groupContext,
     required this.listener,
     required this.chatManager,
+    this.corrupted = false,
   });
 
   bool isUserInGroup() {
@@ -177,7 +181,6 @@ extension SyncModelInit on SyncModel {
   }
 
   Future<void> dispose() async {
-    logger.i('Sync provider disposed');
     _processQueue.clear();
     _sendQueue.clear();
     await listener?.cancel();
@@ -185,6 +188,7 @@ extension SyncModelInit on SyncModel {
     await _groupInfoUpdatesEvent.close();
     await _crdtUpdatesEvent.close();
     await _isProcessing.close();
+    logger.i('Sync provider disposed');
   }
 }
 
@@ -213,7 +217,16 @@ extension SyncModelHandle on SyncModel {
 }
 
 extension SyncModelProcessOperations on SyncModel {
-  void processFrame(SPFrame spframe) async {
+  Future<void> highlightCorrupted() async {
+    logger.i('Highlighting corrupted document..');
+
+    corrupted = true;
+    _corrupedEvent.add(corrupted);
+    await dispose();
+    logger.i('Corrupted document highlighted');
+  }
+
+  Future<void> processFrame(SPFrame spframe) async {
     _processQueue.addJob(() async {
       logger.i('Received frame, processing..');
       logger.d('Received frame, frame epoch: ${spframe.frame.frame.epoch}..');
@@ -415,7 +428,7 @@ extension SyncModelSendOperations on SyncModel {
         logger.e('Failed to invite member: $e');
         _sendQueue.retry();
       }
-    }, retryTime: -1);
+    }, retryTime: 3);
 
     await _sendQueue.start();
 
@@ -462,7 +475,7 @@ extension SyncModelSendOperations on SyncModel {
         logger.e('Failed to create invite link: $e');
         _sendQueue.retry();
       }
-    }, retryTime: -1);
+    }, retryTime: 3);
 
     await _sendQueue.start();
 

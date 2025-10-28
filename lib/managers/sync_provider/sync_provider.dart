@@ -60,7 +60,8 @@ class SyncProvider {
         await LocalStateUtils.instance.makeDocumentLocal(doc);
         await _addLocal(doc, groupContext);
       } else {
-        logger.e('Failed to add sync model: $e\n$st');
+        _addCorrupted(doc, groupContext);
+        logger.e('Failed to add sync model, marking it as corrupted: $e\n$st');
       }
     }
   }
@@ -98,6 +99,25 @@ class SyncProvider {
       groupContext: groupContext,
       listener: null,
       chatManager: ChatManager(controller: hiveChatController),
+    );
+
+    current.add(syncModel);
+    subject.add(current);
+  }
+
+  Future<void> _addCorrupted(
+    Document document,
+    BGroupContext groupContext,
+  ) async {
+    final hive = await Hive.openBox(document.id);
+    final hiveChatController = HiveChatController(hive);
+
+    final syncModel = SyncModel(
+      document: document,
+      groupContext: groupContext,
+      listener: null,
+      chatManager: ChatManager(controller: hiveChatController),
+      corrupted: true,
     );
 
     current.add(syncModel);
@@ -170,7 +190,15 @@ class SyncProvider {
 
         final frame = SPFrame.fromBuffer(frameBytes);
 
-        syncModel.processFrame(frame);
+        try {
+          await syncModel.processFrame(frame);
+        } catch (e) {
+          logger.e(
+            'Failed to process frame, highlighting document as corrupted: $e',
+          );
+
+          await syncModel.highlightCorrupted();
+        }
       },
       onError: (error, [stackTrace]) {
         logger.e('Centrifugo error: $error, trace: $stackTrace');
@@ -182,9 +210,19 @@ class SyncProvider {
     );
 
     syncModel.listener = listener;
-    await syncModel.synchronizeInitially(allowFullDocument: allowFullDocument);
-    await syncModel.applyBufferedFrames();
-    syncModel.listenProcess();
+    try {
+      await syncModel.synchronizeInitially(
+        allowFullDocument: allowFullDocument,
+      );
+      await syncModel.applyBufferedFrames();
+      syncModel.listenProcess();
+    } catch (e) {
+      logger.e(
+        'Failed to initially synchronize document, highlighting document as corrupted: $e',
+      );
+
+      await syncModel.highlightCorrupted();
+    }
 
     return syncModel;
   }

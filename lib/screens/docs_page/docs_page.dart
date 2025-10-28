@@ -6,6 +6,7 @@ import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/docs_page/docs_page_vm.dart';
 import 'package:veil/screens/editor_container/editor_container_page.dart';
+import 'package:veil/widgets/app_label.dart';
 import 'package:veil/widgets/banner.dart';
 import 'package:veil/widgets/ays_modal.dart';
 
@@ -211,6 +212,32 @@ class _DocCard extends StatelessWidget {
                           ],
                           icon: const Icon(Icons.more_vert),
                         ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      alignment: Alignment.topLeft,
+                      child: Column(
+                        children: [
+                          if (syncModel.isLocal)
+                          AppLabel(
+                            text: 'Local',
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                          ),
+
+                          if (syncModel.corrupted)
+                            AppLabel(
+                              text: 'Error',
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.errorContainer,
+                              textColor: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
+                            ),
+                        ],
                       ),
                     ),
                   ],
