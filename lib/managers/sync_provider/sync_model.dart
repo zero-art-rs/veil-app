@@ -11,7 +11,7 @@ import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/chat/chat_manager.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
-import 'package:veil/managers/sync_provider/sync_buffer.dart';
+import 'package:veil/managers/sync_provider/buffer.dart';
 import 'package:veil/managers/sync_provider/sync_model_errors.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
