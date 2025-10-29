@@ -189,7 +189,7 @@ class SyncProvider {
             'Failed to process frame, highlighting document as corrupted: $e',
           );
 
-          await syncModel.highlightCorrupted();
+          await syncModel.markAsCorrupted();
         }
       },
       onError: (error, [stackTrace]) {
@@ -213,7 +213,7 @@ class SyncProvider {
         'Failed to initially synchronize document, highlighting document as corrupted: $e',
       );
 
-      await syncModel.highlightCorrupted();
+      await syncModel.markAsCorrupted();
     }
 
     return syncModel;

@@ -195,7 +195,7 @@ extension SyncModelHandle on SyncModel {
 }
 
 extension SyncModelProcessOperations on SyncModel {
-  Future<void> highlightCorrupted() async {
+  Future<void> markAsCorrupted() async {
     logger.i('Highlighting corrupted document..');
 
     corrupted = true;

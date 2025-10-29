@@ -37,10 +37,10 @@ Future<void> main() async {
     await Hive.initFlutter();
     await AccountSecureStorage.instance.init();
     await DB.instance.open();
+    logger.d('Db path: ${await getDatabasesPath()}');
     // await DB.instance.removeAll();
     await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
-    logger.d('Db path: ${await getDatabasesPath()}');
   } catch (e) {
     logger.e('Launch app error: $e');
   }
