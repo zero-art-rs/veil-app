@@ -112,10 +112,10 @@ extension SyncModelInit on SyncModel {
 
   Future<void> synchronizeInitially({bool allowFullDocument = false}) async {
     logger.d(
-      'Document sequence number before polling: ${document.sequenceNumber}',
+      'Document epoch before polling: ${(await groupContext.epoch()).toInt()}',
     );
     logger.d(
-      'Document epoch before polling: ${(await groupContext.epoch()).toInt()}',
+      'Document sequence number before polling: ${document.sequenceNumber}',
     );
 
     while (true) {
@@ -137,18 +137,23 @@ extension SyncModelInit on SyncModel {
       }
 
       for (final spFrame in result.spFrames.reversed) {
+        logger.d(
+          'Current processing frame epoch: ${(await groupContext.epoch()).toInt()}',
+        );
+        logger.d('Current processing frame seqNum: ${spFrame.seqNum.toInt()}');
+
         final crdtList = await _processFrame(spFrame);
 
         for (final crdt in crdtList) {
           _handleCrdt(crdt, allowFullDocument);
         }
       }
-
-      await _db.updateDocument(
-        doc: document,
-        parts: await groupContext.asParts(),
-      );
     }
+
+    await _db.updateDocument(
+      doc: document,
+      parts: await groupContext.asParts(),
+    );
 
     logger.d(
       'Document sequence number after polling: ${document.sequenceNumber}',
@@ -475,12 +480,10 @@ extension SyncModelSendOperations on SyncModel {
 extension SyncModelOperations on SyncModel {
   Future<void> applyCrdtListOperation(List<ExposedCRDTPayload> payloads) async {
     logger.i('Applying crdt list..');
-    if (payloads.isEmpty) {
-      logger.i('No crdt payload list to apply');
-      return;
-    }
+
     _syncDocumentWithCrdt(document, payloads);
 
+    logger.i('updating document..');
     await _db.updateDocument(
       doc: document,
       parts: await groupContext.asParts(),
