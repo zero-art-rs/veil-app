@@ -6,14 +6,21 @@ use prost::Message;
 use sha3::{Digest, Sha3_256};
 use std::str::FromStr;
 use uuid::Uuid;
-use zrt_art::types::PublicART;
+use zrt_art::art::art_types::PublicArt;
 use zrt_client_sdk::{
-contexts::{group::{GroupContext, Nonce}, invite::InviteContext}, core::impls::concurrent::linear_keyed_validator::LinearKeyedValidator, models::{
+    contexts::{
+        group::{GroupContext, Nonce},
+        invite::InviteContext,
+    },
+    core::impls::concurrent::linear_keyed_validator::LinearKeyedValidator,
+    models::{
         self,
         frame::Frame,
         invite::{Invite, Invitee},
         payload::Payload,
-    }, utils::{deserialize, serialize}, zero_art_proto
+    },
+    utils::{deserialize, serialize},
+    zero_art_proto,
 };
 use zrt_crypto::schnorr;
 
@@ -172,7 +179,7 @@ impl BInviteContext {
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn upgrade(self, public_art: Vec<u8>) -> Result<BGroupContext> {
-        let public_art: PublicART<CortadoAffine> = PublicART::deserialize(&public_art)
+        let public_art: PublicArt<CortadoAffine> = postcard::from_bytes(&public_art)
             .map_err(|e| anyhow!("failed to deserialize art, error: {}", e))?;
         Ok(BGroupContext {
             group_context: self
@@ -231,7 +238,8 @@ impl BGroupContext {
     ) -> Result<Self> {
         let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
-        let validator = LinearKeyedValidator::deserialize(&validator).map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+        let validator = LinearKeyedValidator::deserialize(&validator)
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
         let group_info: models::group_info::GroupInfo =
             zero_art_proto::GroupInfo::decode(&group_info[..])
                 .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?
@@ -239,7 +247,13 @@ impl BGroupContext {
                 .map_err(|_| anyhow!("failed to parse stk"))?;
 
         Ok(Self {
-            group_context: GroupContext::from_parts(identity_secret_key, validator, group_info, epoch, Nonce::new(nonce))
+            group_context: GroupContext::from_parts(
+                identity_secret_key,
+                validator,
+                group_info,
+                epoch,
+                Nonce::new(nonce),
+            ),
         })
     }
 
@@ -251,15 +265,9 @@ impl BGroupContext {
         // let group_context = self.group_context.lock().unwrap();
         let (_, validator, group_info, epoch, nonce) = self.group_context.to_parts();
 
-        let validator = validator.serialize().map_err(|e| anyhow!("failed to serialize: {}", e.to_string()))?;
         let group_info = group_info.encode_to_vec();
 
-        Ok((
-            validator,
-            group_info,
-            epoch,
-            nonce.value(),
-        ))
+        Ok((validator, group_info, epoch, nonce.value()))
     }
 
     pub fn join_group_as(&mut self, user: BUser) -> Result<Vec<u8>> {
@@ -270,7 +278,6 @@ impl BGroupContext {
             .encode_to_vec()
             .map_err(|e| anyhow!("failed to encode vec: {}", e.to_string()))?)
     }
-
 
     pub fn process_frame(&mut self, frame: Vec<u8>) -> Result<(Vec<u8>, String, bool)> {
         let frame = Frame::decode(&frame)
@@ -350,11 +357,7 @@ impl BGroupContext {
         ))
     }
 
-    pub fn remove_member(
-        &mut self,
-        user_id: String,
-        content: Vec<u8>,
-    ) -> Result<Vec<u8>> {
+    pub fn remove_member(&mut self, user_id: String, content: Vec<u8>) -> Result<Vec<u8>> {
         // let mut group_context = self.group_context.lock().unwrap();
 
         let frame = self
@@ -362,11 +365,9 @@ impl BGroupContext {
             .remove_member(&user_id, content)
             .map_err(|e| anyhow!("failed to remove member: {}", e.to_string()))?;
 
-        Ok(
-            frame
-                .encode_to_vec()
-                .map_err(|_| anyhow!("failed to deserialize"))?,
-        )
+        Ok(frame
+            .encode_to_vec()
+            .map_err(|_| anyhow!("failed to deserialize"))?)
     }
 
     pub fn create_frame(&mut self, content: Vec<u8>) -> Result<Vec<u8>> {
@@ -393,7 +394,11 @@ impl BGroupContext {
             .map_err(|_| anyhow!("failed to deserialize"))?)
     }
 
-    pub fn change_user(&mut self, name: Option<String>, picture: Option<Vec<u8>>) -> Result<Vec<u8>> {
+    pub fn change_user(
+        &mut self,
+        name: Option<String>,
+        picture: Option<Vec<u8>>,
+    ) -> Result<Vec<u8>> {
         let frame = self
             .group_context
             .change_user(name, picture)
@@ -404,7 +409,11 @@ impl BGroupContext {
             .map_err(|_| anyhow!("failed to deserialize"))?)
     }
 
-    pub fn change_group(&mut self, name: Option<String>, picture: Option<Vec<u8>>) -> Result<Vec<u8>> {
+    pub fn change_group(
+        &mut self,
+        name: Option<String>,
+        picture: Option<Vec<u8>>,
+    ) -> Result<Vec<u8>> {
         let frame = self
             .group_context
             .change_group(name, picture)
@@ -529,9 +538,9 @@ pub fn create_group(
     let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
-
-    let (group_context, frame) = GroupContext::new(identity_secret_key, user.user, group_info.group_info)
-        .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
+    let (group_context, frame) =
+        GroupContext::new(identity_secret_key, user.user, group_info.group_info)
+            .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
     let frame = frame
         .encode_to_vec()
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
