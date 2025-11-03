@@ -66,7 +66,9 @@ impl BAutoCommit {
     pub fn fork(&mut self) -> BAutoCommit {
         let automerge = self.autocommit.fork();
 
-        BAutoCommit { autocommit: automerge }
+        BAutoCommit {
+            autocommit: automerge,
+        }
     }
 
     #[flutter_rust_bridge::frb(sync)]
