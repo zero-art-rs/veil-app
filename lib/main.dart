@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:veil/assets/util.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/invite_manager.dart';
@@ -27,34 +28,43 @@ import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/future_dialog.dart';
 
+late final Logger logger;
+
 Future<void> main() async {
-  await RustLib.init();
-  initTracing();
-
-  WidgetsFlutterBinding.ensureInitialized();
-
   try {
+    WidgetsFlutterBinding.ensureInitialized();
+    logger = await initLogger();
+    await RustLib.init();
+    initTracing();
     await Hive.initFlutter();
     await AccountSecureStorage.instance.init();
     await DB.instance.open();
     // await DB.instance.removeAll();
     await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
-    logger.d('Db path: ${await getDatabasesPath()}');
+    runApp(MyApp());
   } catch (e) {
     logger.e('Launch app error: $e');
   }
-  runApp(MyApp());
 }
 
-var logger = Logger(
-  filter: kDebugMode ? DevelopmentFilter() : ProductionFilter(),
-  printer: PrettyPrinter(
-    noBoxingByDefault: true,
-    dateTimeFormat: DateTimeFormat.dateAndTime,
-  ),
-  level: Level.all,
-);
+Future<Logger> initLogger() async {
+  final dir = await getApplicationSupportDirectory();
+  final file = File('${dir.path}/veil.log');
+
+  debugPrint(file.absolute.path);
+
+  return Logger(
+    filter: kDebugMode ? DevelopmentFilter() : ProductionFilter(),
+    printer: PrettyPrinter(
+      noBoxingByDefault: true,
+      dateTimeFormat: DateTimeFormat.dateAndTime,
+    ),
+    output: MultiOutput([ConsoleOutput(), FileOutput(file: file)]),
+    level: Level.all,
+  );
+}
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatefulWidget {

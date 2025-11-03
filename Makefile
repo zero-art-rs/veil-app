@@ -3,6 +3,12 @@ default: run
 PLATFORM ?= macos
 RUST_LOG ?= zrt_client_sdk=debug
 
+# Build envs for build-dmg
+CERT ?= "Not specified"
+APPLE_ID ?= "Not specified"
+APP_PASSWORD ?= "Not specified"
+TEAM_ID ?= "Not specified"
+
 run:
 	@echo "Running Flutter app for $(PLATFORM)..."
 ifeq ($(PLATFORM),linux)
@@ -20,6 +26,22 @@ update-deps:
 build-packages:
 	@echo "Building packages"
 	fastforge release --name veil
+
+build-dmg:
+	rm dist/veil.dmg || true
+	flutter build macos --release
+	codesign --options=runtime --deep --force \
+		--preserve-metadata=entitlements \
+	 	--verbose \
+		--sign "$(CERT)" \
+		"build/macos/Build/Products/Release/Veil.app"
+	codesign -dv --verbose=4 build/macos/Build/Products/Release/Veil.app
+	codesign -d --entitlements :- build/macos/Build/Products/Release/Veil.app
+	ditto -c -k --sequesterRsrc --keepParent "build/macos/Build/Products/Release/Veil.app" "build/macos/Build/Products/Release/Veil.zip"
+	xcrun notarytool submit "build/macos/Build/Products/Release/Veil.zip" --apple-id $(APPLE_ID) --password $(APP_PASSWORD) --team-id $(TEAM_ID) --wait
+	xcrun stapler staple "build/macos/Build/Products/Release/Veil.app"
+	cp "macos/app_dmg.json" "build/macos/Build/Products/Release"
+	appdmg "build/macos/Build/Products/Release/app_dmg.json" "dist/veil.dmg"
 
 help:
 	@echo "" 

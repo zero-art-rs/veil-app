@@ -28,7 +28,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
   List<SyncModel> get syncModels => _syncModels;
 
   final TextEditingController textEditingController = TextEditingController();
-  final _syncModelUiUpdatesListeners = <String, StreamSubscription<bool>>{};
+  final _syncModelListeners = <String, List<StreamSubscription<bool>>>{};
 
   static const constantTabs = 5;
 
@@ -37,18 +37,27 @@ class PrimaryPageViewModel extends ChangeNotifier {
       _syncModels = event;
 
       // remove listeners for removed sync models
-      _syncModelUiUpdatesListeners.keys
+      _syncModelListeners.keys
           .where((key) => !_syncModels.map((e) => e.document.id).contains(key))
           .forEach((key) {
-            _syncModelUiUpdatesListeners[key]?.cancel();
+            _syncModelListeners[key]?.forEach((e) => e.cancel());
           });
 
       // add listeners for new sync models
       for (final syncModel in _syncModels) {
-        if (_syncModelUiUpdatesListeners[syncModel.document.id] == null) {
-          _syncModelUiUpdatesListeners[syncModel.document.id] = syncModel
-              .groupInfoUpdateEvent
-              .listen((event) => notifyListeners());
+        if (_syncModelListeners[syncModel.document.id] == null) {
+          final groupUpdatesListener = syncModel.groupInfoUpdateEvent.listen(
+            (event) => notifyListeners(),
+          );
+
+          final statusListener = syncModel.corruptedEvent.listen(
+            (e) => notifyListeners(),
+          );
+
+          _syncModelListeners[syncModel.document.id] = [
+            groupUpdatesListener,
+            statusListener,
+          ];
         }
       }
 

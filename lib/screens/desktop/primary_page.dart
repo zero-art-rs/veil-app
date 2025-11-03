@@ -6,6 +6,7 @@ import 'package:veil/screens/account_page.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/screens/desktop/primary_page_vm.dart';
 import 'package:veil/screens/editor_container/editor_container_page.dart';
+import 'package:veil/widgets/app_label.dart';
 import 'package:veil/widgets/banner.dart';
 import 'package:veil/widgets/loader_dialog.dart';
 import 'package:veil/widgets/sidebar.dart';
@@ -186,24 +187,42 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                       syncModel: doc.$2,
                     ),
                   ),
-                  trailingBuilder: () => PopupMenuButton(
-                    icon: Icon(Icons.more_vert_rounded),
-                    itemBuilder: (context) {
-                      return [
-                        PopupMenuItem(
-                          value: 1,
-                          child: Row(
-                            spacing: 16,
-                            children: [Icon(Icons.delete), Text('Delete')],
-                          ),
-                          onTap: () => _areYouSureToDeleteDocumentModal(
+                  trailingBuilder: () => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (doc.$2.corrupted)
+                        AppLabel(
+                          text: 'Error',
+                          backgroundColor: Theme.of(
                             context,
-                            vm,
-                            doc.$2.groupContext.retrieveGroupInfo(),
-                          ),
+                          ).colorScheme.errorContainer,
+                          textColor: Theme.of(
+                            context,
+                          ).colorScheme.onErrorContainer,
                         ),
-                      ];
-                    },
+
+                      if (doc.$2.isLocal) AppLabel(text: 'Local'),
+
+                      PopupMenuButton(
+                        icon: Icon(Icons.more_vert_rounded),
+                        itemBuilder: (context) {
+                          return [
+                            PopupMenuItem(
+                              value: 1,
+                              child: Row(
+                                spacing: 16,
+                                children: [Icon(Icons.delete), Text('Delete')],
+                              ),
+                              onTap: () => _areYouSureToDeleteDocumentModal(
+                                context,
+                                vm,
+                                doc.$2.groupContext.retrieveGroupInfo(),
+                              ),
+                            ),
+                          ];
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),

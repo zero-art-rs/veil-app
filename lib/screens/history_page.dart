@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:veil/extensions/group_context.dart';
@@ -30,18 +32,42 @@ List<ChangeEvent> _prepareChangeList(SyncModel syncModel) {
       .toList();
 }
 
-class HistoryPage extends StatelessWidget {
-  HistoryPage({
+class HistoryPage extends StatefulWidget {
+  const HistoryPage({
     super.key,
     required this.syncModel,
     this.onChangeTap,
     this.onBackPressed,
-  }) : _items = _prepareChangeList(syncModel);
+  });
 
   final SyncModel syncModel;
-  final List<ChangeEvent> _items;
   final void Function()? onBackPressed;
   final void Function(BuildContext context, ChangeEvent change)? onChangeTap;
+
+  @override
+  State<StatefulWidget> createState() {
+    return _HistoryPageState();
+  }
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  List<ChangeEvent> _items = [];
+  StreamSubscription<dynamic>? _subscription;
+
+  @override
+  void initState() {
+    _items = _prepareChangeList(widget.syncModel);
+    _listenCRDTUpdates();
+    super.initState();
+  }
+
+  void _listenCRDTUpdates() {
+    _subscription = widget.syncModel.crdtUpdatesEvent.listen((_) {
+      setState(() {
+        _items = _prepareChangeList(widget.syncModel);
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +78,7 @@ class HistoryPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('History'),
         leading: PlatformUtils.isDesktop
-            ? CloseButton(onPressed: () => onBackPressed?.call())
+            ? CloseButton(onPressed: () => widget.onBackPressed?.call())
             : BackButton(),
       ),
       body: SafeArea(
@@ -65,10 +91,10 @@ class HistoryPage extends StatelessWidget {
             return _ChangeEventCard(
               event: change,
               onTap: () {
-                if (onChangeTap != null) {
-                  onChangeTap?.call(context, change);
+                if (widget.onChangeTap != null) {
+                  widget.onChangeTap?.call(context, change);
                 } else {
-                  var (before, after) = syncModel.document.automergeDoc
+                  var (before, after) = widget.syncModel.document.automergeDoc
                       .docsBeforeAfter(changeHash: change.changeHashHex);
 
                   final oldDoc = before.getBlocks();
@@ -91,6 +117,12 @@ class HistoryPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/screens/chat/chat_composer.dart';
 import 'package:veil/screens/chat/chat_page_vm.dart';
 import 'package:veil/utils/platform.dart';
 
@@ -46,6 +47,7 @@ class _ChatPageState extends State<ChatPage> {
           return _viewModel.resolveUser(id);
         },
         builders: Builders(
+          composerBuilder: (context) => ChatComposer(),
           chatMessageBuilder:
               (
                 context,

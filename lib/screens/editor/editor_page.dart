@@ -64,6 +64,22 @@ class _EditorPageView extends StatelessWidget {
           ),
         ),
         actions: [
+          IconButton(
+            onPressed: () async {
+              await vm.previewPdf(context);
+            },
+            icon: Icon(Icons.picture_as_pdf),
+            tooltip: 'Preview pdf',
+          ),
+
+          IconButton(
+            tooltip: 'Copy md text',
+            onPressed: () {
+              vm.copyMd(context);
+            },
+            icon: Icon(Icons.copy),
+          ),
+
           if (vm.allowWriteEvents)
             Container(
               margin: const EdgeInsets.only(right: 8),
@@ -85,7 +101,8 @@ class _EditorPageView extends StatelessWidget {
                 },
               ),
             ),
-          if (!vm.allowWriteEvents)
+
+          if (vm.documentStatus == EditorDocumentStatus.local)
             IconButton(
               icon: const Icon(Icons.help_outline),
               onPressed: () {
@@ -106,7 +123,30 @@ class _EditorPageView extends StatelessWidget {
                 );
               },
             ),
-
+          if (vm.documentStatus == EditorDocumentStatus.corrupted)
+            IconButton(
+              icon: const Icon(Icons.warning_amber),
+              style: ButtonStyle(
+                foregroundColor: WidgetStatePropertyAll(cs.error),
+              ),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text("Document corrupted"),
+                    content: const Text(
+                      "Something wrong happened with this document, it is corrupted. Please contact the developers.",
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("OK"),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           if (vm.isSinking) SyncCircleView(),
         ],
       ),
@@ -144,7 +184,10 @@ class _EditorPageView extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: SingleChildScrollView(
-                      child: GptMarkdown(vm.mdEditor.text),
+                      child: GptMarkdown(
+                        vm.mdEditor.text,
+                        useDollarSignsForLatex: true,
+                      ),
                     ),
                   ),
                 ),

@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-    RUN git clone https://github.com/flutter/flutter.git /flutter
+RUN git clone https://github.com/flutter/flutter.git /flutter
 ENV PATH="/flutter/bin:${PATH}"
 
 RUN useradd -ms /bin/bash builder
@@ -46,4 +46,4 @@ RUN . "${HOME}/.cargo/env" && \
 
 FROM alpine:3.19 AS artifacts
 
-COPY --from=builder /app/linux/packaging/dist/ /dist
+COPY --from=builder /app/dist/ /dist
