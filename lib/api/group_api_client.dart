@@ -64,7 +64,7 @@ class GroupApiClient {
 
     if (response.statusCode != 200) {
       throw Exception(
-        'Failed to jwt centrifugo: ${response.statusCode} ${response.body}',
+        'Failed to get jwt centrifugo: ${response.statusCode} ${response.body}',
       );
     }
 
