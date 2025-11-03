@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sharing/spk_provider.dart';
@@ -30,8 +32,11 @@ class DB {
       databaseFactory = databaseFactoryFfi;
     }
 
+    final dir = await getApplicationSupportDirectory();
+    logger.i('Database path: ${dir.path}/$_dbName');
+
     _connection = await openDatabase(
-      inMemoryPath ?? _dbName,
+      inMemoryPath ?? '${dir.path}/$_dbName',
       version: 1,
       readOnly: false,
       onConfigure: (db) {

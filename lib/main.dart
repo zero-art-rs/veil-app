@@ -49,11 +49,8 @@ Future<void> main() async {
 }
 
 Future<Logger> initLogger() async {
-  final dir = await getLibraryDirectory();
-  final logDir = Directory('${dir.path}/Logs');
-  if (!await logDir.exists()) await logDir.create(recursive: true);
-
-  final file = File('${logDir.path}/veil.log');
+  final dir = await getApplicationSupportDirectory();
+  final file = File('${dir.path}/veil.log');
 
   debugPrint(file.absolute.path);
 
