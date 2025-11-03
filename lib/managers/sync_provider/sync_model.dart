@@ -150,7 +150,7 @@ extension SyncModelInit on SyncModel {
       }
     }
 
-    logger.i('updating document..');
+    logger.i('Updating document..');
     await _db.updateDocument(
       doc: document,
       parts: await groupContext.asParts(),
@@ -275,7 +275,7 @@ extension SyncModelSendOperations on SyncModel {
         );
         logger.i('Sent leave group frame');
 
-        logger.i('updating document..');
+        logger.i('Updating document..');
         await _db.updateDocument(
           doc: document,
           parts: await groupContext.asParts(),
@@ -485,7 +485,7 @@ extension SyncModelOperations on SyncModel {
 
     _syncDocumentWithCrdt(document, payloads);
 
-    logger.i('updating document..');
+    logger.i('Updating document..');
     await _db.updateDocument(
       doc: document,
       parts: await groupContext.asParts(),
