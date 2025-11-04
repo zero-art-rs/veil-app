@@ -104,8 +104,8 @@ impl BAutoCommit {
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    pub fn delete_block(&mut self, index: usize) -> anyhow::Result<()> {
-        let Err(err) = self.autocommit.delete(self.blocks_list_id(), index) else {
+    pub fn delete_block(&mut self, index: u32) -> anyhow::Result<()> {
+        let Err(err) = self.autocommit.delete(self.blocks_list_id(), index as usize) else {
             return Ok(());
         };
 
@@ -115,10 +115,10 @@ impl BAutoCommit {
     /// Insert block at specific index.
     /// If index is duplicate it will add new value at this index and previous value will be moved to next index
     #[flutter_rust_bridge::frb(sync)]
-    pub fn insert_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
+    pub fn insert_block(&mut self, index: u32, text: String) -> anyhow::Result<()> {
         match self
             .autocommit
-            .insert(self.blocks_list_id(), index, text.as_str())
+            .insert(self.blocks_list_id(), index as usize, text.as_str())
         {
             Ok(id) => id,
             Err(err) => bail!("Failed to insert block object: {}", err),
@@ -129,9 +129,9 @@ impl BAutoCommit {
 
     #[flutter_rust_bridge::frb(sync)]
     /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
-    pub fn update_block(&mut self, index: usize, text: String) -> anyhow::Result<()> {
+    pub fn update_block(&mut self, index: u32, text: String) -> anyhow::Result<()> {
         let block_list_id = self.blocks_list_id();
-        self.autocommit.put(block_list_id, index, text.as_str())?;
+        self.autocommit.put(block_list_id, index as usize, text.as_str())?;
 
         Ok(())
     }
@@ -190,10 +190,10 @@ impl BAutoCommit {
     }
 
     #[flutter_rust_bridge::frb(sync)]
-    pub fn blocks_length(&self) -> usize {
+    pub fn blocks_length(&self) -> u32 {
         let blocks_list_id = self.blocks_list_id();
 
-        self.autocommit.length(blocks_list_id)
+        self.autocommit.length(blocks_list_id) as u32
     }
 
     #[flutter_rust_bridge::frb(sync)]
