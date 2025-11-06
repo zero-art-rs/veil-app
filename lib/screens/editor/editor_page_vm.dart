@@ -1,20 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:ui';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:htmltopdfwidgets/htmltopdfwidgets.dart' as html2pdf;
+import 'package:markdown_2_pdf/markdown_2_pdf.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:printing/printing.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/utils/editor_automerge.dart';
-import 'package:veil/utils/markdown_2_pdf.dart';
+import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/banner.dart';
 
 enum EditorModes { edit, view }
@@ -108,38 +106,6 @@ class EditorPageVm extends ChangeNotifier {
     }
   }
 
-  Future<void> previewPdf(BuildContext parentContext) async {
-    final pdf = await Markdown2PdfUtils.instance.convert(mdEditor.text);
-
-    if (!parentContext.mounted) return;
-    showDialog(
-      context: parentContext,
-      builder: (context) => Dialog(
-        insetPadding: EdgeInsets.all(20),
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width / 2,
-          height: MediaQuery.of(context).size.height / 2 * 3,
-          child: PdfPreview(
-            build: (format) => pdf.save(),
-            allowSharing: true,
-            allowPrinting: false,
-            canDebug: false,
-            canChangeOrientation: false,
-            pdfFileName: groupNameController.text,
-            actions: [
-              IconButton(
-                onPressed: () async {
-                  await _savePdf(context, pdf);
-                },
-                icon: Icon(Icons.save_alt_rounded),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _setCorrupted() {
     allowWriteEvents = false;
     documentStatus = EditorDocumentStatus.corrupted;
@@ -150,17 +116,16 @@ class EditorPageVm extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _savePdf(
-    BuildContext context,
-    html2pdf.Document document,
-  ) async {
-    final documentsDir = await getApplicationDocumentsDirectory();
-    final file = File('${documentsDir.path}/${groupNameController.text}.pdf');
-    await file.writeAsBytes(await document.save());
+  Future<void> exportPDF(BuildContext context) async {
+    final converter = MarkdownToPdfConverter(
+      options: PredefinedPdfOptions.academicOptions,
+    );
+
+    final pdf = await converter.convertToFile(
+      StringMarkdownSource(mdEditor.text),
+    );
 
     if (!context.mounted) return;
-
-    Navigator.pop(context);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -168,7 +133,7 @@ class EditorPageVm extends ChangeNotifier {
         action: SnackBarAction(
           label: 'Open',
           onPressed: () {
-            OpenFilex.open(documentsDir.path);
+            OpenFilex.open(pdf.path);
           },
         ),
       ),
@@ -243,6 +208,25 @@ class EditorPageVm extends ChangeNotifier {
       message: 'You have been removed from the group',
       kind: TopBannerCases.info,
     );
+  }
+
+  Map<ShortcutActivator, void Function()> saveActionWidget() {
+    final handleOnSaveAction = () async {
+      if (selectedMode == EditorModes.edit) {
+        await selectMode(EditorModes.view);
+      }
+    };
+
+    final map = <ShortcutActivator, VoidCallback>{};
+    if (PlatformUtils.isMacOS) {
+      map[const SingleActivator(LogicalKeyboardKey.keyS, meta: true)] =
+          handleOnSaveAction;
+    } else {
+      map[const SingleActivator(LogicalKeyboardKey.keyS, control: true)] =
+          handleOnSaveAction;
+    }
+
+    return map;
   }
 
   Future<void> selectMode(EditorModes mode) async {

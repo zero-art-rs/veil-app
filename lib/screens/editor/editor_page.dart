@@ -66,7 +66,7 @@ class _EditorPageView extends StatelessWidget {
         actions: [
           IconButton(
             onPressed: () async {
-              await vm.previewPdf(context);
+              await vm.exportPDF(context);
             },
             icon: Icon(Icons.picture_as_pdf),
             tooltip: 'Preview pdf',
@@ -150,50 +150,60 @@ class _EditorPageView extends StatelessWidget {
           if (vm.isSinking) SyncCircleView(),
         ],
       ),
-      body: Stack(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      body: CallbackShortcuts(
+        bindings: vm.saveActionWidget(),
+        child: Focus(
+          autofocus: true,
+          child: Stack(
             children: [
-              if (vm.selectedMode == EditorModes.edit)
-                Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: vm.mdEditor,
-                          decoration: const InputDecoration(
-                            hintText: "Start writing...",
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.all(16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (vm.selectedMode == EditorModes.edit)
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: vm.mdEditor,
+                              decoration: const InputDecoration(
+                                hintText: "Start writing...",
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.all(16),
+                              ),
+                              keyboardType: TextInputType.multiline,
+                              maxLines: null,
+                              onChanged: (_) => vm.notify(),
+                            ),
                           ),
-                          keyboardType: TextInputType.multiline,
-                          maxLines: null,
-                          onChanged: (_) => vm.notify(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              if (vm.selectedMode == EditorModes.edit && isDesktop)
-                Container(width: 1, height: double.infinity, color: cs.outline),
-
-              if (!(!isDesktop && vm.selectedMode == EditorModes.edit))
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SingleChildScrollView(
-                      child: GptMarkdown(
-                        vm.mdEditor.text,
-                        useDollarSignsForLatex: true,
+                        ],
                       ),
                     ),
-                  ),
-                ),
+
+                  if (vm.selectedMode == EditorModes.edit && isDesktop)
+                    Container(
+                      width: 1,
+                      height: double.infinity,
+                      color: cs.outline,
+                    ),
+
+                  if (!(!isDesktop && vm.selectedMode == EditorModes.edit))
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SingleChildScrollView(
+                          child: GptMarkdown(
+                            vm.mdEditor.text,
+                            useDollarSignsForLatex: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
