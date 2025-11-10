@@ -168,7 +168,7 @@ fn wire__crate__api__automerge__BAutoCommit_delete_block_impl(
             let api_that = <RustOpaqueMoi<
                 flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>,
             >>::sse_decode(&mut deserializer);
-            let api_index = <usize>::sse_decode(&mut deserializer);
+            let api_index = <u32>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
@@ -648,7 +648,7 @@ fn wire__crate__api__automerge__BAutoCommit_insert_block_impl(
             let api_that = <RustOpaqueMoi<
                 flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>,
             >>::sse_decode(&mut deserializer);
-            let api_index = <usize>::sse_decode(&mut deserializer);
+            let api_index = <u32>::sse_decode(&mut deserializer);
             let api_text = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -963,7 +963,7 @@ fn wire__crate__api__automerge__BAutoCommit_update_block_impl(
             let api_that = <RustOpaqueMoi<
                 flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>,
             >>::sse_decode(&mut deserializer);
-            let api_index = <usize>::sse_decode(&mut deserializer);
+            let api_index = <u32>::sse_decode(&mut deserializer);
             let api_text = <String>::sse_decode(&mut deserializer);
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -3603,6 +3603,13 @@ impl SseDecode for (Vec<u8>, String, bool) {
     }
 }
 
+impl SseDecode for u32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u32::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for u64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -4293,6 +4300,13 @@ impl SseEncode for (Vec<u8>, String, bool) {
         <Vec<u8>>::sse_encode(self.0, serializer);
         <String>::sse_encode(self.1, serializer);
         <bool>::sse_encode(self.2, serializer);
+    }
+}
+
+impl SseEncode for u32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u32::<NativeEndian>(self).unwrap();
     }
 }
 

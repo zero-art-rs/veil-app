@@ -80,13 +80,13 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  BigInt crateApiAutomergeBAutoCommitBlocksLength({required BAutoCommit that});
+  int crateApiAutomergeBAutoCommitBlocksLength({required BAutoCommit that});
 
   void crateApiAutomergeBAutoCommitCommit({required BAutoCommit that});
 
   void crateApiAutomergeBAutoCommitDeleteBlock({
     required BAutoCommit that,
-    required BigInt index,
+    required int index,
   });
 
   BAutoCommit crateApiAutomergeBAutoCommitDocAtChangeHash({
@@ -121,7 +121,7 @@ abstract class RustLibApi extends BaseApi {
 
   void crateApiAutomergeBAutoCommitInsertBlock({
     required BAutoCommit that,
-    required BigInt index,
+    required int index,
     required String text,
   });
 
@@ -147,7 +147,7 @@ abstract class RustLibApi extends BaseApi {
 
   void crateApiAutomergeBAutoCommitUpdateBlock({
     required BAutoCommit that,
-    required BigInt index,
+    required int index,
     required String text,
   });
 
@@ -437,7 +437,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  BigInt crateApiAutomergeBAutoCommitBlocksLength({required BAutoCommit that}) {
+  int crateApiAutomergeBAutoCommitBlocksLength({required BAutoCommit that}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -449,7 +449,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_usize,
+          decodeSuccessData: sse_decode_u_32,
           decodeErrorData: null,
         ),
         constMeta: kCrateApiAutomergeBAutoCommitBlocksLengthConstMeta,
@@ -494,7 +494,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   void crateApiAutomergeBAutoCommitDeleteBlock({
     required BAutoCommit that,
-    required BigInt index,
+    required int index,
   }) {
     return handler.executeSync(
       SyncTask(
@@ -504,7 +504,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          sse_encode_usize(index, serializer);
+          sse_encode_u_32(index, serializer);
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
         },
         codec: SseCodec(
@@ -805,7 +805,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   void crateApiAutomergeBAutoCommitInsertBlock({
     required BAutoCommit that,
-    required BigInt index,
+    required int index,
     required String text,
   }) {
     return handler.executeSync(
@@ -816,7 +816,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          sse_encode_usize(index, serializer);
+          sse_encode_u_32(index, serializer);
           sse_encode_String(text, serializer);
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
         },
@@ -1010,7 +1010,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   void crateApiAutomergeBAutoCommitUpdateBlock({
     required BAutoCommit that,
-    required BigInt index,
+    required int index,
     required String text,
   }) {
     return handler.executeSync(
@@ -1021,7 +1021,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          sse_encode_usize(index, serializer);
+          sse_encode_u_32(index, serializer);
           sse_encode_String(text, serializer);
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
         },
@@ -3138,6 +3138,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int dco_decode_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
   BigInt dco_decode_u_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeU64(raw);
@@ -3630,6 +3636,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_field1 = sse_decode_String(deserializer);
     var var_field2 = sse_decode_bool(deserializer);
     return (var_field0, var_field1, var_field2);
+  }
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint32();
   }
 
   @protected
@@ -4155,6 +4167,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint32(self);
+  }
+
+  @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
@@ -4203,13 +4221,13 @@ class BAutoCommitImpl extends RustOpaque implements BAutoCommit {
         RustLib.instance.api.rust_arc_decrement_strong_count_BAutoCommitPtr,
   );
 
-  BigInt blocksLength() =>
+  int blocksLength() =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitBlocksLength(that: this);
 
   void commit() =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitCommit(that: this);
 
-  void deleteBlock({required BigInt index}) => RustLib.instance.api
+  void deleteBlock({required int index}) => RustLib.instance.api
       .crateApiAutomergeBAutoCommitDeleteBlock(that: this, index: index);
 
   BAutoCommit docAtChangeHash({required String changeHash}) =>
@@ -4245,7 +4263,7 @@ class BAutoCommitImpl extends RustOpaque implements BAutoCommit {
 
   /// Insert block at specific index.
   /// If index is duplicate it will add new value at this index and previous value will be moved to next index
-  void insertBlock({required BigInt index, required String text}) =>
+  void insertBlock({required int index, required String text}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitInsertBlock(
         that: this,
         index: index,
@@ -4265,7 +4283,7 @@ class BAutoCommitImpl extends RustOpaque implements BAutoCommit {
       .crateApiAutomergeBAutoCommitSetActorId(that: this, uuid: uuid);
 
   /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
-  void updateBlock({required BigInt index, required String text}) =>
+  void updateBlock({required int index, required String text}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitUpdateBlock(
         that: this,
         index: index,

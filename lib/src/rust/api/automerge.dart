@@ -14,11 +14,11 @@ String generateActorId() =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<BAutoCommit>>
 abstract class BAutoCommit implements RustOpaqueInterface {
-  BigInt blocksLength();
+  int blocksLength();
 
   void commit();
 
-  void deleteBlock({required BigInt index});
+  void deleteBlock({required int index});
 
   BAutoCommit docAtChangeHash({required String changeHash});
 
@@ -42,7 +42,7 @@ abstract class BAutoCommit implements RustOpaqueInterface {
 
   /// Insert block at specific index.
   /// If index is duplicate it will add new value at this index and previous value will be moved to next index
-  void insertBlock({required BigInt index, required String text});
+  void insertBlock({required int index, required String text});
 
   static BAutoCommit load({required List<int> data}) =>
       RustLib.instance.api.crateApiAutomergeBAutoCommitLoad(data: data);
@@ -59,7 +59,7 @@ abstract class BAutoCommit implements RustOpaqueInterface {
   void setActorId({required String uuid});
 
   /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
-  void updateBlock({required BigInt index, required String text});
+  void updateBlock({required int index, required String text});
 
   static BAutoCommit withOwner({required String actorId}) => RustLib
       .instance
