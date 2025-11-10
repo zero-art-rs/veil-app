@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:veil/assets/util.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/invite_manager.dart';
+import 'package:veil/managers/network_listener.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
@@ -36,6 +38,7 @@ Future<void> main() async {
     logger = await initLogger();
     await RustLib.init();
     initTracing();
+    NetworkListener.instance.start();
     await Hive.initFlutter();
     await AccountSecureStorage.instance.init();
     await DB.instance.open();
@@ -76,19 +79,27 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   StreamSubscription? _sub;
+  late final AppLifecycleListener _appListener;
+  late StreamSubscription<List<ConnectivityResult>> _networkStatusSubscription;
+
   final AppLinks _appLinks = AppLinks();
 
   @override
   void initState() {
     super.initState();
     _listenUriChanges();
+    // _listenLifeCycleChanges();
+    // _listenNetworkConnection();
   }
 
   @override
   void dispose() {
-    logger.d('My app dispose called');
-    _sub?.cancel();
     super.dispose();
+
+    logger.d('My app dispose called');
+    _appListener.dispose();
+    _networkStatusSubscription.cancel();
+    _sub?.cancel();
   }
 
   void _listenUriChanges() {

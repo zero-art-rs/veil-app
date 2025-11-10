@@ -36,6 +36,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
     BuildContext context,
     PrimaryPageViewModel vm,
     GroupInfo groupInfo,
+    String id,
   ) {
     showDialog(
       context: context,
@@ -66,7 +67,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   child: FilledButton(
                     onPressed: () async {
                       try {
-                        await vm.removeDocument(context, groupInfo.id);
+                        await vm.removeDocument(context, id);
                       } catch (err) {
                         logger.e('Failed to remove document: $err');
 
@@ -217,6 +218,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                                 context,
                                 vm,
                                 doc.$2.groupContext.retrieveGroupInfo(),
+                                doc.$2.documentState.id,
                               ),
                             ),
                           ];

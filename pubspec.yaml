@@ -82,6 +82,7 @@ dependencies:
   markdown_2_pdf: ^2.0.0
   open_filex: ^4.7.0
   diffutil_dart: ^4.0.1
+  connectivity_plus: ^7.0.0
 
 dev_dependencies:
   flutter_test:

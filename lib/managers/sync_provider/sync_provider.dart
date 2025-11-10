@@ -47,7 +47,10 @@ class SyncProvider {
     }
   }
 
-  Future<void> _addRemote(DocumentState documentState, BGroupContext groupContext) async {
+  Future<void> _addRemote(
+    DocumentState documentState,
+    BGroupContext groupContext,
+  ) async {
     try {
       await add(documentState, groupContext);
     } catch (e, st) {
@@ -133,6 +136,8 @@ class SyncProvider {
       await syncModel.leaveGroup();
       await syncModel.dispose();
     }
+
+    await Hive.box(syncModel.documentState.id).deleteFromDisk();
     await _db.deleteDocumentState(syncModel.documentState.id);
 
     current.removeWhere((element) => element.documentState.id == chatId);
