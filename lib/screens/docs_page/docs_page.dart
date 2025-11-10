@@ -96,7 +96,7 @@ class DocsPage extends StatelessWidget {
                       'Are you sure to delete ${vm.syncModels[i].groupContext.retrieveGroupInfo().name}?',
                   callback: () async {
                     try {
-                      await vm.deleteDoc(vm.syncModels[i].document);
+                      await vm.deleteDoc(vm.syncModels[i].documentState);
                     } catch (err) {
                       if (!context.mounted) return;
                       TopBanner.show(
@@ -220,12 +220,12 @@ class _DocCard extends StatelessWidget {
                       child: Column(
                         children: [
                           if (syncModel.isLocal)
-                          AppLabel(
-                            text: 'Local',
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surface,
-                          ),
+                            AppLabel(
+                              text: 'Local',
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surface,
+                            ),
 
                           if (syncModel.corrupted)
                             AppLabel(

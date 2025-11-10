@@ -14,7 +14,7 @@ class InviteManager {
   static final InviteManager instance = InviteManager._();
   InviteManager._();
 
-  Future<(BGroupContext, Document)> join(String base64Invite) async {
+  Future<(BGroupContext, DocumentState)> join(String base64Invite) async {
     final inviteBytes = base64Decode(base64Invite);
     final invite = Invite.fromBuffer(inviteBytes);
 
@@ -60,9 +60,9 @@ class InviteManager {
       publicArt: base64Decode(artBase64),
     );
 
-    final document = Document(
+    final document = DocumentState(
       id: groupId,
-      automergeDoc: BAutoCommit(),
+      crdt: BAutoCommit(),
       groupContextParts: await groupContext.asParts(),
       createdAt: DateTime.now(),
     );

@@ -8,10 +8,10 @@ class LocalStateUtils {
 
   LocalStateUtils._();
 
-  Future<void> makeDocumentLocal(Document document) async {
+  Future<void> makeDocumentLocal(DocumentState document) async {
     final oldId = document.id;
     final newId = UuidV4().generate();
-    document.localOnly = true;
+    document.isLocal = true;
     document.id = newId;
 
     // copy chat history to new document
@@ -20,7 +20,7 @@ class LocalStateUtils {
     await newBox.putAll(oldBox.toMap());
     await oldBox.deleteFromDisk();
 
-    await DB.instance.deleteDocument(oldId);
-    await DB.instance.insertDocument(document: document);
+    await DB.instance.deleteDocumentState(oldId);
+    await DB.instance.insertDocumentState(documentState: document);
   }
 }

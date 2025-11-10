@@ -30,64 +30,67 @@ class SyncProvider {
   SyncProvider._();
 
   Future<void> init() async {
-    final documents = await _db.getDocumentList();
+    final documentStateList = await _db.getDocumentStateList();
 
-    for (final doc in documents) {
-      final groupContext = doc.groupContextParts.toGroupContext(
+    for (final documentState in documentStateList) {
+      final groupContext = documentState.groupContextParts.toGroupContext(
         identitySecretKey: Uint8List.fromList(
           AccountSecureStorage.instance.account.keypair.rawPrivateKey,
         ),
       );
 
-      if (doc.localOnly) {
-        await _addLocal(doc, groupContext);
+      if (documentState.isLocal) {
+        await _addLocal(documentState, groupContext);
       } else {
-        await _addRemote(doc, groupContext);
+        await _addRemote(documentState, groupContext);
       }
     }
   }
 
-  Future<void> _addRemote(Document doc, BGroupContext groupContext) async {
+  Future<void> _addRemote(DocumentState documentState, BGroupContext groupContext) async {
     try {
-      await add(doc, groupContext);
+      await add(documentState, groupContext);
     } catch (e, st) {
       if (isUserRemovedError(e)) {
         logger.i('User removed from group, making local only');
-        await LocalStateUtils.instance.makeDocumentLocal(doc);
-        await _addLocal(doc, groupContext);
+        await LocalStateUtils.instance.makeDocumentLocal(documentState);
+        await _addLocal(documentState, groupContext);
       } else {
-        _addCorrupted(doc, groupContext);
+        _addCorrupted(documentState, groupContext);
         logger.e('Failed to add sync model, marking it as corrupted: $e\n$st');
       }
     }
   }
 
   Future<void> add(
-    Document document,
+    DocumentState documentState,
     BGroupContext groupContext, {
     bool insertToDb = false,
     bool allowFullDocument = false,
   }) async {
     final syncModel = await _synchronizeDocument(
-      document,
+      documentState,
       groupContext,
       allowFullDocument: allowFullDocument,
     );
 
     if (insertToDb) {
-      await _db.insertDocument(document: document);
+      await _db.insertDocumentState(documentState: documentState);
     }
 
     current.add(syncModel);
     subject.add(current);
   }
 
-  Future<void> _addLocal(Document document, BGroupContext groupContext) async {
-    final hive = await Hive.openBox(document.id);
+  Future<void> _addLocal(
+    DocumentState documentState,
+    BGroupContext groupContext,
+  ) async {
+    final hive = await Hive.openBox(documentState.id);
     final hiveChatController = HiveChatController(hive);
 
     final syncModel = SyncModel(
-      document: document,
+      documentState: documentState,
       groupContext: groupContext,
       listener: null,
       chatManager: ChatManager(controller: hiveChatController),
@@ -98,14 +101,14 @@ class SyncProvider {
   }
 
   Future<void> _addCorrupted(
-    Document document,
+    DocumentState documentState,
     BGroupContext groupContext,
   ) async {
-    final hive = await Hive.openBox(document.id);
+    final hive = await Hive.openBox(documentState.id);
     final hiveChatController = HiveChatController(hive);
 
     final syncModel = SyncModel(
-      document: document,
+      documentState: documentState,
       groupContext: groupContext,
       listener: null,
       chatManager: ChatManager(controller: hiveChatController),
@@ -118,7 +121,7 @@ class SyncProvider {
 
   Future<void> remove(String chatId) async {
     final syncModel = subject.value
-        .where((element) => element.document.id == chatId)
+        .where((element) => element.documentState.id == chatId)
         .firstOrNull;
 
     if (syncModel == null) {
@@ -130,14 +133,14 @@ class SyncProvider {
       await syncModel.leaveGroup();
       await syncModel.dispose();
     }
-    await _db.deleteDocument(syncModel.document.id);
+    await _db.deleteDocumentState(syncModel.documentState.id);
 
-    current.removeWhere((element) => element.document.id == chatId);
+    current.removeWhere((element) => element.documentState.id == chatId);
     subject.add(current);
   }
 
   SyncModel get(String chatId) {
-    return current.firstWhere((element) => element.document.id == chatId);
+    return current.firstWhere((element) => element.documentState.id == chatId);
   }
 
   List<SyncModel> getAll() {
@@ -145,14 +148,14 @@ class SyncProvider {
   }
 
   Future<SyncModel> _synchronizeDocument(
-    Document doc,
+    DocumentState documentState,
     BGroupContext groupContext, {
     bool allowFullDocument = false,
   }) async {
-    final challenge = await _api.getChallenge(doc.id);
+    final challenge = await _api.getChallenge(documentState.id);
 
     final jwt = await _api.getCentrifugoJWT(
-      groupId: doc.id,
+      groupId: documentState.id,
       epoch: (await groupContext.epoch()).toInt(),
       proof: base64Encode(
         await groupContext.signChallenge(challenge: base64Decode(challenge)),
@@ -161,11 +164,11 @@ class SyncProvider {
     );
 
     final stream = await _centrifugo.connect(jwt);
-    final hive = await Hive.openBox(doc.id);
+    final hive = await Hive.openBox(documentState.id);
     final hiveChatController = HiveChatController(hive);
 
     final syncModel = SyncModel(
-      document: doc,
+      documentState: documentState,
       groupContext: groupContext,
       listener: null,
       chatManager: ChatManager(controller: hiveChatController),

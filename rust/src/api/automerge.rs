@@ -105,7 +105,10 @@ impl BAutoCommit {
 
     #[flutter_rust_bridge::frb(sync)]
     pub fn delete_block(&mut self, index: u32) -> anyhow::Result<()> {
-        let Err(err) = self.autocommit.delete(self.blocks_list_id(), index as usize) else {
+        let Err(err) = self
+            .autocommit
+            .delete(self.blocks_list_id(), index as usize)
+        else {
             return Ok(());
         };
 
@@ -131,7 +134,8 @@ impl BAutoCommit {
     /// If content is the same nothing will be changed. Returns true if content was changed, othervise false
     pub fn update_block(&mut self, index: u32, text: String) -> anyhow::Result<()> {
         let block_list_id = self.blocks_list_id();
-        self.autocommit.put(block_list_id, index as usize, text.as_str())?;
+        self.autocommit
+            .put(block_list_id, index as usize, text.as_str())?;
 
         Ok(())
     }

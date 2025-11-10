@@ -29,7 +29,7 @@ import 'package:veil/utils/secret_factory.dart';
 import '../../main.dart';
 
 class SyncModel {
-  final Document document;
+  final DocumentState documentState;
   final BGroupContext groupContext;
   final ChatManager chatManager;
   StreamSubscription<SSEModel>? listener;
@@ -41,7 +41,7 @@ class SyncModel {
 
   bool bufferFrames = true;
   bool corrupted = false;
-  get isLocal => document.localOnly;
+  get isLocal => documentState.isLocal;
 
   final _corrupedEvent = StreamController<bool>.broadcast();
   final _groupInfoUpdatesEvent = StreamController<bool>.broadcast();
@@ -58,7 +58,7 @@ class SyncModel {
   String _previousGroupInfoHash = '';
 
   SyncModel({
-    required this.document,
+    required this.documentState,
     required this.groupContext,
     required this.listener,
     required this.chatManager,
@@ -88,13 +88,11 @@ extension SyncModelInit on SyncModel {
   void _handleCrdt(ExposedCRDTPayload crdt, bool allowFullDocument) {
     switch (crdt.kind) {
       case ExposedCRDTPayloadKind.incrementalChange:
-        document.automergeDoc.loadIncremental(
-          bytes: crdt.crdt.incrementalChange,
-        );
+        documentState.crdt.loadIncremental(bytes: crdt.crdt.incrementalChange);
       case ExposedCRDTPayloadKind.fullDocument:
         if (!allowFullDocument) return;
         logger.d('Received crdt full document');
-        document.automergeDoc = BAutoCommit.load(data: crdt.crdt.fullDocument);
+        documentState.crdt = BAutoCommit.load(data: crdt.crdt.fullDocument);
     }
   }
 
@@ -115,24 +113,25 @@ extension SyncModelInit on SyncModel {
       'Document epoch before polling: ${(await groupContext.epoch()).toInt()}',
     );
     logger.d(
-      'Document sequence number before polling: ${document.sequenceNumber}',
+      'Document sequence number before polling: ${documentState.sequenceNumber}',
     );
 
     while (true) {
       final signature = await groupContext.signWithTk(
-        groupId: document.id,
+        groupId: documentState.id,
         nonce: [0],
       );
 
       final result = await GroupApiClient.instance.getFrames(
         epoch: (await groupContext.epoch()).toInt(),
-        groupId: document.id,
+        groupId: documentState.id,
         signature: base64UrlEncode(signature),
         nonce: base64UrlEncode([0]),
-        messageSequenceNumber: document.sequenceNumber,
+        messageSequenceNumber: documentState.sequenceNumber,
       );
 
-      if (result.spFrames.first.seqNum.toInt() == document.sequenceNumber) {
+      if (result.spFrames.first.seqNum.toInt() ==
+          documentState.sequenceNumber) {
         break;
       }
 
@@ -150,14 +149,14 @@ extension SyncModelInit on SyncModel {
       }
     }
 
-    logger.i('Updating document..');
-    await _db.updateDocument(
-      doc: document,
-      parts: await groupContext.asParts(),
+    logger.i('Updating document state..');
+    await _db.updateDocumentState(
+      documentState: documentState,
+      groupContextParts: await groupContext.asParts(),
     );
 
     logger.d(
-      'Document sequence number after polling: ${document.sequenceNumber}',
+      'Document sequence number after polling: ${documentState.sequenceNumber}',
     );
     logger.d(
       'Document epoch after polling: ${(await groupContext.epoch()).toInt()}',
@@ -191,7 +190,7 @@ extension SyncModelHandle on SyncModel {
       final snapshot = await _crdtBuffer.snapshot();
       await applyCrdtListOperation(snapshot);
       await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-      _crdtUpdatesEvent.add(document.automergeDoc);
+      _crdtUpdatesEvent.add(documentState.crdt);
       bufferFrames = false;
       logger.i('Change process frames to process mode');
     });
@@ -243,7 +242,7 @@ extension SyncModelProcessOperations on SyncModel {
         snapshot.addAll(crdtList);
         await applyCrdtListOperation(snapshot);
         await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-        _crdtUpdatesEvent.add(document.automergeDoc);
+        _crdtUpdatesEvent.add(documentState.crdt);
       }
     });
 
@@ -270,15 +269,15 @@ extension SyncModelSendOperations on SyncModel {
         logger.i('Sending leave group frame..');
         final frame = await groupContext.leaveGroup();
         await GroupApiClient.instance.sendFrame(
-          groupId: document.id,
+          groupId: documentState.id,
           frame: frame,
         );
         logger.i('Sent leave group frame');
 
         logger.i('Updating document..');
-        await _db.updateDocument(
-          doc: document,
-          parts: await groupContext.asParts(),
+        await _db.updateDocumentState(
+          documentState: documentState,
+          groupContextParts: await groupContext.asParts(),
         );
 
         opExecutionStream.add(true);
@@ -299,7 +298,7 @@ extension SyncModelSendOperations on SyncModel {
         final snapshot = await _crdtBuffer.snapshot();
         await _sendCrdtFrame(md, snapshot);
         await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-        _crdtUpdatesEvent.add(document.automergeDoc);
+        _crdtUpdatesEvent.add(documentState.crdt);
         logger.i('Sent crdt frame');
       } catch (e) {
         logger.e('Failed to send crdt frame: $e');
@@ -323,9 +322,14 @@ extension SyncModelSendOperations on SyncModel {
       logger.i('Creating change group frame...');
       final frame = await groupContext.changeGroup(name: name);
 
+      await _db.updateGroupContextDocumentState(
+        id: documentState.id,
+        parts: await groupContext.asParts(),
+      );
+
       logger.i('Sending change group frame...');
       await GroupApiClient.instance.sendFrame(
-        groupId: document.id,
+        groupId: documentState.id,
         frame: frame,
       );
       logger.i('Change group frame was sent');
@@ -339,9 +343,14 @@ extension SyncModelSendOperations on SyncModel {
       logger.i('Creating change user frame...');
       final frame = await groupContext.changeUser(name: name);
 
+      await _db.updateGroupContextDocumentState(
+        id: documentState.id,
+        parts: await groupContext.asParts(),
+      );
+
       logger.i('Sending change user frame...');
       await GroupApiClient.instance.sendFrame(
-        groupId: document.id,
+        groupId: documentState.id,
         frame: frame,
       );
       logger.i('Change user frame was sent');
@@ -364,7 +373,7 @@ extension SyncModelSendOperations on SyncModel {
         logger.i('Spk to use apply: $spkPublicKey');
 
         final payload = Payload(
-          crdt: CRDTPayload(fullDocument: document.automergeDoc.save()),
+          crdt: CRDTPayload(fullDocument: documentState.crdt.save()),
         );
 
         logger.i('Creating identified invite frame');
@@ -374,9 +383,14 @@ extension SyncModelSendOperations on SyncModel {
           content: Payloads(payloads: [payload]).writeToBuffer(),
         );
 
+        await _db.updateGroupContextDocumentState(
+          id: documentState.id,
+          parts: await groupContext.asParts(),
+        );
+
         logger.i('Sending identified invite frame');
         await GroupApiClient.instance.sendFrame(
-          groupId: document.id,
+          groupId: documentState.id,
           frame: frame,
         );
         logger.i('Identified invite frame sent');
@@ -413,9 +427,7 @@ extension SyncModelSendOperations on SyncModel {
 
         final payloads = Payloads(
           payloads: [
-            Payload(
-              crdt: CRDTPayload(fullDocument: document.automergeDoc.save()),
-            ),
+            Payload(crdt: CRDTPayload(fullDocument: documentState.crdt.save())),
           ],
         ).writeToBuffer();
 
@@ -425,9 +437,14 @@ extension SyncModelSendOperations on SyncModel {
           content: payloads,
         );
 
+        await _db.updateGroupContextDocumentState(
+          id: documentState.id,
+          parts: await groupContext.asParts(),
+        );
+
         logger.i('Sending unidentified invite frame...');
         await GroupApiClient.instance.sendFrame(
-          groupId: document.id,
+          groupId: documentState.id,
           frame: frame,
         );
 
@@ -453,9 +470,14 @@ extension SyncModelSendOperations on SyncModel {
         content: [],
       );
 
+      await _db.updateGroupContextDocumentState(
+        id: documentState.id,
+        parts: await groupContext.asParts(),
+      );
+
       logger.i('Sending remove member frame...');
       await GroupApiClient.instance.sendFrame(
-        groupId: document.id,
+        groupId: documentState.id,
         frame: frame,
       );
 
@@ -483,12 +505,12 @@ extension SyncModelOperations on SyncModel {
   Future<void> applyCrdtListOperation(List<ExposedCRDTPayload> payloads) async {
     logger.i('Applying crdt list..');
 
-    _syncDocumentWithCrdt(document, payloads);
+    _syncDocumentWithCrdt(documentState, payloads);
 
-    logger.i('Updating document..');
-    await _db.updateDocument(
-      doc: document,
-      parts: await groupContext.asParts(),
+    logger.i('Updating document state..');
+    await _db.updateDocumentState(
+      documentState: documentState,
+      groupContextParts: await groupContext.asParts(),
     );
 
     logger.i('Applied crdt list');
@@ -496,9 +518,9 @@ extension SyncModelOperations on SyncModel {
 
   Future<void> disableNetworkSyncOperation() async {
     await listener?.cancel();
-    document.localOnly = true;
+    documentState.isLocal = true;
 
-    LocalStateUtils.instance.makeDocumentLocal(document);
+    LocalStateUtils.instance.makeDocumentLocal(documentState);
   }
 
   Future<List<ExposedCRDTPayload>> _processFrame(SPFrame spframe) async {
@@ -522,7 +544,7 @@ extension SyncModelOperations on SyncModel {
         }
       }
 
-      document.sequenceNumber = spframe.seqNum.toInt();
+      documentState.sequenceNumber = spframe.seqNum.toInt();
 
       return exposedCrdtPayload;
     } catch (e) {
@@ -541,14 +563,22 @@ extension SyncModelOperations on SyncModel {
       ).writeToBuffer(),
     );
 
-    await GroupApiClient.instance.sendFrame(groupId: document.id, frame: frame);
+    await _db.updateGroupContextDocumentState(
+      id: documentState.id,
+      parts: await groupContext.asParts(),
+    );
+
+    await GroupApiClient.instance.sendFrame(
+      groupId: documentState.id,
+      frame: frame,
+    );
   }
 
   Future<void> _sendCrdtFrame(
     String md,
     List<ExposedCRDTPayload> buffer,
   ) async {
-    final forkedDocument = document.automergeDoc.fork();
+    final forkedDocument = documentState.crdt.fork();
     forkedDocument.setActorId(
       uuid: AccountSecureStorage.instance.account.actorId,
     );
@@ -556,9 +586,9 @@ extension SyncModelOperations on SyncModel {
     forkedDocument.commit();
 
     _syncDocumentWithCrdt(
-      Document(
+      DocumentState(
         id: 'forked-doc-id',
-        automergeDoc: forkedDocument,
+        crdt: forkedDocument,
         createdAt: DateTime.now(),
         groupContextParts: GroupContextParts.empty(),
       ),
@@ -567,18 +597,25 @@ extension SyncModelOperations on SyncModel {
 
     final saveIncremential = forkedDocument.saveIncremental();
 
-    await GroupApiClient.instance.sendFrame(
-      groupId: document.id,
-      frame: await groupContext.createFrame(
-        content: Payloads(
-          payloads: [
-            Payload(crdt: CRDTPayload(incrementalChange: saveIncremential)),
-          ],
-        ).writeToBuffer(),
-      ),
+    final frame = await groupContext.createFrame(
+      content: Payloads(
+        payloads: [
+          Payload(crdt: CRDTPayload(incrementalChange: saveIncremential)),
+        ],
+      ).writeToBuffer(),
     );
 
-    document.automergeDoc.loadIncremental(bytes: saveIncremential);
+    await _db.updateGroupContextDocumentState(
+      id: documentState.id,
+      parts: await groupContext.asParts(),
+    );
+
+    await GroupApiClient.instance.sendFrame(
+      groupId: documentState.id,
+      frame: frame,
+    );
+
+    documentState.crdt.loadIncremental(bytes: saveIncremential);
   }
 
   Future<void> _sendJoinGroupFrame(Account user) async {
@@ -587,29 +624,37 @@ extension SyncModelOperations on SyncModel {
       user: BUser(name: user.name, publicKey: user.keypair.rawPublicKey),
     );
 
-    await GroupApiClient.instance.sendFrame(groupId: document.id, frame: frame);
+    await _db.updateGroupContextDocumentState(
+      id: documentState.id,
+      parts: await groupContext.asParts(),
+    );
+
+    await GroupApiClient.instance.sendFrame(
+      groupId: documentState.id,
+      frame: frame,
+    );
     logger.i('Sent join group frame');
   }
 }
 
 void _syncDocumentWithCrdt(
-  Document document,
+  DocumentState document,
   List<ExposedCRDTPayload> payloads,
 ) {
   logger.d('Number of crdt payloads to apply: ${payloads.length}');
 
   logger.d(
-    'Document state before applying crdt: ID  ${document.id} ${document.automergeDoc.getBlocks()}',
+    'Document state before applying crdt: ID  ${document.id} ${document.crdt.getBlocks()}',
   );
   for (final payload in payloads) {
     switch (payload.kind) {
       case ExposedCRDTPayloadKind.incrementalChange:
         final incrementalChange = payload.crdt.incrementalChange;
-        document.automergeDoc.loadIncremental(bytes: incrementalChange);
+        document.crdt.loadIncremental(bytes: incrementalChange);
       default:
     }
   }
   logger.d(
-    'Document state after applying crdt: ID ${document.id} ${document.automergeDoc.getBlocks()}',
+    'Document state after applying crdt: ID ${document.id} ${document.crdt.getBlocks()}',
   );
 }

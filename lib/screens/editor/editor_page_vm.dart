@@ -110,7 +110,7 @@ class EditorPageVm extends ChangeNotifier {
     allowWriteEvents = false;
     documentStatus = EditorDocumentStatus.corrupted;
     mdEditor.text = EditorAutomergeUtils.instance.toText(
-      syncModel.document.automergeDoc,
+      syncModel.documentState.crdt,
     );
 
     notifyListeners();
@@ -182,18 +182,18 @@ class EditorPageVm extends ChangeNotifier {
 
   void _localInit() {
     mdEditor.text = EditorAutomergeUtils.instance.toText(
-      syncModel.document.automergeDoc,
+      syncModel.documentState.crdt,
     );
     notifyListeners();
   }
 
   Future<void> _networkInit() async {
-    syncModel.document.automergeDoc.setActorId(
+    syncModel.documentState.crdt.setActorId(
       uuid: AccountSecureStorage.instance.account.actorId,
     );
 
     mdEditor.text = EditorAutomergeUtils.instance.toText(
-      syncModel.document.automergeDoc,
+      syncModel.documentState.crdt,
     );
 
     _documentContentBeforeEditing = sha256Hash(mdEditor.text);

@@ -183,7 +183,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   label: doc.$2.groupContext.retrieveGroupInfo().name,
                   onTap: () => vm.setSelectedPage(
                     EditorContainerPage(
-                      key: doc.$2.document.key,
+                      key: doc.$2.documentState.key,
                       syncModel: doc.$2,
                     ),
                   ),

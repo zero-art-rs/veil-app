@@ -53,27 +53,27 @@ class DocumentMember {
   });
 }
 
-class Document {
+class DocumentState {
   String id;
-  BAutoCommit automergeDoc;
+  BAutoCommit crdt;
   DateTime createdAt;
   GroupContextParts groupContextParts;
   int sequenceNumber;
-  bool localOnly;
+  bool isLocal;
 
   Key get key => ValueKey(id);
 
-  Document({
+  DocumentState({
     required this.id,
-    required this.automergeDoc,
+    required this.crdt,
     required this.createdAt,
     required this.groupContextParts,
     this.sequenceNumber = 0,
-    this.localOnly = false,
+    this.isLocal = false,
   });
 
-  void setDocument(BAutoCommit doc) {
-    automergeDoc = doc;
+  void setCrdt(BAutoCommit crdt) {
+    this.crdt = crdt;
   }
 
   void incrementSequenceNumber() {

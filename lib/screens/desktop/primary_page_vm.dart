@@ -38,14 +38,16 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
       // remove listeners for removed sync models
       _syncModelListeners.keys
-          .where((key) => !_syncModels.map((e) => e.document.id).contains(key))
+          .where(
+            (key) => !_syncModels.map((e) => e.documentState.id).contains(key),
+          )
           .forEach((key) {
             _syncModelListeners[key]?.forEach((e) => e.cancel());
           });
 
       // add listeners for new sync models
       for (final syncModel in _syncModels) {
-        if (_syncModelListeners[syncModel.document.id] == null) {
+        if (_syncModelListeners[syncModel.documentState.id] == null) {
           final groupUpdatesListener = syncModel.groupInfoUpdateEvent.listen(
             (event) => notifyListeners(),
           );
@@ -54,7 +56,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
             (e) => notifyListeners(),
           );
 
-          _syncModelListeners[syncModel.document.id] = [
+          _syncModelListeners[syncModel.documentState.id] = [
             groupUpdatesListener,
             statusListener,
           ];
@@ -90,10 +92,10 @@ class PrimaryPageViewModel extends ChangeNotifier {
         owner: AccountSecureStorage.instance.account,
       );
 
-      final document = Document(
+      final document = DocumentState(
         id: docID,
         createdAt: DateTime.now(),
-        automergeDoc: content,
+        crdt: content,
         groupContextParts: await groupContext.asParts(),
       );
 
@@ -121,12 +123,12 @@ class PrimaryPageViewModel extends ChangeNotifier {
   Future<void> removeDocument(BuildContext context, String id) async {
     try {
       final index = _syncModels.indexWhere(
-        (element) => element.document.id == id,
+        (element) => element.documentState.id == id,
       );
       if (index == -1) throw FormatException('Document not found');
 
       await _syncProvider.remove(id);
-      _syncModels.removeWhere((element) => element.document.id == id);
+      _syncModels.removeWhere((element) => element.documentState.id == id);
 
       if (_syncModels.isEmpty) {
         setSelectedIndex(0);

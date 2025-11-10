@@ -10,7 +10,7 @@ import 'package:veil/utils/platform.dart';
 List<ChangeEvent> _prepareChangeList(SyncModel syncModel) {
   final members = syncModel.groupContext.retrieveGroupInfo().members;
 
-  return syncModel.document.automergeDoc
+  return syncModel.documentState.crdt
       .getChangeList()
       .indexed
       .map(
@@ -94,7 +94,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 if (widget.onChangeTap != null) {
                   widget.onChangeTap?.call(context, change);
                 } else {
-                  var (before, after) = widget.syncModel.document.automergeDoc
+                  var (before, after) = widget.syncModel.documentState.crdt
                       .docsBeforeAfter(changeHash: change.changeHashHex);
 
                   final oldDoc = before.getBlocks();

@@ -25,14 +25,16 @@ class DocsPageViewModel extends ChangeNotifier {
 
       // remove listeners for removed sync models
       _syncModelListeners.keys
-          .where((key) => !syncModels.map((e) => e.document.id).contains(key))
+          .where(
+            (key) => !syncModels.map((e) => e.documentState.id).contains(key),
+          )
           .forEach((key) {
             _syncModelListeners[key]?.forEach((e) => e.cancel());
           });
 
       // add listeners for new sync models
       for (final syncModel in syncModels) {
-        if (_syncModelListeners[syncModel.document.id] == null) {
+        if (_syncModelListeners[syncModel.documentState.id] == null) {
           final groupUpdatesListener = syncModel.groupInfoUpdateEvent.listen(
             (event) => notifyListeners(),
           );
@@ -41,7 +43,7 @@ class DocsPageViewModel extends ChangeNotifier {
             (e) => notifyListeners(),
           );
 
-          _syncModelListeners[syncModel.document.id] = [
+          _syncModelListeners[syncModel.documentState.id] = [
             groupUpdatesListener,
             statusListener,
           ];
@@ -66,10 +68,10 @@ class DocsPageViewModel extends ChangeNotifier {
       owner: AccountSecureStorage.instance.account,
     );
 
-    final document = Document(
+    final document = DocumentState(
       id: docID,
       createdAt: DateTime.now(),
-      automergeDoc: content,
+      crdt: content,
       groupContextParts: await groupContext.asParts(),
     );
 
@@ -77,7 +79,7 @@ class DocsPageViewModel extends ChangeNotifier {
     await _syncProvider.add(document, groupContext, insertToDb: true);
   }
 
-  Future<void> deleteDoc(Document doc) async {
+  Future<void> deleteDoc(DocumentState doc) async {
     await _syncProvider.remove(doc.id);
     notifyListeners();
   }
