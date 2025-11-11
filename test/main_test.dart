@@ -1,25 +1,25 @@
+import 'package:async_queue/async_queue.dart';
 import 'package:diffutil_dart/diffutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('test diff behaviour', () {
-    // Move is update block
-    // delete is delete
-    // insert is insert
+  test('test diff behaviour', () async {
+    final queue = AsyncQueue.autoStart();
 
-    final text1 = ['I am fine', '#Title'];
-    final text2 = ['1212', 'I am fine privet kak ti', '#Title'];
+    queue.addJob(
+      () async {
+        try {
+          throw Exception('error');
+        } catch (e) {
+          queue.retry();
+        }
+      },
+      label: '5000000',
+      retryTime: 5,
+    );
 
-    // # content | id1
-    // #         | ddd
-    // #         | id2
+    await Future.delayed(Duration(seconds: 5));
 
-    final updates = calculateListDiff(
-      text1,
-      text2,
-      detectMoves: false,
-    ).getUpdatesWithData().toList();
-
-    print(updates);
+    print(queue.getJobInfo('5000000'));
   });
 }

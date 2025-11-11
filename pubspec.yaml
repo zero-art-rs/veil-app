@@ -62,7 +62,6 @@ dependencies:
   http: ^1.5.0
   material_symbols_icons: ^4.2742.0
   rxdart: ^0.27.7
-  flutter_client_sse: ^2.0.3
   gpt_markdown: ^1.1.4
   markdown: ^7.3.0
   crypto: ^3.0.3
@@ -83,6 +82,7 @@ dependencies:
   open_filex: ^4.7.0
   diffutil_dart: ^4.0.1
   connectivity_plus: ^7.0.0
+  eventflux: ^2.2.1
 
 dev_dependencies:
   flutter_test:

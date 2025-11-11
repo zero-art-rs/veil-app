@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:async_queue/async_queue.dart';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
-import 'package:flutter_client_sse/flutter_client_sse.dart';
+import 'package:veil/api/centrifugo.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/chat/chat_manager.dart';
@@ -32,7 +32,7 @@ class SyncModel {
   final DocumentState documentState;
   final BGroupContext groupContext;
   final ChatManager chatManager;
-  StreamSubscription<SSEModel>? listener;
+  CentrifugoListener? listener;
   final _db = DB.instance;
 
   final _crdtBuffer = LockedBuffer<ExposedCRDTPayload>();
@@ -166,7 +166,7 @@ extension SyncModelInit on SyncModel {
   Future<void> dispose() async {
     _processQueue.clear();
     _sendQueue.clear();
-    await listener?.cancel();
+    await listener?.disconnect();
     await _removedFromGroupEvent.close();
     await _groupInfoUpdatesEvent.close();
     await _crdtUpdatesEvent.close();
@@ -517,7 +517,7 @@ extension SyncModelOperations on SyncModel {
   }
 
   Future<void> disableNetworkSyncOperation() async {
-    await listener?.cancel();
+    await listener?.disconnect();
     documentState.isLocal = true;
 
     LocalStateUtils.instance.makeDocumentLocal(documentState);

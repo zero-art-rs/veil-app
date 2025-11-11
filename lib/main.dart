@@ -5,13 +5,14 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:veil/assets/util.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/invite_manager.dart';
-import 'package:veil/managers/network_listener.dart';
+import 'package:veil/managers/network_status_listener.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
@@ -29,6 +30,7 @@ import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/future_dialog.dart';
+import 'package:veil/widgets/network_status_banner.dart';
 
 late final Logger logger;
 
@@ -38,7 +40,7 @@ Future<void> main() async {
     logger = await initLogger();
     await RustLib.init();
     initTracing();
-    NetworkListener.instance.start();
+    NetworkStatusListener.instance.start();
     await Hive.initFlutter();
     await AccountSecureStorage.instance.init();
     await DB.instance.open();
@@ -96,8 +98,9 @@ class _MyAppState extends State<MyApp> {
   void dispose() {
     super.dispose();
 
-    logger.d('My app dispose called');
+    logger.d('App dispose called');
     _appListener.dispose();
+    NetworkStatusListener.instance.dispose();
     _networkStatusSubscription.cancel();
     _sub?.cancel();
   }
@@ -285,9 +288,22 @@ class _MyAppState extends State<MyApp> {
             child: DocsPage(),
           ),
         ],
-        child: PlatformUtils.isDesktop
-            ? DesktopPrimaryPage()
-            : AppBottomTabBar(),
+        child: Scaffold(
+          body: Stack(
+            children: [
+              PlatformUtils.isDesktop
+                  ? DesktopPrimaryPage()
+                  : AppBottomTabBar(),
+
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: NetworkStatusBanner(
+                  stream: NetworkStatusListener.instance.connectionStatus,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       navigatorKey: navigatorKey,
     );

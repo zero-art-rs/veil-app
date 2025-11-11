@@ -29,11 +29,13 @@ class GroupApiClient {
   }) async {
     final url = Uri.parse('$baseUrl/v1/group/$groupId/frames');
 
-    final response = await _http.post(
-      url,
-      headers: {'Content-Type': 'application/protobuf'},
-      body: frame,
-    );
+    final response = await _http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/protobuf'},
+          body: frame,
+        )
+        .timeout(Duration(seconds: 5));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(

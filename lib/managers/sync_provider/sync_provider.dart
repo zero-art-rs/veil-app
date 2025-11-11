@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:hive_ce/hive.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:rxdart/subjects.dart';
-import 'package:veil/api/centrifuge.dart';
+import 'package:veil/api/centrifugo.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/chat/chat_manager.dart';
@@ -19,7 +19,6 @@ import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/local_state.dart';
 
 class SyncProvider {
-  final _centrifugo = CentrifugeProvider.instance;
   final _db = DB.instance;
   final _api = GroupApiClient.instance;
 
@@ -168,7 +167,6 @@ class SyncProvider {
       challenge: challenge,
     );
 
-    final stream = await _centrifugo.connect(jwt);
     final hive = await Hive.openBox(documentState.id);
     final hiveChatController = HiveChatController(hive);
 
@@ -179,18 +177,20 @@ class SyncProvider {
       chatManager: ChatManager(controller: hiveChatController),
     );
 
-    final listener = stream.listen(
-      (event) async {
-        if (event.data == null || event.data!.isEmpty) return;
-
-        final rawJson = json.decode(event.data!);
-        if (rawJson['pub'] == null) return;
-
-        final frameBytes = base64Decode(rawJson['pub']['data'].toString());
-
-        final frame = SPFrame.fromBuffer(frameBytes);
-
+    final listener = CentrifugoListener(
+      streamCallback: (response) async {
+        if (response.data.isEmpty) return;
         try {
+          final rawJson = json.decode(response.data);
+          if (rawJson['pub'] == null) return;
+
+          logger.d(
+            'Centrifugo received data: ${response.data}, event: ${response.event}, id: ${response.id}',
+          );
+
+          final frameBytes = base64Decode(rawJson['pub']['data'].toString());
+
+          final frame = SPFrame.fromBuffer(frameBytes);
           await syncModel.processFrame(frame);
         } catch (e) {
           logger.e(
@@ -200,16 +200,12 @@ class SyncProvider {
           await syncModel.markAsCorrupted();
         }
       },
-      onError: (error, [stackTrace]) {
-        logger.e('Centrifugo error: $error, trace: $stackTrace');
-      },
-      onDone: () {
-        logger.i('Centrifugo done');
-      },
-      cancelOnError: false,
     );
 
     syncModel.listener = listener;
+
+    await listener.connect(jwt);
+
     try {
       await syncModel.synchronizeInitially(
         allowFullDocument: allowFullDocument,
