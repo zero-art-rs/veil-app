@@ -71,7 +71,7 @@ class NetworkStatusListener {
         );
       } catch (e) {
         if (!timer.isActive) return;
-        logger.e('Failed to check network status: $e');
+        logger.w('Failed to check network status: $e');
         connectionStatus.add(NetworkStatus.connectedServiceUnavailable);
       }
     });

@@ -5,7 +5,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -91,7 +90,6 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _listenUriChanges();
     // _listenLifeCycleChanges();
-    // _listenNetworkConnection();
   }
 
   @override

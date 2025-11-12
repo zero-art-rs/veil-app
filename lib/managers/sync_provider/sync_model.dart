@@ -172,21 +172,29 @@ extension SyncModelInit on SyncModel {
 
 extension SyncModelHandle on SyncModel {
   Future<void> bufferizeFrames() async {
-    await _processQueue.add(() async {
-      logger.i('Change process frames to buffer mode');
-      bufferFrames = true;
-    });
+    try {
+      await _processQueue.add(() async {
+        logger.i('Change process frames to buffer mode');
+        bufferFrames = true;
+      });
+    } on QueueCancelledException {
+      logger.d('Process queue cancelled');
+    }
   }
 
   Future<void> applyBufferedFrames() async {
-    await _processQueue.add(() async {
-      final snapshot = await _crdtBuffer.snapshot();
-      await applyCrdtListOperation(snapshot);
-      await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-      _crdtUpdatesEvent.add(documentState.crdt);
-      bufferFrames = false;
-      logger.i('Change process frames to process mode');
-    });
+    try {
+      await _processQueue.add(() async {
+        final snapshot = await _crdtBuffer.snapshot();
+        await applyCrdtListOperation(snapshot);
+        await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
+        _emitCrdtUpdatesEvent();
+        bufferFrames = false;
+        logger.i('Change process frames to process mode');
+      });
+    } on QueueCancelledException {
+      logger.d('Process queue cancelled');
+    }
   }
 }
 
@@ -211,7 +219,7 @@ extension SyncModelProcessOperations on SyncModel {
         if (currentGroupInfoHash != _previousGroupInfoHash &&
             !_groupInfoUpdatesEvent.isClosed) {
           logger.i('Group info changed, sending update..');
-          _groupInfoUpdatesEvent.add(true);
+          _emitGroupInfoUpdatesEvent();
         }
 
         if (bufferFrames) {
@@ -225,13 +233,15 @@ extension SyncModelProcessOperations on SyncModel {
           snapshot.addAll(crdtList);
           await applyCrdtListOperation(snapshot);
           await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-          _crdtUpdatesEvent.add(documentState.crdt);
+          _emitCrdtUpdatesEvent();
         }
       });
+    } on QueueCancelledException {
+      logger.d('Process queue cancelled');
     } catch (e) {
       if (isUserRemovedError(e)) {
         logger.i('User removed from group, making local only');
-        _removedFromGroupEvent.add(true);
+        _emitRemovedFromGroupEvent();
         await disableNetworkSyncOperation();
       } else {
         rethrow;
@@ -244,290 +254,329 @@ extension SyncModelSendOperations on SyncModel {
   Future<void> leaveGroup() async {
     const maxAttempts = 3;
 
-    await _sendQueue.add(() async {
-      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          logger.i('Sending leave group frame..');
-          final frame = await groupContext.leaveGroup();
+    try {
+      await _sendQueue.add(() async {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            logger.i('Sending leave group frame..');
+            final frame = await groupContext.leaveGroup();
 
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
-
-          await GroupApiClient.instance.sendFrame(
-            groupId: documentState.id,
-            frame: frame,
-          );
-
-          logger.i('Sent leave group frame');
-          await _db.updateDocumentState(
-            documentState: documentState,
-            groupContextParts: await groupContext.asParts(),
-          );
-
-          break;
-        } catch (e) {
-          if (attempt == 3) {
-            logger.w('Failed to send leave group frame: $e');
-            rethrow;
-          } else {
-            logger.w(
-              'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
             );
+
+            await GroupApiClient.instance.sendFrame(
+              groupId: documentState.id,
+              frame: frame,
+            );
+
+            logger.i('Sent leave group frame');
+            await _db.updateDocumentState(
+              documentState: documentState,
+              groupContextParts: await groupContext.asParts(),
+            );
+
+            break;
+          } catch (e) {
+            if (attempt == 3) {
+              logger.w('Failed to send leave group frame: $e');
+              rethrow;
+            } else {
+              logger.w(
+                'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+              );
+            }
           }
         }
-      }
-    });
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+    }
   }
 
   Future<void> sendCrdtFrame(String md) async {
     const maxAttempts = 3;
 
-    await _sendQueue.add(() async {
-      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          logger.i('Sending crdt frame..');
-          final snapshot = await _crdtBuffer.snapshot();
-          await _sendCrdtFrame(md, snapshot);
-          await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-          _crdtUpdatesEvent.add(documentState.crdt);
-          logger.i('Sent crdt frame');
-          break;
-        } catch (e) {
-          if (attempt == maxAttempts) {
-            logger.e('Failed to send crdt frame: $e');
-            rethrow;
-          } else {
-            logger.w(
-              'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
-            );
+    try {
+      await _sendQueue.add(() async {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            logger.i('Sending crdt frame..');
+            final snapshot = await _crdtBuffer.snapshot();
+            await _sendCrdtFrame(md, snapshot);
+            await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
+            _emitCrdtUpdatesEvent();
+            logger.i('Sent crdt frame');
+            break;
+          } catch (e) {
+            if (attempt == maxAttempts) {
+              logger.e('Failed to send crdt frame: $e');
+              rethrow;
+            } else {
+              logger.w(
+                'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+              );
+            }
           }
         }
-      }
-    });
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+    }
   }
 
   Future<void> sendChatFrame(List<int> messageBytes) async {
     const maxAttempts = 3;
 
-    await _sendQueue.add(() async {
-      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          await _sendChatFrame(messageBytes);
-          break;
-        } catch (e) {
-          if (attempt == maxAttempts) {
-            logger.e('Failed to send chat frame: $e');
-            rethrow;
-          } else {
-            logger.w(
-              'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
-            );
+    try {
+      await _sendQueue.add(() async {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            await _sendChatFrame(messageBytes);
+            break;
+          } catch (e) {
+            if (attempt == maxAttempts) {
+              logger.e('Failed to send chat frame: $e');
+              rethrow;
+            } else {
+              logger.w(
+                'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+              );
+            }
           }
         }
-      }
-    });
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+    }
   }
 
   Future<void> updateGroupName({required String name}) async {
-    await _sendQueue.add(() async {
-      logger.i('Creating change group frame...');
-      final frame = await groupContext.changeGroup(name: name);
+    try {
+      await _sendQueue.add(() async {
+        logger.i('Creating change group frame...');
+        final frame = await groupContext.changeGroup(name: name);
 
-      await _db.updateGroupContextDocumentState(
-        id: documentState.id,
-        parts: await groupContext.asParts(),
-      );
+        await _db.updateGroupContextDocumentState(
+          id: documentState.id,
+          parts: await groupContext.asParts(),
+        );
 
-      logger.i('Sending change group frame...');
-      await GroupApiClient.instance.sendFrame(
-        groupId: documentState.id,
-        frame: frame,
-      );
-      logger.i('Change group frame was sent');
-    });
+        logger.i('Sending change group frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: documentState.id,
+          frame: frame,
+        );
+        logger.i('Change group frame was sent');
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+    }
   }
 
   Future<void> updateUserName({required String name}) async {
-    await _sendQueue.add(() async {
-      logger.i('Creating change user frame...');
-      final frame = await groupContext.changeUser(name: name);
+    try {
+      await _sendQueue.add(() async {
+        logger.i('Creating change user frame...');
+        final frame = await groupContext.changeUser(name: name);
 
-      await _db.updateGroupContextDocumentState(
-        id: documentState.id,
-        parts: await groupContext.asParts(),
-      );
+        await _db.updateGroupContextDocumentState(
+          id: documentState.id,
+          parts: await groupContext.asParts(),
+        );
 
-      logger.i('Sending change user frame...');
-      await GroupApiClient.instance.sendFrame(
-        groupId: documentState.id,
-        frame: frame,
-      );
-      logger.i('Change user frame was sent');
-    });
+        logger.i('Sending change user frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: documentState.id,
+          frame: frame,
+        );
+        logger.i('Change user frame was sent');
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+    }
   }
 
   Future<String> createIdentifiedMemberLink({required Contact contact}) async {
     const maxAttempts = 3;
 
-    return await _sendQueue.add(() async {
-      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          logger.i('Creating identified member invite..');
-          final firstSpk = contact.spks.firstOrNull;
-          final spkPublicKey = firstSpk != null
-              ? Uint8List.fromList(firstSpk)
-              : null;
+    try {
+      return await _sendQueue.add(() async {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            logger.i('Creating identified member invite..');
+            final firstSpk = contact.spks.firstOrNull;
+            final spkPublicKey = firstSpk != null
+                ? Uint8List.fromList(firstSpk)
+                : null;
 
-          logger.i('Spk to use apply: $spkPublicKey');
+            logger.i('Spk to use apply: $spkPublicKey');
 
-          final payload = Payload(
-            crdt: CRDTPayload(fullDocument: documentState.crdt.save()),
-          );
-
-          logger.i('Creating identified invite frame');
-          final (frame, invite) = await groupContext.addIdentifiedMember(
-            identityPublicKey: contact.account.rawPublicKey,
-            spkPublicKey: spkPublicKey,
-            content: Payloads(payloads: [payload]).writeToBuffer(),
-          );
-
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
-
-          logger.i('Sending identified invite frame');
-          await GroupApiClient.instance.sendFrame(
-            groupId: documentState.id,
-            frame: frame,
-          );
-          logger.i('Identified invite frame sent');
-
-          final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-          if (spkPublicKey != null) {
-            logger.i('Removing spk contact spk..');
-            await ContactsManager.instance.removeSpk(
-              contact.account.actorId,
-              spkPublicKey.toList(),
+            final payload = Payload(
+              crdt: CRDTPayload(fullDocument: documentState.crdt.save()),
             );
-          }
 
-          return inviteLink;
-        } catch (e) {
-          if (attempt == maxAttempts) {
-            logger.e('Failed to create identified member link: $e');
-            rethrow;
-          } else {
-            logger.w(
-              'Failed to create identified member link, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+            logger.i('Creating identified invite frame');
+            final (frame, invite) = await groupContext.addIdentifiedMember(
+              identityPublicKey: contact.account.rawPublicKey,
+              spkPublicKey: spkPublicKey,
+              content: Payloads(payloads: [payload]).writeToBuffer(),
             );
+
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
+            );
+
+            logger.i('Sending identified invite frame');
+            await GroupApiClient.instance.sendFrame(
+              groupId: documentState.id,
+              frame: frame,
+            );
+            logger.i('Identified invite frame sent');
+
+            final inviteLink = DeeplinkManager.instance.buildInvite(invite);
+
+            if (spkPublicKey != null) {
+              logger.i('Removing spk contact spk..');
+              await ContactsManager.instance.removeSpk(
+                contact.account.actorId,
+                spkPublicKey.toList(),
+              );
+            }
+
+            return inviteLink;
+          } catch (e) {
+            if (attempt == maxAttempts) {
+              logger.e('Failed to create identified member link: $e');
+              rethrow;
+            } else {
+              logger.w(
+                'Failed to create identified member link, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+              );
+            }
           }
         }
-      }
 
-      throw StateError(
-        'Unreachable: indentified invite retry loop exited unexpectedly',
-      );
-    });
+        throw StateError(
+          'Unreachable: indentified invite retry loop exited unexpectedly',
+        );
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+      return "";
+    }
   }
 
   Future<String> createUnidentifiedMemberInviteLink() async {
     const maxAttempts = 3;
 
-    return await _sendQueue.add(() async {
-      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          logger.i('Creating unidentified member invite..');
-          final secretKey = SecretManager.intance.generateSecretKey();
+    try {
+      return await _sendQueue.add(() async {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            logger.i('Creating unidentified member invite..');
+            final secretKey = SecretManager.intance.generateSecretKey();
 
-          final payloads = Payloads(
-            payloads: [
-              Payload(
-                crdt: CRDTPayload(fullDocument: documentState.crdt.save()),
-              ),
-            ],
-          ).writeToBuffer();
+            final payloads = Payloads(
+              payloads: [
+                Payload(
+                  crdt: CRDTPayload(fullDocument: documentState.crdt.save()),
+                ),
+              ],
+            ).writeToBuffer();
 
-          logger.i('Creating unidentified invite frame..');
-          final (frame, invite) = await groupContext.addUnidentifiedMember(
-            secretKey: secretKey,
-            content: payloads,
-          );
-
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
-
-          logger.i('Sending unidentified invite frame...');
-          await GroupApiClient.instance.sendFrame(
-            groupId: documentState.id,
-            frame: frame,
-          );
-
-          return DeeplinkManager.instance.buildInvite(invite);
-        } catch (e) {
-          if (attempt == maxAttempts) {
-            logger.e('Failed to create unidentified invite member link: $e');
-            rethrow;
-          } else {
-            logger.w(
-              'Failed to create unidentified invite member link, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+            logger.i('Creating unidentified invite frame..');
+            final (frame, invite) = await groupContext.addUnidentifiedMember(
+              secretKey: secretKey,
+              content: payloads,
             );
+
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
+            );
+
+            logger.i('Sending unidentified invite frame...');
+            await GroupApiClient.instance.sendFrame(
+              groupId: documentState.id,
+              frame: frame,
+            );
+            logger.i('Unidentified invite frame sent');
+
+            return DeeplinkManager.instance.buildInvite(invite);
+          } catch (e) {
+            if (attempt == maxAttempts) {
+              logger.e('Failed to create unidentified invite member link: $e');
+              rethrow;
+            } else {
+              logger.w(
+                'Failed to create unidentified invite member link, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+              );
+            }
           }
         }
-      }
 
-      throw StateError('Unreachable: invite retry loop exited unexpectedly');
-    });
+        throw StateError('Unreachable: invite retry loop exited unexpectedly');
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+      return "";
+    }
   }
 
   Future<void> removeMember({required String actorId}) async {
-    await _sendQueue.add(() async {
-      logger.i('Removing member in group context..');
-      final frame = await groupContext.removeMember(
-        userId: actorId,
-        content: [],
-      );
+    try {
+      await _sendQueue.add(() async {
+        logger.i('Removing member in group context..');
+        final frame = await groupContext.removeMember(
+          userId: actorId,
+          content: [],
+        );
 
-      await _db.updateGroupContextDocumentState(
-        id: documentState.id,
-        parts: await groupContext.asParts(),
-      );
+        await _db.updateGroupContextDocumentState(
+          id: documentState.id,
+          parts: await groupContext.asParts(),
+        );
 
-      logger.i('Sending remove member frame...');
-      await GroupApiClient.instance.sendFrame(
-        groupId: documentState.id,
-        frame: frame,
-      );
+        logger.i('Sending remove member frame...');
+        await GroupApiClient.instance.sendFrame(
+          groupId: documentState.id,
+          frame: frame,
+        );
 
-      logger.i('Remove member frame sent');
-    });
+        logger.i('Remove member frame sent');
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+    }
   }
 
   Future<void> sendJoinGroupFrame(Account user) async {
     const maxAttempts = 3;
 
-    await _sendQueue.add(() async {
-      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          await _sendJoinGroupFrame(user);
-          break;
-        } catch (e) {
-          if (attempt == maxAttempts) {
-            logger.e('Failed to send join group frame: $e');
-            rethrow;
-          } else {
-            logger.w(
-              'Failed to send join group frame, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
-            );
+    try {
+      await _sendQueue.add(() async {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            await _sendJoinGroupFrame(user);
+            break;
+          } catch (e) {
+            if (attempt == maxAttempts) {
+              logger.e('Failed to send join group frame: $e');
+              rethrow;
+            } else {
+              logger.w(
+                'Failed to send join group frame, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
+              );
+            }
           }
         }
-      }
-    });
+      });
+    } on QueueCancelledException {
+      logger.d('Send queue cancelled');
+    }
   }
 }
 
@@ -536,7 +585,7 @@ extension SyncModelOperations on SyncModel {
     logger.i('Highlighting corrupted document..');
 
     corrupted = true;
-    _corrupedEvent.add(corrupted);
+    _emitCorruptedEvent();
     await dispose();
     logger.i('Corrupted document highlighted');
   }
@@ -674,6 +723,32 @@ extension SyncModelOperations on SyncModel {
       frame: frame,
     );
     logger.i('Sent join group frame');
+  }
+}
+
+extension SyncModelHelpers on SyncModel {
+  void _emitCorruptedEvent() {
+    if (!_corrupedEvent.isClosed) {
+      _corrupedEvent.add(corrupted);
+    }
+  }
+
+  void _emitRemovedFromGroupEvent() {
+    if (!_removedFromGroupEvent.isClosed) {
+      _removedFromGroupEvent.add(true);
+    }
+  }
+
+  void _emitCrdtUpdatesEvent() {
+    if (!_crdtUpdatesEvent.isClosed) {
+      _crdtUpdatesEvent.add(documentState.crdt);
+    }
+  }
+
+  void _emitGroupInfoUpdatesEvent() {
+    if (!_groupInfoUpdatesEvent.isClosed) {
+      _groupInfoUpdatesEvent.add(true);
+    }
   }
 }
 
