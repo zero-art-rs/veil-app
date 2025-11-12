@@ -1,25 +1,28 @@
-import 'package:async_queue/async_queue.dart';
-import 'package:diffutil_dart/diffutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:queue/queue.dart';
 
 void main() {
   test('test diff behaviour', () async {
-    final queue = AsyncQueue.autoStart();
+    final queue = Queue();
 
-    queue.addJob(
-      () async {
-        try {
-          throw Exception('error');
-        } catch (e) {
-          queue.retry();
-        }
-      },
-      label: '5000000',
-      retryTime: 5,
-    );
+    try {
+      await queue.add(() async {
+        await Future.delayed(Duration(seconds: 3));
+      });
+    } catch (e) {
+      print(e);
+    }
 
-    await Future.delayed(Duration(seconds: 5));
+    queue.cancel();
 
-    print(queue.getJobInfo('5000000'));
+    try {
+      await queue.add(() async {
+        await Future.delayed(Duration(seconds: 3));
+      });
+    } on QueueCancelledException {
+      print('Cancelled');
+    } catch (e) {
+      print(e);
+    }
   });
 }

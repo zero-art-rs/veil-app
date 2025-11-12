@@ -209,10 +209,12 @@ class EditorPageVm extends ChangeNotifier {
     );
   }
 
-  Map<ShortcutActivator, void Function()> saveActionWidget() {
+  Map<ShortcutActivator, void Function()> saveActionWidget(
+    BuildContext context,
+  ) {
     final handleOnSaveAction = () async {
       if (selectedMode == EditorModes.edit) {
-        await selectMode(EditorModes.view);
+        await selectMode(context, EditorModes.view);
       }
     };
 
@@ -228,17 +230,29 @@ class EditorPageVm extends ChangeNotifier {
     return map;
   }
 
-  Future<void> selectMode(EditorModes mode) async {
+  Future<void> selectMode(BuildContext context, EditorModes mode) async {
     final runSync =
         selectedMode == EditorModes.edit && mode == EditorModes.view;
 
     if (mode == EditorModes.edit) {
       logger.d('Bufferizing frames trigger on ui');
-      syncModel.bufferizeFrames();
+      await syncModel.bufferizeFrames();
     }
 
     if (runSync) {
-      await syncLocalAndNetworkState();
+      try {
+        await syncLocalAndNetworkState();
+      } catch (e) {
+        logger.e('Failed to sync local and network state: $e');
+
+        if (!context.mounted) return;
+
+        TopBanner.show(
+          context: context,
+          message: 'Failed to sync local and network state',
+          kind: TopBannerCases.error,
+        );
+      }
     }
 
     selectedMode = mode;
