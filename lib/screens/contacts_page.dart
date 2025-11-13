@@ -34,7 +34,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     try {
       await _contactsManager.removeContact(id);
     } catch (err) {
-      logger.e('Failed to remove contact: $err');
+      logger.error('Failed to remove contact: $err');
     }
   }
 

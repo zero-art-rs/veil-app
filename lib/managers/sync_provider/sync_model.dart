@@ -94,20 +94,20 @@ extension SyncModelInit on SyncModel {
         documentState.crdt.loadIncremental(bytes: crdt.crdt.incrementalChange);
       case ExposedCRDTPayloadKind.fullDocument:
         if (!allowFullDocument) return;
-        logger.d('Received crdt full document');
+        logger.debug('Received crdt full document');
         documentState.crdt = BAutoCommit.load(data: crdt.crdt.fullDocument);
     }
   }
 
-  void listenProcess() {
+  void listenCentrifugo() {
     _queueProcessListener.listen();
   }
 
   Future<void> synchronizeInitially({bool allowFullDocument = false}) async {
-    logger.d(
+    logger.debug(
       'Document epoch before polling: ${(await groupContext.epoch()).toInt()}',
     );
-    logger.d(
+    logger.debug(
       'Document sequence number before polling: ${documentState.sequenceNumber}',
     );
 
@@ -131,10 +131,12 @@ extension SyncModelInit on SyncModel {
       }
 
       for (final spFrame in result.spFrames.reversed) {
-        logger.d(
+        logger.debug(
           'Current processing frame epoch: ${(await groupContext.epoch()).toInt()}',
         );
-        logger.d('Current processing frame seqNum: ${spFrame.seqNum.toInt()}');
+        logger.debug(
+          'Current processing frame seqNum: ${spFrame.seqNum.toInt()}',
+        );
 
         final crdtList = await _processFrame(spFrame);
 
@@ -144,16 +146,16 @@ extension SyncModelInit on SyncModel {
       }
     }
 
-    logger.i('Updating document state..');
+    logger.info('Updating document state..');
     await _db.updateDocumentState(
       documentState: documentState,
       groupContextParts: await groupContext.asParts(),
     );
 
-    logger.d(
+    logger.debug(
       'Document sequence number after polling: ${documentState.sequenceNumber}',
     );
-    logger.d(
+    logger.debug(
       'Document epoch after polling: ${(await groupContext.epoch()).toInt()}',
     );
   }
@@ -166,7 +168,7 @@ extension SyncModelInit on SyncModel {
     await _removedFromGroupEvent.close();
     await _groupInfoUpdatesEvent.close();
     await _crdtUpdatesEvent.close();
-    logger.i('Sync provider disposed');
+    logger.info('Sync provider disposed');
   }
 }
 
@@ -174,11 +176,11 @@ extension SyncModelHandle on SyncModel {
   Future<void> bufferizeFrames() async {
     try {
       await _processQueue.add(() async {
-        logger.i('Change process frames to buffer mode');
+        logger.info('Change process frames to buffer mode');
         bufferFrames = true;
       });
     } on QueueCancelledException {
-      logger.d('Process queue cancelled');
+      logger.debug('Process queue cancelled');
     }
   }
 
@@ -190,10 +192,10 @@ extension SyncModelHandle on SyncModel {
         await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
         _emitCrdtUpdatesEvent();
         bufferFrames = false;
-        logger.i('Change process frames to process mode');
+        logger.info('Change process frames to process mode');
       });
     } on QueueCancelledException {
-      logger.d('Process queue cancelled');
+      logger.debug('Process queue cancelled');
     }
   }
 }
@@ -202,9 +204,11 @@ extension SyncModelProcessOperations on SyncModel {
   Future<void> processFrame(SPFrame spframe) async {
     try {
       await _processQueue.add(() async {
-        logger.i('Received frame, processing..');
-        logger.d('Received frame, frame epoch: ${spframe.frame.frame.epoch}..');
-        logger.d('Received frame, frame seqNum: ${spframe.seqNum}..');
+        logger.info('Received frame, processing..');
+        logger.debug(
+          'Received frame, frame epoch: ${spframe.frame.frame.epoch}..',
+        );
+        logger.debug('Received frame, frame seqNum: ${spframe.seqNum}..');
 
         _previousGroupInfoHash = sha256
             .convert(groupContext.groupInfo())
@@ -218,17 +222,17 @@ extension SyncModelProcessOperations on SyncModel {
 
         if (currentGroupInfoHash != _previousGroupInfoHash &&
             !_groupInfoUpdatesEvent.isClosed) {
-          logger.i('Group info changed, sending update..');
+          logger.info('Group info changed, sending update..');
           _emitGroupInfoUpdatesEvent();
         }
 
         if (bufferFrames) {
-          logger.d('Buffering crdt frames...');
+          logger.debug('Buffering crdt frames...');
           for (final payload in crdtList) {
             await _crdtBuffer.push(payload);
           }
         } else {
-          logger.d('Applying crdt frames...');
+          logger.debug('Applying crdt frames...');
           final snapshot = await _crdtBuffer.snapshot();
           snapshot.addAll(crdtList);
           await applyCrdtListOperation(snapshot);
@@ -237,10 +241,10 @@ extension SyncModelProcessOperations on SyncModel {
         }
       });
     } on QueueCancelledException {
-      logger.d('Process queue cancelled');
+      logger.debug('Process queue cancelled');
     } catch (e) {
       if (isUserRemovedError(e)) {
-        logger.i('User removed from group, making local only');
+        logger.info('User removed from group, making local only');
         _emitRemovedFromGroupEvent();
         await disableNetworkSyncOperation();
       } else {
@@ -258,7 +262,7 @@ extension SyncModelSendOperations on SyncModel {
       await _sendQueue.add(() async {
         for (var attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            logger.i('Sending leave group frame..');
+            logger.info('Sending leave group frame..');
             final frame = await groupContext.leaveGroup();
 
             await _db.updateGroupContextDocumentState(
@@ -271,7 +275,7 @@ extension SyncModelSendOperations on SyncModel {
               frame: frame,
             );
 
-            logger.i('Sent leave group frame');
+            logger.info('Sent leave group frame');
             await _db.updateDocumentState(
               documentState: documentState,
               groupContextParts: await groupContext.asParts(),
@@ -280,10 +284,10 @@ extension SyncModelSendOperations on SyncModel {
             break;
           } catch (e) {
             if (attempt == 3) {
-              logger.w('Failed to send leave group frame: $e');
+              logger.warning('Failed to send leave group frame: $e');
               rethrow;
             } else {
-              logger.w(
+              logger.warning(
                 'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
               );
             }
@@ -291,7 +295,7 @@ extension SyncModelSendOperations on SyncModel {
         }
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
     }
   }
 
@@ -302,19 +306,19 @@ extension SyncModelSendOperations on SyncModel {
       await _sendQueue.add(() async {
         for (var attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            logger.i('Sending crdt frame..');
+            logger.info('Sending crdt frame..');
             final snapshot = await _crdtBuffer.snapshot();
             await _sendCrdtFrame(md, snapshot);
             await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
             _emitCrdtUpdatesEvent();
-            logger.i('Sent crdt frame');
+            logger.info('Sent crdt frame');
             break;
           } catch (e) {
             if (attempt == maxAttempts) {
-              logger.e('Failed to send crdt frame: $e');
+              logger.error('Failed to send crdt frame: $e');
               rethrow;
             } else {
-              logger.w(
+              logger.warning(
                 'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
               );
             }
@@ -322,7 +326,7 @@ extension SyncModelSendOperations on SyncModel {
         }
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
     }
   }
 
@@ -337,10 +341,10 @@ extension SyncModelSendOperations on SyncModel {
             break;
           } catch (e) {
             if (attempt == maxAttempts) {
-              logger.e('Failed to send chat frame: $e');
+              logger.error('Failed to send chat frame: $e');
               rethrow;
             } else {
-              logger.w(
+              logger.warning(
                 'Failed to invite member, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
               );
             }
@@ -348,14 +352,14 @@ extension SyncModelSendOperations on SyncModel {
         }
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
     }
   }
 
   Future<void> updateGroupName({required String name}) async {
     try {
       await _sendQueue.add(() async {
-        logger.i('Creating change group frame...');
+        logger.info('Creating change group frame...');
         final frame = await groupContext.changeGroup(name: name);
 
         await _db.updateGroupContextDocumentState(
@@ -363,22 +367,22 @@ extension SyncModelSendOperations on SyncModel {
           parts: await groupContext.asParts(),
         );
 
-        logger.i('Sending change group frame...');
+        logger.info('Sending change group frame...');
         await GroupApiClient.instance.sendFrame(
           groupId: documentState.id,
           frame: frame,
         );
-        logger.i('Change group frame was sent');
+        logger.info('Change group frame was sent');
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
     }
   }
 
   Future<void> updateUserName({required String name}) async {
     try {
       await _sendQueue.add(() async {
-        logger.i('Creating change user frame...');
+        logger.info('Creating change user frame...');
         final frame = await groupContext.changeUser(name: name);
 
         await _db.updateGroupContextDocumentState(
@@ -386,15 +390,15 @@ extension SyncModelSendOperations on SyncModel {
           parts: await groupContext.asParts(),
         );
 
-        logger.i('Sending change user frame...');
+        logger.info('Sending change user frame...');
         await GroupApiClient.instance.sendFrame(
           groupId: documentState.id,
           frame: frame,
         );
-        logger.i('Change user frame was sent');
+        logger.info('Change user frame was sent');
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
     }
   }
 
@@ -405,19 +409,19 @@ extension SyncModelSendOperations on SyncModel {
       return await _sendQueue.add(() async {
         for (var attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            logger.i('Creating identified member invite..');
+            logger.info('Creating identified member invite..');
             final firstSpk = contact.spks.firstOrNull;
             final spkPublicKey = firstSpk != null
                 ? Uint8List.fromList(firstSpk)
                 : null;
 
-            logger.i('Spk to use apply: $spkPublicKey');
+            logger.info('Spk to use apply: $spkPublicKey');
 
             final payload = Payload(
               crdt: CRDTPayload(fullDocument: documentState.crdt.save()),
             );
 
-            logger.i('Creating identified invite frame');
+            logger.info('Creating identified invite frame');
             final (frame, invite) = await groupContext.addIdentifiedMember(
               identityPublicKey: contact.account.rawPublicKey,
               spkPublicKey: spkPublicKey,
@@ -429,17 +433,17 @@ extension SyncModelSendOperations on SyncModel {
               parts: await groupContext.asParts(),
             );
 
-            logger.i('Sending identified invite frame');
+            logger.info('Sending identified invite frame');
             await GroupApiClient.instance.sendFrame(
               groupId: documentState.id,
               frame: frame,
             );
-            logger.i('Identified invite frame sent');
+            logger.info('Identified invite frame sent');
 
             final inviteLink = DeeplinkManager.instance.buildInvite(invite);
 
             if (spkPublicKey != null) {
-              logger.i('Removing spk contact spk..');
+              logger.info('Removing spk contact spk..');
               await ContactsManager.instance.removeSpk(
                 contact.account.actorId,
                 spkPublicKey.toList(),
@@ -449,10 +453,10 @@ extension SyncModelSendOperations on SyncModel {
             return inviteLink;
           } catch (e) {
             if (attempt == maxAttempts) {
-              logger.e('Failed to create identified member link: $e');
+              logger.error('Failed to create identified member link: $e');
               rethrow;
             } else {
-              logger.w(
+              logger.warning(
                 'Failed to create identified member link, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
               );
             }
@@ -464,7 +468,7 @@ extension SyncModelSendOperations on SyncModel {
         );
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
       return "";
     }
   }
@@ -476,7 +480,7 @@ extension SyncModelSendOperations on SyncModel {
       return await _sendQueue.add(() async {
         for (var attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
-            logger.i('Creating unidentified member invite..');
+            logger.info('Creating unidentified member invite..');
             final secretKey = SecretManager.intance.generateSecretKey();
 
             final payloads = Payloads(
@@ -487,7 +491,7 @@ extension SyncModelSendOperations on SyncModel {
               ],
             ).writeToBuffer();
 
-            logger.i('Creating unidentified invite frame..');
+            logger.info('Creating unidentified invite frame..');
             final (frame, invite) = await groupContext.addUnidentifiedMember(
               secretKey: secretKey,
               content: payloads,
@@ -498,20 +502,22 @@ extension SyncModelSendOperations on SyncModel {
               parts: await groupContext.asParts(),
             );
 
-            logger.i('Sending unidentified invite frame...');
+            logger.info('Sending unidentified invite frame...');
             await GroupApiClient.instance.sendFrame(
               groupId: documentState.id,
               frame: frame,
             );
-            logger.i('Unidentified invite frame sent');
+            logger.info('Unidentified invite frame sent');
 
             return DeeplinkManager.instance.buildInvite(invite);
           } catch (e) {
             if (attempt == maxAttempts) {
-              logger.e('Failed to create unidentified invite member link: $e');
+              logger.error(
+                'Failed to create unidentified invite member link: $e',
+              );
               rethrow;
             } else {
-              logger.w(
+              logger.warning(
                 'Failed to create unidentified invite member link, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
               );
             }
@@ -521,7 +527,7 @@ extension SyncModelSendOperations on SyncModel {
         throw StateError('Unreachable: invite retry loop exited unexpectedly');
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
       return "";
     }
   }
@@ -529,7 +535,7 @@ extension SyncModelSendOperations on SyncModel {
   Future<void> removeMember({required String actorId}) async {
     try {
       await _sendQueue.add(() async {
-        logger.i('Removing member in group context..');
+        logger.info('Removing member in group context..');
         final frame = await groupContext.removeMember(
           userId: actorId,
           content: [],
@@ -540,16 +546,16 @@ extension SyncModelSendOperations on SyncModel {
           parts: await groupContext.asParts(),
         );
 
-        logger.i('Sending remove member frame...');
+        logger.info('Sending remove member frame...');
         await GroupApiClient.instance.sendFrame(
           groupId: documentState.id,
           frame: frame,
         );
 
-        logger.i('Remove member frame sent');
+        logger.info('Remove member frame sent');
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
     }
   }
 
@@ -564,10 +570,10 @@ extension SyncModelSendOperations on SyncModel {
             break;
           } catch (e) {
             if (attempt == maxAttempts) {
-              logger.e('Failed to send join group frame: $e');
+              logger.error('Failed to send join group frame: $e');
               rethrow;
             } else {
-              logger.w(
+              logger.warning(
                 'Failed to send join group frame, attempt: $attempt, max attempts: $maxAttempts, retrying..: $e',
               );
             }
@@ -575,33 +581,33 @@ extension SyncModelSendOperations on SyncModel {
         }
       });
     } on QueueCancelledException {
-      logger.d('Send queue cancelled');
+      logger.debug('Send queue cancelled');
     }
   }
 }
 
 extension SyncModelOperations on SyncModel {
   Future<void> markAsCorrupted() async {
-    logger.i('Highlighting corrupted document..');
+    logger.info('Highlighting corrupted document..');
 
     corrupted = true;
     _emitCorruptedEvent();
     await dispose();
-    logger.i('Corrupted document highlighted');
+    logger.info('Corrupted document highlighted');
   }
 
   Future<void> applyCrdtListOperation(List<ExposedCRDTPayload> payloads) async {
-    logger.i('Applying crdt list..');
+    logger.info('Applying crdt list..');
 
     _syncDocumentWithCrdt(documentState, payloads);
 
-    logger.i('Updating document state..');
+    logger.info('Updating document state..');
     await _db.updateDocumentState(
       documentState: documentState,
       groupContextParts: await groupContext.asParts(),
     );
 
-    logger.i('Applied crdt list');
+    logger.info('Applied crdt list');
   }
 
   Future<void> disableNetworkSyncOperation() async {
@@ -708,7 +714,7 @@ extension SyncModelOperations on SyncModel {
   }
 
   Future<void> _sendJoinGroupFrame(Account user) async {
-    logger.i('Sending join group frame..');
+    logger.info('Sending join group frame..');
     final frame = await groupContext.joinGroupAs(
       user: BUser(name: user.name, publicKey: user.keypair.rawPublicKey),
     );
@@ -722,7 +728,7 @@ extension SyncModelOperations on SyncModel {
       groupId: documentState.id,
       frame: frame,
     );
-    logger.i('Sent join group frame');
+    logger.info('Sent join group frame');
   }
 }
 
@@ -756,9 +762,9 @@ void _syncDocumentWithCrdt(
   DocumentState document,
   List<ExposedCRDTPayload> payloads,
 ) {
-  logger.d('Number of crdt payloads to apply: ${payloads.length}');
+  logger.debug('Number of crdt payloads to apply: ${payloads.length}');
 
-  logger.d(
+  logger.debug(
     'Document state before applying crdt: ID  ${document.id} ${document.crdt.getBlocks()}',
   );
   for (final payload in payloads) {
@@ -769,7 +775,7 @@ void _syncDocumentWithCrdt(
       default:
     }
   }
-  logger.d(
+  logger.debug(
     'Document state after applying crdt: ID ${document.id} ${document.crdt.getBlocks()}',
   );
 }

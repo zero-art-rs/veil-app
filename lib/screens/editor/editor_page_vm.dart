@@ -95,7 +95,7 @@ class EditorPageVm extends ChangeNotifier {
     try {
       await syncModel.updateGroupName(name: groupNameController.text);
     } catch (e) {
-      logger.e('Failed to update group name: $e');
+      logger.error('Failed to update group name: $e');
       if (!context.mounted) return;
       TopBanner.show(
         context: context,
@@ -158,7 +158,7 @@ class EditorPageVm extends ChangeNotifier {
         );
         _startWaitForJoinGroupTicker();
       } catch (e) {
-        logger.e('Failed to join group: $e');
+        logger.error('Failed to join group: $e');
         if (!context.mounted) return;
         TopBanner.show(
           context: context,
@@ -201,7 +201,7 @@ class EditorPageVm extends ChangeNotifier {
   void _handleRemoveMember(BuildContext context) {
     allowWriteEvents = false;
     notifyListeners();
-    logger.i('User removed from group, adding handling on ui');
+    logger.info('User removed from group, adding handling on ui');
     TopBanner.show(
       context: context,
       message: 'You have been removed from the group',
@@ -235,7 +235,7 @@ class EditorPageVm extends ChangeNotifier {
         selectedMode == EditorModes.edit && mode == EditorModes.view;
 
     if (mode == EditorModes.edit) {
-      logger.d('Bufferizing frames trigger on ui');
+      logger.debug('Bufferizing frames trigger on ui');
       await syncModel.bufferizeFrames();
     }
 
@@ -243,7 +243,7 @@ class EditorPageVm extends ChangeNotifier {
       try {
         await syncLocalAndNetworkState();
       } catch (e) {
-        logger.e('Failed to sync local and network state: $e');
+        logger.error('Failed to sync local and network state: $e');
 
         if (!context.mounted) return;
 

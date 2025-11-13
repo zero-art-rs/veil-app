@@ -69,7 +69,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                       try {
                         await vm.removeDocument(context, id);
                       } catch (err) {
-                        logger.e('Failed to remove document: $err');
+                        logger.error('Failed to remove document: $err');
 
                         if (!context.mounted) return;
                         TopBanner.show(

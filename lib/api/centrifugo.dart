@@ -19,14 +19,17 @@ class CentrifugoListener {
       EventFluxConnectionType.get,
       '$_url/connection/uni_sse?cf_connect={"token": "$jwtToken"}',
       onSuccessCallback: (response) {
-        logger.i('Centrifugo connection established');
+        logger.info('Centrifugo connection established');
         _listener = response?.stream?.listen((data) {
           streamCallback(data);
         });
       },
-      onConnectionClose: onConnectionClose,
+      onConnectionClose: () {
+        logger.info('Centrifugo connection closed by server');
+        onConnectionClose?.call();
+      },
       onError: (error) async {
-        logger.e(
+        logger.error(
           'Centrifugo error: ${error.message}, reason: ${error.reasonPhrase}, status: ${error.statusCode}',
         );
 
@@ -40,6 +43,6 @@ class CentrifugoListener {
   Future<void> disconnect() async {
     await eventFlux.disconnect();
     await _listener?.cancel();
-    logger.i('Centrifugo connection closed');
+    logger.info('Centrifugo connection closed');
   }
 }

@@ -54,12 +54,14 @@ class SyncProvider {
       await add(documentState, groupContext);
     } catch (e, st) {
       if (isUserRemovedError(e)) {
-        logger.i('User removed from group, making local only');
+        logger.info('User removed from group, making local only');
         await LocalStateUtils.instance.makeDocumentLocal(documentState);
         await _addLocal(documentState, groupContext);
       } else {
         _addCorrupted(documentState, groupContext);
-        logger.e('Failed to add sync model, marking it as corrupted: $e\n$st');
+        logger.error(
+          'Failed to add sync model, marking it as corrupted: $e\n$st',
+        );
       }
     }
   }
@@ -127,7 +129,7 @@ class SyncProvider {
         .firstOrNull;
 
     if (syncModel == null) {
-      logger.e('no sync model');
+      logger.error('no sync model');
       return;
     }
 
@@ -179,12 +181,16 @@ class SyncProvider {
 
     final listener = CentrifugoListener(
       streamCallback: (response) async {
+        logger.info(
+          'Centrifugo event received, data: ${response.data}, event: ${response.event}, id: ${response.id}',
+        );
+
         if (response.data.isEmpty) return;
         try {
           final rawJson = json.decode(response.data);
           if (rawJson['pub'] == null) return;
 
-          logger.d(
+          logger.debug(
             'Centrifugo received data: ${response.data}, event: ${response.event}, id: ${response.id}',
           );
 
@@ -193,7 +199,7 @@ class SyncProvider {
           final frame = SPFrame.fromBuffer(frameBytes);
           await syncModel.processFrame(frame);
         } catch (e) {
-          logger.e(
+          logger.error(
             'Failed to process frame, highlighting document as corrupted: $e',
           );
 
@@ -211,9 +217,9 @@ class SyncProvider {
         allowFullDocument: allowFullDocument,
       );
       await syncModel.applyBufferedFrames();
-      syncModel.listenProcess();
+      syncModel.listenCentrifugo();
     } catch (e) {
-      logger.e(
+      logger.error(
         'Failed to initially synchronize document, highlighting document as corrupted: $e',
       );
 
@@ -221,5 +227,11 @@ class SyncProvider {
     }
 
     return syncModel;
+  }
+
+  void checkCentrifugoConnection() {
+    for (final syncModel in current) {
+      // syncModel.listener?.
+    }
   }
 }

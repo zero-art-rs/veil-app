@@ -88,6 +88,6 @@ class DocsPageViewModel extends ChangeNotifier {
   void dispose() {
     super.dispose();
     _docsListener.cancel();
-    logger.i('Docs page disposed');
+    logger.info('Docs page disposed');
   }
 }

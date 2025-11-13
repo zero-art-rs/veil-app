@@ -204,7 +204,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       content: 'This action cannot be undone.',
       callback: () async {
         try {
-          logger.i('Removing member in group context..');
+          logger.info('Removing member in group context..');
 
           await widget.syncModel.removeMember(actorId: user.account.actorId);
 
@@ -214,7 +214,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
             );
           });
         } catch (e) {
-          logger.e('Failed to remove member: $e');
+          logger.error('Failed to remove member: $e');
           if (!context.mounted) return;
           TopBanner.show(
             context: context,
@@ -239,7 +239,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           );
         } catch (e) {
           if (!mounted) return;
-          logger.e('Failed to update name: $e');
+          logger.error('Failed to update name: $e');
           TopBanner.show(
             context: context,
             message: 'Failed to update name',
@@ -297,7 +297,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       try {
         return await widget.syncModel.createUnidentifiedMemberInviteLink();
       } catch (e) {
-        logger.e('Failed to create unidentified invite link: $e');
+        logger.error('Failed to create unidentified invite link: $e');
         rethrow;
       }
     });
@@ -312,7 +312,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           contact: contact,
         );
       } catch (e) {
-        logger.e('Failed to create indentified invite link: $e');
+        logger.error('Failed to create indentified invite link: $e');
         rethrow;
       }
     });

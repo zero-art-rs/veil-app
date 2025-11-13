@@ -52,7 +52,7 @@ class _AccountPageState extends State<AccountPage> {
         );
       });
     } catch (err) {
-      logger.e('Failed to init account page: $err');
+      logger.error('Failed to init account page: $err');
     }
   }
 
@@ -71,11 +71,11 @@ class _AccountPageState extends State<AccountPage> {
 
     await AccountSecureStorage.instance.setAccount(newAccount);
 
-    logger.i(
+    logger.info(
       'AccountSecureStorage.instance.account.name ${AccountSecureStorage.instance.account.name}',
     );
 
-    logger.i(newAccount.name);
+    logger.info(newAccount.name);
 
     setState(() {
       _nameCtrl.text = newAccount.name;

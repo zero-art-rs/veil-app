@@ -66,7 +66,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
         () => Future.delayed(Duration(seconds: 1), () => _processing = false),
       );
     } catch (err) {
-      logger.e('Failed to parse qr code: $err');
+      logger.error('Failed to parse qr code: $err');
       _showErrorDialog(context, 'Failed to parse qr code', () {
         Future.delayed(Duration(seconds: 1), () => _processing = false);
       });
@@ -91,7 +91,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
           await ContactsManager.instance.addContact(spk);
           return spk;
         } catch (err) {
-          logger.e('Failed to get spk: $err');
+          logger.error('Failed to get spk: $err');
 
           if (err is DioException) {
             if (err.response?.statusCode == 404) {

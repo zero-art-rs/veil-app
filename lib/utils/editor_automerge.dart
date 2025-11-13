@@ -37,7 +37,7 @@ class EditorAutomergeUtils {
             text: dataChange.newData,
           );
         default:
-          logger.w('Unknown update type: ${update.runtimeType}');
+          logger.warning('Unknown update type: ${update.runtimeType}');
       }
     }
   }

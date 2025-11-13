@@ -33,7 +33,7 @@ class DB {
     }
 
     final dir = await getApplicationSupportDirectory();
-    logger.i('Database path: ${dir.path}/$_dbName');
+    logger.info('Database path: ${dir.path}/$_dbName');
 
     _connection = await openDatabase(
       inMemoryPath ?? '${dir.path}/$_dbName',

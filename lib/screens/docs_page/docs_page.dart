@@ -41,7 +41,7 @@ class DocsPage extends StatelessWidget {
                 if (!context.mounted) return;
                 Navigator.pop(context);
               } catch (err) {
-                logger.e('Failed to create document: $err');
+                logger.error('Failed to create document: $err');
                 TopBanner.show(
                   context: context,
                   message: 'Failed to create document',
@@ -103,7 +103,7 @@ class DocsPage extends StatelessWidget {
                         context: context,
                         message: 'Failed to delete document',
                       );
-                      logger.e('Failed to delete document: $err');
+                      logger.error('Failed to delete document: $err');
                     }
                   },
                 ),

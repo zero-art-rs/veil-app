@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/assets/util.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/invite_manager.dart';
@@ -23,7 +24,6 @@ import 'package:veil/screens/tab_bar.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/src/rust/frb_generated.dart';
 import 'package:veil/assets/theme.dart';
-import 'package:logger/logger.dart';
 import 'package:app_links/app_links.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/sqlite/db.dart';
@@ -31,12 +31,12 @@ import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/future_dialog.dart';
 import 'package:veil/widgets/network_status_banner.dart';
 
-late final Logger logger;
+late final Talker logger;
 
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    logger = await initLogger();
+    logger = Talker();
     await RustLib.init();
     initTracing();
     NetworkStatusListener.instance.start();
@@ -48,25 +48,8 @@ Future<void> main() async {
     await ContactsManager.instance.setup();
     runApp(MyApp());
   } catch (e) {
-    logger.e('Launch app error: $e');
+    logger.error('Launch app error: $e');
   }
-}
-
-Future<Logger> initLogger() async {
-  final dir = await getApplicationSupportDirectory();
-  final file = File('${dir.path}/veil.log');
-
-  debugPrint(file.absolute.path);
-
-  return Logger(
-    filter: kDebugMode ? DevelopmentFilter() : ProductionFilter(),
-    printer: PrettyPrinter(
-      noBoxingByDefault: true,
-      dateTimeFormat: DateTimeFormat.dateAndTime,
-    ),
-    output: MultiOutput([ConsoleOutput(), FileOutput(file: file)]),
-    level: Level.all,
-  );
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -80,7 +63,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   StreamSubscription? _sub;
-  late final AppLifecycleListener _appListener;
+  late final AppLifecycleListener _appLifecycleListener;
   late StreamSubscription<List<ConnectivityResult>> _networkStatusSubscription;
 
   final AppLinks _appLinks = AppLinks();
@@ -89,15 +72,15 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _listenUriChanges();
-    // _listenLifeCycleChanges();
+    _listenLifeCycleChanges();
   }
 
   @override
   void dispose() {
     super.dispose();
 
-    logger.d('App dispose called');
-    _appListener.dispose();
+    logger.debug('App dispose called');
+    _appLifecycleListener.dispose();
     NetworkStatusListener.instance.dispose();
     _networkStatusSubscription.cancel();
     _sub?.cancel();
@@ -123,14 +106,19 @@ class _MyAppState extends State<MyApp> {
             return;
           }
         },
-        onDone: () => logger.d('Uri stream done'),
+        onDone: () => logger.debug('Uri stream done'),
         onError: (err) {
-          logger.e('Failed to get uri: $err');
+          logger.error('Failed to get uri: $err');
         },
       );
     } catch (err) {
-      logger.e('Failed to get uri: $err');
+      logger.error('Failed to get uri: $err');
     }
+  }
+
+  void _listenLifeCycleChanges() {
+    // detect sleep
+    // resync all the sync models
   }
 
   void _showDocumentInvitationPopUp(
@@ -144,7 +132,7 @@ class _MyAppState extends State<MyApp> {
         try {
           await _acceptInvite(context, inviteData);
         } catch (err) {
-          logger.e('Failed to join document: $err');
+          logger.error('Failed to join document: $err');
           if (err is DioException) {
             if (err.response?.statusCode == 401) {
               throw FutureDialogError('Error', 'No document found');
@@ -192,7 +180,7 @@ class _MyAppState extends State<MyApp> {
           await ContactsManager.instance.addContact(spk);
           return spk;
         } catch (err) {
-          logger.e('Failed to get spk: $err');
+          logger.error('Failed to get spk: $err');
 
           if (err is DioException) {
             if (err.response?.statusCode == 404) {

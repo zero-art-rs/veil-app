@@ -84,7 +84,7 @@ class _AysModalState extends State<_AysModal> {
       await widget.callback!.call();
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
-      logger.e('Failed to execute callback: $e');
+      logger.error('Failed to execute callback: $e');
       setState(() => _loading = false);
     }
   }
