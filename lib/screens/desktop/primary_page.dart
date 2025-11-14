@@ -204,6 +204,19 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
 
                       if (doc.$2.isLocal) AppLabel(text: 'Local'),
 
+                      if (doc.$2.isSyncing)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+
                       PopupMenuButton(
                         icon: Icon(Icons.more_vert_rounded),
                         itemBuilder: (context) {

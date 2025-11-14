@@ -44,8 +44,6 @@ class _ServicesStatusResponse {
 
     if (!isServiceAvaliable()) {
       logger.error(msg);
-    } else {
-      logger.debug(msg);
     }
   }
 

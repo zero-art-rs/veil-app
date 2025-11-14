@@ -4,15 +4,17 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:queue/queue.dart';
-import 'package:veil/api/centrifugo.dart';
+import 'package:veil/managers/chat/hive_chat_controller.dart';
+import 'package:veil/managers/sync_provider/centrifugo.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/chat/chat_manager.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sync_provider/buffer.dart';
-import 'package:veil/managers/sync_provider/queue_process_listener.dart';
+import 'package:veil/managers/queues_listener.dart';
 import 'package:veil/managers/sync_provider/sync_model_errors.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
@@ -29,44 +31,50 @@ import 'package:veil/utils/secret_factory.dart';
 
 import '../../main.dart';
 
+/// `SyncModel` represents a single document synchronization state and operations
+/// It handles its own state and sharing with it via streams
 class SyncModel {
   final DocumentState documentState;
   final BGroupContext groupContext;
-  final ChatManager chatManager;
-  CentrifugoListener? listener;
+  late ChatManager chatManager;
+  CentrifugoListener? _centrifugoListener;
   final _db = DB.instance;
-
   final _crdtBuffer = LockedBuffer<ExposedCRDTPayload>();
-  final _processQueue = Queue();
-  final _sendQueue = Queue();
-  late final _queueProcessListener = StreamProcessListener(
-    streams: [_sendQueue.remainingItems, _processQueue.remainingItems],
-  );
 
+  /// Queue for the processing incoming frames from centrifugo
+  late Queue _processQueue;
+
+  /// Queue for the sending self-created frames to the server
+  late Queue _sendQueue;
+
+  /// Listener for the busy state of the queues
+  late QueuesListener _queuesProcessListener;
+
+  /// Indicates wheter `_processQueue` should buffer incoming frames or process them immediately
   bool bufferFrames = true;
-  bool corrupted = false;
+
+  /// Handle state in UI with
   get isLocal => documentState.isLocal;
+  bool corrupted = false;
+  bool isSyncing = false;
 
   final _corrupedEvent = StreamController<bool>.broadcast();
   final _groupInfoUpdatesEvent = StreamController<bool>.broadcast();
   final _crdtUpdatesEvent = StreamController<BAutoCommit>.broadcast();
   final _removedFromGroupEvent = StreamController<bool>.broadcast();
+  final _synchronizingEvent = StreamController<bool>.broadcast();
 
+  Stream<bool> get synchronizingEvent => _synchronizingEvent.stream;
   Stream<bool> get corruptedEvent => _corrupedEvent.stream;
   Stream<bool> get groupInfoUpdateEvent => _groupInfoUpdatesEvent.stream;
   Stream<BAutoCommit> get crdtUpdatesEvent => _crdtUpdatesEvent.stream;
   Stream<bool> get removedFromGroupEvent => _removedFromGroupEvent.stream;
-  Stream<bool> get isProcessing => _queueProcessListener.isProcessing;
+  Stream<bool> get isProcessing => _queuesProcessListener.isProcessing;
 
+  /// Marker to track detection of group info changes for emitting `change group info` event
   String _previousGroupInfoHash = '';
 
-  SyncModel({
-    required this.documentState,
-    required this.groupContext,
-    required this.listener,
-    required this.chatManager,
-    this.corrupted = false,
-  });
+  SyncModel({required this.documentState, required this.groupContext});
 
   bool isUserInGroup() {
     return groupContext.retrieveGroupInfo().members.any(
@@ -88,22 +96,104 @@ class SyncModel {
 }
 
 extension SyncModelInit on SyncModel {
-  void _handleCrdt(ExposedCRDTPayload crdt, bool allowFullDocument) {
-    switch (crdt.kind) {
-      case ExposedCRDTPayloadKind.incrementalChange:
-        documentState.crdt.loadIncremental(bytes: crdt.crdt.incrementalChange);
-      case ExposedCRDTPayloadKind.fullDocument:
-        if (!allowFullDocument) return;
-        logger.debug('Received crdt full document');
-        documentState.crdt = BAutoCommit.load(data: crdt.crdt.fullDocument);
+  Future<void> setup({bool allowFullDocument = false}) async {
+    _emitIsSyncingEvent(true);
+    await _setup(allowFullDocument: allowFullDocument);
+    _emitIsSyncingEvent(false);
+  }
+
+  /// Synchronizes local state with current document state from server
+  Future<void> _setup({bool allowFullDocument = false}) async {
+    if (isLocal) return;
+
+    logger.debug('Setting up process and send queues with its listener..');
+    _processQueue = Queue();
+    _sendQueue = Queue();
+    _queuesProcessListener = QueuesListener(
+      streams: [_processQueue.remainingItems, _sendQueue.remainingItems],
+    );
+
+    final challenge = await GroupApiClient.instance.getChallenge(
+      documentState.id,
+    );
+
+    final jwt = await GroupApiClient.instance.getCentrifugoJWT(
+      groupId: documentState.id,
+      epoch: (await groupContext.epoch()).toInt(),
+      proof: base64Encode(
+        await groupContext.signChallenge(challenge: base64Decode(challenge)),
+      ),
+      challenge: challenge,
+    );
+
+    logger.debug('Setting up chat manager..');
+    final hive = await Hive.openBox(documentState.id);
+    final hiveChatController = HiveChatController(hive);
+    chatManager = ChatManager(controller: hiveChatController);
+
+    final listener = CentrifugoListener(
+      processCallback: (response) async {
+        if (response.data.isEmpty) return;
+        try {
+          final rawJson = json.decode(response.data);
+          if (rawJson['pub'] == null) return;
+
+          logger.debug(
+            'Centrifugo received data: ${response.data}, event: ${response.event}, id: ${response.id}',
+          );
+
+          final frameBytes = base64Decode(rawJson['pub']['data'].toString());
+          final frame = SPFrame.fromBuffer(frameBytes);
+          await processFrame(frame);
+        } catch (e) {
+          logger.error(
+            'Failed to process frame, highlighting document as corrupted: $e',
+          );
+
+          await markAsCorrupted();
+        }
+      },
+    );
+
+    logger.debug('Setting up centrifugo listener..');
+    _setCentrifugoListener(listener, jwtToken: jwt);
+
+    try {
+      await _pollFrames(allowFullDocument: allowFullDocument);
+      await applyBufferedFrames();
+    } catch (e) {
+      logger.error(
+        'Failed to initially synchronize document, highlighting document as corrupted: $e',
+      );
+
+      await markAsCorrupted();
     }
   }
 
-  void listenCentrifugo() {
-    _queueProcessListener.listen();
+  Future<void> _resync() async {
+    logger.info('Resyncing document..');
+    _emitIsSyncingEvent(true);
+    await dispose(disconnectCentrifugo: false);
+    await _setup();
+    _emitIsSyncingEvent(false);
+    logger.info('Document resynced');
   }
 
-  Future<void> synchronizeInitially({bool allowFullDocument = false}) async {
+  void _setCentrifugoListener(
+    CentrifugoListener centrifugoListener, {
+    required String jwtToken,
+  }) {
+    _queuesProcessListener.listen();
+    _centrifugoListener = centrifugoListener;
+    _centrifugoListener?.connect(jwtToken);
+
+    // Once we receive a reconnection event, centrifugoListener is alredy disconnected
+    _centrifugoListener?.reconnectEvent.listen((_) async {
+      await _resync();
+    });
+  }
+
+  Future<void> _pollFrames({bool allowFullDocument = false}) async {
     logger.debug(
       'Document epoch before polling: ${(await groupContext.epoch()).toInt()}',
     );
@@ -135,7 +225,7 @@ extension SyncModelInit on SyncModel {
           'Current processing frame epoch: ${(await groupContext.epoch()).toInt()}',
         );
         logger.debug(
-          'Current processing frame seqNum: ${spFrame.seqNum.toInt()}',
+          'Current processing frame sequence number: ${spFrame.seqNum.toInt()}',
         );
 
         final crdtList = await _processFrame(spFrame);
@@ -146,29 +236,67 @@ extension SyncModelInit on SyncModel {
       }
     }
 
-    logger.info('Updating document state..');
     await _db.updateDocumentState(
       documentState: documentState,
       groupContextParts: await groupContext.asParts(),
     );
 
     logger.debug(
-      'Document sequence number after polling: ${documentState.sequenceNumber}',
+      'Document epoch after polling: ${(await groupContext.epoch()).toInt()}',
     );
     logger.debug(
-      'Document epoch after polling: ${(await groupContext.epoch()).toInt()}',
+      'Document sequence number after polling: ${documentState.sequenceNumber}',
     );
   }
 
-  Future<void> dispose() async {
+  /// Disposes the sync model,
+  /// - finishStateBroadcast indicates whether to finish broadcasting state events
+  /// - disconnectCentrifugo indicates whether to disconnect centrifugo
+  Future<void> dispose({
+    bool finishStateBroadcast = false,
+    bool disconnectCentrifugo = true,
+  }) async {
+    // Disconnect centrifugo
+    if (disconnectCentrifugo) {
+      logger.debug('Disconnecting centrifugo listener..');
+      await _centrifugoListener?.disconnect();
+    }
+
+    // Cancelling queues and queues listener
+    logger.debug('Cleaning up queues and queues listener...');
     _processQueue.cancel();
     _sendQueue.cancel();
+    _queuesProcessListener.dispose();
 
-    await listener?.disconnect();
-    await _removedFromGroupEvent.close();
-    await _groupInfoUpdatesEvent.close();
-    await _crdtUpdatesEvent.close();
-    logger.info('Sync provider disposed');
+    // Waiting for the cancelling pending works
+    logger.debug(
+      'Waiting for the cancelling pending works... ${_processQueue.remainingItemCount}, ${_sendQueue.remainingItemCount}',
+    );
+    if (_processQueue.remainingItemCount > 0) {
+      await _processQueue.onComplete;
+    }
+
+    if (_sendQueue.remainingItemCount > 0) {
+      await _sendQueue.onComplete;
+    }
+
+    // Apply remaining buffered crdt payload list
+    final snapshot = await _crdtBuffer.snapshot();
+    if (snapshot.isNotEmpty) {
+      logger.debug('Applying remaining buffered frames before dispose..');
+      await applyCrdtListOperation(snapshot);
+      await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
+    }
+
+    // Closing state broadcast streams
+    if (finishStateBroadcast) {
+      logger.debug('Closing state broadcast streams..');
+      await _removedFromGroupEvent.close();
+      await _groupInfoUpdatesEvent.close();
+      await _crdtUpdatesEvent.close();
+    }
+
+    logger.debug('Sync provider disposed');
   }
 }
 
@@ -203,6 +331,7 @@ extension SyncModelHandle on SyncModel {
 extension SyncModelProcessOperations on SyncModel {
   Future<void> processFrame(SPFrame spframe) async {
     try {
+      _emitIsSyncingEvent(true);
       await _processQueue.add(() async {
         logger.info('Received frame, processing..');
         logger.debug(
@@ -250,12 +379,14 @@ extension SyncModelProcessOperations on SyncModel {
       } else {
         rethrow;
       }
+    } finally {
+      _emitIsSyncingEvent(false);
     }
   }
 }
 
 extension SyncModelSendOperations on SyncModel {
-  Future<void> leaveGroup() async {
+  Future<void> sendLeaveGroupFrame() async {
     const maxAttempts = 3;
 
     try {
@@ -588,12 +719,12 @@ extension SyncModelSendOperations on SyncModel {
 
 extension SyncModelOperations on SyncModel {
   Future<void> markAsCorrupted() async {
-    logger.info('Highlighting corrupted document..');
+    logger.info('Marking document as corrupted..');
 
-    corrupted = true;
     _emitCorruptedEvent();
     await dispose();
-    logger.info('Corrupted document highlighted');
+
+    logger.info('Document marked as corrupted');
   }
 
   Future<void> applyCrdtListOperation(List<ExposedCRDTPayload> payloads) async {
@@ -601,7 +732,6 @@ extension SyncModelOperations on SyncModel {
 
     _syncDocumentWithCrdt(documentState, payloads);
 
-    logger.info('Updating document state..');
     await _db.updateDocumentState(
       documentState: documentState,
       groupContextParts: await groupContext.asParts(),
@@ -611,7 +741,7 @@ extension SyncModelOperations on SyncModel {
   }
 
   Future<void> disableNetworkSyncOperation() async {
-    await listener?.disconnect();
+    await _centrifugoListener?.disconnect();
     await dispose();
     documentState.isLocal = true;
 
@@ -733,8 +863,16 @@ extension SyncModelOperations on SyncModel {
 }
 
 extension SyncModelHelpers on SyncModel {
+  void _emitIsSyncingEvent(bool isSyncing) {
+    if (!_synchronizingEvent.isClosed) {
+      this.isSyncing = isSyncing;
+      _synchronizingEvent.add(isSyncing);
+    }
+  }
+
   void _emitCorruptedEvent() {
     if (!_corrupedEvent.isClosed) {
+      corrupted = true;
       _corrupedEvent.add(corrupted);
     }
   }
@@ -754,6 +892,17 @@ extension SyncModelHelpers on SyncModel {
   void _emitGroupInfoUpdatesEvent() {
     if (!_groupInfoUpdatesEvent.isClosed) {
       _groupInfoUpdatesEvent.add(true);
+    }
+  }
+
+  void _handleCrdt(ExposedCRDTPayload crdt, bool allowFullDocument) {
+    switch (crdt.kind) {
+      case ExposedCRDTPayloadKind.incrementalChange:
+        documentState.crdt.loadIncremental(bytes: crdt.crdt.incrementalChange);
+      case ExposedCRDTPayloadKind.fullDocument:
+        if (!allowFullDocument) return;
+        logger.debug('Received crdt full document');
+        documentState.crdt = BAutoCommit.load(data: crdt.crdt.fullDocument);
     }
   }
 }

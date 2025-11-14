@@ -49,16 +49,21 @@ class PrimaryPageViewModel extends ChangeNotifier {
       for (final syncModel in _syncModels) {
         if (_syncModelListeners[syncModel.documentState.id] == null) {
           final groupUpdatesListener = syncModel.groupInfoUpdateEvent.listen(
-            (event) => notifyListeners(),
+            (_) => notifyListeners(),
           );
 
           final statusListener = syncModel.corruptedEvent.listen(
-            (e) => notifyListeners(),
+            (_) => notifyListeners(),
+          );
+
+          final synchronizingListener = syncModel.isProcessing.listen(
+            (_) => notifyListeners(),
           );
 
           _syncModelListeners[syncModel.documentState.id] = [
             groupUpdatesListener,
             statusListener,
+            synchronizingListener,
           ];
         }
       }

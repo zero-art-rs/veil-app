@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:queue/queue.dart';
 import 'package:rxdart/rxdart.dart';
 
-class StreamProcessListener {
+class QueuesListener {
   final _queue = Queue();
   final List<Stream<int>> streams;
   final List<bool> processStatuses;
@@ -12,7 +12,7 @@ class StreamProcessListener {
   final BehaviorSubject<bool> _isProcessing = BehaviorSubject.seeded(false);
   Stream<bool> get isProcessing => _isProcessing.stream;
 
-  StreamProcessListener({required this.streams})
+  QueuesListener({required this.streams})
     : processStatuses = List.filled(streams.length, false);
 
   void listen() {

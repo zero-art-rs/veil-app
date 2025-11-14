@@ -43,9 +43,14 @@ class DocsPageViewModel extends ChangeNotifier {
             (e) => notifyListeners(),
           );
 
+          final synchronizingListener = syncModel.isProcessing.listen(
+            (_) => notifyListeners(),
+          );
+
           _syncModelListeners[syncModel.documentState.id] = [
             groupUpdatesListener,
             statusListener,
+            synchronizingListener,
           ];
         }
       }
