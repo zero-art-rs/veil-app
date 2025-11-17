@@ -331,7 +331,6 @@ extension SyncModelHandle on SyncModel {
 extension SyncModelProcessOperations on SyncModel {
   Future<void> processFrame(SPFrame spframe) async {
     try {
-      _emitIsSyncingEvent(true);
       await _processQueue.add(() async {
         logger.info('Received frame, processing..');
         logger.debug(
@@ -379,8 +378,6 @@ extension SyncModelProcessOperations on SyncModel {
       } else {
         rethrow;
       }
-    } finally {
-      _emitIsSyncingEvent(false);
     }
   }
 }
