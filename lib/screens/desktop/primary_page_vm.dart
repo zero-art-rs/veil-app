@@ -109,8 +109,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
       textEditingController.clear();
 
       notifyListeners();
-    } catch (err) {
-      logger.error('Failed to create document: $err');
+    } catch (err, st) {
+      logger.error('Failed to create document', err, st);
       if (!context.mounted) return;
       TopBanner.show(
         context: context,
@@ -147,8 +147,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
       }
 
       notifyListeners();
-    } catch (err) {
-      logger.error('Failed to remove document: $err');
+    } catch (err, st) {
+      logger.error('Failed to remove document', err, st);
       if (!context.mounted) return;
 
       TopBanner.show(

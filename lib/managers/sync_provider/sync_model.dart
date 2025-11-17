@@ -7,7 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:queue/queue.dart';
 import 'package:veil/managers/chat/hive_chat_controller.dart';
-import 'package:veil/managers/sync_provider/centrifugo.dart';
+import 'package:veil/managers/sync_provider/centrifugo_listener.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/chat/chat_manager.dart';
@@ -146,9 +146,11 @@ extension SyncModelInit on SyncModel {
             final frameBytes = base64Decode(rawJson['pub']['data'].toString());
             final frame = SPFrame.fromBuffer(frameBytes);
             await processFrame(frame);
-          } catch (e) {
+          } catch (e, st) {
             logger.error(
-              'Failed to process frame, highlighting document as corrupted: $e',
+              'Failed to process frame, highlighting document as corrupted',
+              e,
+              st,
             );
 
             await markAsCorrupted();
@@ -161,9 +163,11 @@ extension SyncModelInit on SyncModel {
       await applyBufferedFrames();
 
       logger.debug('Setting up centrifugo listener..');
-    } catch (e) {
+    } catch (e, st) {
       logger.error(
-        'Failed to initially synchronize document, highlighting document as corrupted: $e',
+        'Failed to initially synchronize document, highlighting document as corrupted',
+        e,
+        st,
       );
 
       await markAsCorrupted();
@@ -259,7 +263,7 @@ extension SyncModelInit on SyncModel {
     // Disconnect centrifugo
     if (disconnectCentrifugo) {
       logger.debug('Disconnecting centrifugo listener..');
-      await _centrifugoListener?.disconnect();
+      await _centrifugoListener?.disconnect(sendReconnectEvent: false);
     }
 
     // Cancelling queues and queues listener
@@ -441,9 +445,9 @@ extension SyncModelSendOperations on SyncModel {
             _emitCrdtUpdatesEvent();
             logger.info('Sent crdt frame');
             break;
-          } catch (e) {
+          } catch (e, st) {
             if (attempt == maxAttempts) {
-              logger.error('Failed to send crdt frame: $e');
+              logger.error('Failed to send crdt frame', e, st);
               rethrow;
             } else {
               logger.warning(
@@ -467,9 +471,9 @@ extension SyncModelSendOperations on SyncModel {
           try {
             await _sendChatFrame(messageBytes);
             break;
-          } catch (e) {
+          } catch (e, st) {
             if (attempt == maxAttempts) {
-              logger.error('Failed to send chat frame: $e');
+              logger.error('Failed to send chat frame', e, st);
               rethrow;
             } else {
               logger.warning(
@@ -579,9 +583,9 @@ extension SyncModelSendOperations on SyncModel {
             }
 
             return inviteLink;
-          } catch (e) {
+          } catch (e, st) {
             if (attempt == maxAttempts) {
-              logger.error('Failed to create identified member link: $e');
+              logger.error('Failed to create identified member link', e, st);
               rethrow;
             } else {
               logger.warning(
@@ -638,10 +642,12 @@ extension SyncModelSendOperations on SyncModel {
             logger.info('Unidentified invite frame sent');
 
             return DeeplinkManager.instance.buildInvite(invite);
-          } catch (e) {
+          } catch (e, st) {
             if (attempt == maxAttempts) {
               logger.error(
-                'Failed to create unidentified invite member link: $e',
+                'Failed to create unidentified invite member link',
+                e,
+                st,
               );
               rethrow;
             } else {
@@ -696,9 +702,9 @@ extension SyncModelSendOperations on SyncModel {
           try {
             await _sendJoinGroupFrame(user);
             break;
-          } catch (e) {
+          } catch (e, st) {
             if (attempt == maxAttempts) {
-              logger.error('Failed to send join group frame: $e');
+              logger.error('Failed to send join group frame', e, st);
               rethrow;
             } else {
               logger.warning(

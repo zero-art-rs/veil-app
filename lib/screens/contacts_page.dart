@@ -33,8 +33,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
   Future<void> _removeContact(String id) async {
     try {
       await _contactsManager.removeContact(id);
-    } catch (err) {
-      logger.error('Failed to remove contact: $err');
+    } catch (err, st) {
+      logger.error('Failed to remove contact', err, st);
     }
   }
 

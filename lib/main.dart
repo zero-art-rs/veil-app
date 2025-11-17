@@ -1,18 +1,15 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/assets/util.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/invite_manager.dart';
-import 'package:veil/managers/network_status_listener.dart';
+import 'package:veil/managers/svces_status_listener.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
@@ -47,8 +44,8 @@ Future<void> main() async {
     await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
     runApp(MyApp());
-  } catch (e) {
-    logger.error('Launch app error: $e');
+  } catch (e, st) {
+    logger.error('Launch app error', e, st);
   }
 }
 
@@ -107,12 +104,12 @@ class _MyAppState extends State<MyApp> {
           }
         },
         onDone: () => logger.debug('Uri stream done'),
-        onError: (err) {
-          logger.error('Failed to get uri: $err');
+        onError: (err, st) {
+          logger.error('Failed to get uri', err, st);
         },
       );
-    } catch (err) {
-      logger.error('Failed to get uri: $err');
+    } catch (err, st) {
+      logger.error('Failed to get uri', err, st);
     }
   }
 
@@ -131,8 +128,8 @@ class _MyAppState extends State<MyApp> {
       work: () async {
         try {
           await _acceptInvite(context, inviteData);
-        } catch (err) {
-          logger.error('Failed to join document: $err');
+        } catch (err, st) {
+          logger.error('Failed to join document', err, st);
           if (err is DioException) {
             if (err.response?.statusCode == 401) {
               throw FutureDialogError('Error', 'No document found');
@@ -179,8 +176,8 @@ class _MyAppState extends State<MyApp> {
           final spk = await SpkManager.instance.getSpk(payload);
           await ContactsManager.instance.addContact(spk);
           return spk;
-        } catch (err) {
-          logger.error('Failed to get spk: $err');
+        } catch (err, st) {
+          logger.error('Failed to get spk', err, st);
 
           if (err is DioException) {
             if (err.response?.statusCode == 404) {

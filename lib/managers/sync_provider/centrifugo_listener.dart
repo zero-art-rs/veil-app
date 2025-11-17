@@ -48,10 +48,20 @@ class CentrifugoListener {
     _runConnectionChecker();
   }
 
-  Future<void> disconnect() async {
+  Future<void> disconnect({bool sendReconnectEvent = true}) async {
+    if (sendReconnectEvent) {
+      _reconnecting = true;
+    }
+
+    _reconnectEventController.add(true);
     _connectionChecker?.cancel();
     await _eventFlux.disconnect();
-    await _centrifugoListener?.cancel();
+
+    if (sendReconnectEvent) {
+      await _reconnectEventController.close();
+      await _centrifugoListener?.cancel();
+    }
+
     logger.info('Centrifugo connection closed');
   }
 
@@ -74,10 +84,7 @@ class CentrifugoListener {
         'No events received from Centrifugo for ${difference.inSeconds} seconds, disconnecting...',
       );
 
-      _reconnecting = true;
       await disconnect();
-      _reconnectEventController.add(true);
-      await _reconnectEventController.close();
     }
   }
 }

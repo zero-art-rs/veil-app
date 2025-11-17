@@ -213,8 +213,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
               (e) => e.member.account.actorId == user.account.actorId,
             );
           });
-        } catch (e) {
-          logger.error('Failed to remove member: $e');
+        } catch (e, st) {
+          logger.error('Failed to remove member', e, st);
           if (!context.mounted) return;
           TopBanner.show(
             context: context,
@@ -237,9 +237,9 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           await widget.syncModel.updateUserName(
             name: widget.updateUserNameTextController.text,
           );
-        } catch (e) {
+        } catch (e, st) {
           if (!mounted) return;
-          logger.error('Failed to update name: $e');
+          logger.error('Failed to update name', e, st);
           TopBanner.show(
             context: context,
             message: 'Failed to update name',
@@ -296,8 +296,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     final work = Future<String>(() async {
       try {
         return await widget.syncModel.createUnidentifiedMemberInviteLink();
-      } catch (e) {
-        logger.error('Failed to create unidentified invite link: $e');
+      } catch (e, st) {
+        logger.error('Failed to create unidentified invite link', e, st);
         rethrow;
       }
     });
@@ -311,8 +311,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         return await widget.syncModel.createIdentifiedMemberLink(
           contact: contact,
         );
-      } catch (e) {
-        logger.error('Failed to create indentified invite link: $e');
+      } catch (e, st) {
+        logger.error('Failed to create indentified invite link', e, st);
         rethrow;
       }
     });

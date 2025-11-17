@@ -54,13 +54,13 @@ class SyncProvider {
     subject.add(current);
   }
 
-  Future<void> remove(String chatId) async {
+  Future<void> remove(String id) async {
     final syncModel = subject.value
-        .where((element) => element.documentState.id == chatId)
+        .where((element) => element.documentState.id == id)
         .firstOrNull;
 
     if (syncModel == null) {
-      logger.error('no sync model');
+      logger.error('no sync model with id $id found to remove');
       return;
     }
 
@@ -72,7 +72,7 @@ class SyncProvider {
     await Hive.box(syncModel.documentState.id).deleteFromDisk();
     await _db.deleteDocumentState(syncModel.documentState.id);
 
-    current.removeWhere((element) => element.documentState.id == chatId);
+    current.removeWhere((element) => element.documentState.id == id);
     subject.add(current);
   }
 

@@ -40,8 +40,8 @@ class DocsPage extends StatelessWidget {
                 await vm.createDoc(controller.text);
                 if (!context.mounted) return;
                 Navigator.pop(context);
-              } catch (err) {
-                logger.error('Failed to create document: $err');
+              } catch (err, st) {
+                logger.error('Failed to create document', err, st);
                 TopBanner.show(
                   context: context,
                   message: 'Failed to create document',
@@ -97,13 +97,13 @@ class DocsPage extends StatelessWidget {
                   callback: () async {
                     try {
                       await vm.deleteDoc(vm.syncModels[i].documentState);
-                    } catch (err) {
+                    } catch (err, st) {
                       if (!context.mounted) return;
                       TopBanner.show(
                         context: context,
                         message: 'Failed to delete document',
                       );
-                      logger.error('Failed to delete document: $err');
+                      logger.error('Failed to delete document', err, st);
                     }
                   },
                 ),

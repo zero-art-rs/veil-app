@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:veil/managers/network_status_listener.dart';
+import 'package:veil/managers/svces_status_listener.dart';
 
 class NetworkStatusBanner extends StatefulWidget {
   const NetworkStatusBanner({

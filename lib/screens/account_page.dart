@@ -51,8 +51,8 @@ class _AccountPageState extends State<AccountPage> {
           text: _account.keypair.publicKeyHex,
         );
       });
-    } catch (err) {
-      logger.error('Failed to init account page: $err');
+    } catch (err, st) {
+      logger.error('Failed to init account page', err, st);
     }
   }
 

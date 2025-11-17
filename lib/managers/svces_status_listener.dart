@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:rxdart/subjects.dart';
 import 'package:veil/main.dart';
 
+const _slowNetworkThreshold = Duration(seconds: 3);
+
 enum NetworkStatus { connectedServiceUnavailable, disconnected, connected }
 
 class _ServicesStatusResponse {
@@ -98,7 +100,7 @@ class NetworkStatusListener {
 
         final response = await http
             .get(uri)
-            .timeout(const Duration(seconds: 5));
+            .timeout(const Duration(seconds: 8));
 
         final servicesStatusList = _ServicesStatusResponse.fromJson(
           jsonDecode(response.body),
@@ -106,16 +108,15 @@ class NetworkStatusListener {
 
         servicesStatusList.logStatuses();
 
-        final slow = stopwatch.elapsedMilliseconds >= 3 * 1000;
-
-        if (slow) {
+        if (stopwatch.elapsedMilliseconds >=
+            _slowNetworkThreshold.inMilliseconds) {
           logger.warning(
             'Network lookup took ${stopwatch.elapsedMilliseconds}ms',
           );
         }
-        ;
+
         connectionStatus.add(
-          !slow && servicesStatusList.isServiceAvaliable()
+          servicesStatusList.isServiceAvaliable()
               ? NetworkStatus.connected
               : NetworkStatus.connectedServiceUnavailable,
         );

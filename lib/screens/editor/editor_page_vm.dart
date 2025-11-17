@@ -94,8 +94,8 @@ class EditorPageVm extends ChangeNotifier {
   Future<void> updateGroupName(BuildContext context, String groupName) async {
     try {
       await syncModel.updateGroupName(name: groupNameController.text);
-    } catch (e) {
-      logger.error('Failed to update group name: $e');
+    } catch (e, st) {
+      logger.error('Failed to update group name', e, st);
       if (!context.mounted) return;
       TopBanner.show(
         context: context,
@@ -157,8 +157,8 @@ class EditorPageVm extends ChangeNotifier {
           AccountSecureStorage.instance.account,
         );
         _startWaitForJoinGroupTicker();
-      } catch (e) {
-        logger.error('Failed to join group: $e');
+      } catch (e, st) {
+        logger.error('Failed to join group', e, st);
         if (!context.mounted) return;
         TopBanner.show(
           context: context,
@@ -242,8 +242,8 @@ class EditorPageVm extends ChangeNotifier {
     if (runSync) {
       try {
         await syncLocalAndNetworkState();
-      } catch (e) {
-        logger.error('Failed to sync local and network state: $e');
+      } catch (e, st) {
+        logger.error('Failed to sync local and network state', e, st);
 
         if (!context.mounted) return;
 
