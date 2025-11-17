@@ -113,54 +113,54 @@ extension SyncModelInit on SyncModel {
       streams: [_processQueue.remainingItems, _sendQueue.remainingItems],
     );
 
-    final challenge = await GroupApiClient.instance.getChallenge(
-      documentState.id,
-    );
-
-    final jwt = await GroupApiClient.instance.getCentrifugoJWT(
-      groupId: documentState.id,
-      epoch: (await groupContext.epoch()).toInt(),
-      proof: base64Encode(
-        await groupContext.signChallenge(challenge: base64Decode(challenge)),
-      ),
-      challenge: challenge,
-    );
-
     logger.debug('Setting up chat manager..');
     final hive = await Hive.openBox(documentState.id);
     final hiveChatController = HiveChatController(hive);
     chatManager = ChatManager(controller: hiveChatController);
 
-    final listener = CentrifugoListener(
-      processCallback: (response) async {
-        if (response.data.isEmpty) return;
-        try {
-          final rawJson = json.decode(response.data);
-          if (rawJson['pub'] == null) return;
-
-          logger.debug(
-            'Centrifugo received data: ${response.data}, event: ${response.event}, id: ${response.id}',
-          );
-
-          final frameBytes = base64Decode(rawJson['pub']['data'].toString());
-          final frame = SPFrame.fromBuffer(frameBytes);
-          await processFrame(frame);
-        } catch (e) {
-          logger.error(
-            'Failed to process frame, highlighting document as corrupted: $e',
-          );
-
-          await markAsCorrupted();
-        }
-      },
-    );
-
-    logger.debug('Setting up centrifugo listener..');
-    _setCentrifugoListener(listener, jwtToken: jwt);
-
     try {
+      final challenge = await GroupApiClient.instance.getChallenge(
+        documentState.id,
+      );
+
+      final jwt = await GroupApiClient.instance.getCentrifugoJWT(
+        groupId: documentState.id,
+        epoch: (await groupContext.epoch()).toInt(),
+        proof: base64Encode(
+          await groupContext.signChallenge(challenge: base64Decode(challenge)),
+        ),
+        challenge: challenge,
+      );
+
+      final listener = CentrifugoListener(
+        processCallback: (response) async {
+          if (response.data.isEmpty) return;
+          try {
+            final rawJson = json.decode(response.data);
+            if (rawJson['pub'] == null) return;
+
+            logger.debug(
+              'Centrifugo received data: ${response.data}, event: ${response.event}, id: ${response.id}',
+            );
+
+            final frameBytes = base64Decode(rawJson['pub']['data'].toString());
+            final frame = SPFrame.fromBuffer(frameBytes);
+            await processFrame(frame);
+          } catch (e) {
+            logger.error(
+              'Failed to process frame, highlighting document as corrupted: $e',
+            );
+
+            await markAsCorrupted();
+          }
+        },
+      );
+
+      _setCentrifugoListener(listener, jwtToken: jwt);
       await _pollFrames(allowFullDocument: allowFullDocument);
       await applyBufferedFrames();
+
+      logger.debug('Setting up centrifugo listener..');
     } catch (e) {
       logger.error(
         'Failed to initially synchronize document, highlighting document as corrupted: $e',
