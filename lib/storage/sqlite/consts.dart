@@ -6,3 +6,4 @@ const documentsTable = 'documents';
 const documentMembersTable = 'document_members';
 const spksTable = 'spks';
 const crdtTable = 'crdt';
+const crdtChangesTable = 'crdt_changes';

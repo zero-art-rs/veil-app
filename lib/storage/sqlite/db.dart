@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:uuid/v4.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
@@ -11,6 +12,7 @@ import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/models/account.dart';
 import 'package:veil/storage/sqlite/consts.dart';
+import 'package:veil/storage/sqlite/models/crdt_change.dart';
 import 'package:veil/storage/sqlite/models/document.dart';
 import 'package:veil/storage/sqlite/models/spk.dart';
 import 'package:veil/storage/sqlite/schemes.dart';
@@ -46,6 +48,7 @@ class DB {
         await db.execute(createContactsTable);
         await db.execute(createSpksTable);
         await db.execute(createDocumentsTable);
+        await db.execute(createCrdtChangesTable);
 
         final ownerAccount = SQLAccount(
           actorId: 'owner',
@@ -418,6 +421,44 @@ class DB {
       {'group_context_parts': parts.toJsonString()},
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  Future<String> insertLocalCrdtChange({
+    required String documentId,
+    required Uint8List data,
+  }) async {
+    final id = UuidV4().generate();
+
+    await _insert(
+      crdtChangesTable,
+      CrdtChange.fromContent(documentId: documentId, content: data).toJson(),
+    );
+
+    return id;
+  }
+
+  Future<List<CrdtChange>> getLocalCrdtChanges(String documentId) async {
+    final rawChanges = await _query(
+      crdtChangesTable,
+      where: 'document_id = ?',
+      whereArgs: [documentId],
+      orderBy: 'create_at ASC',
+    );
+
+    return rawChanges.map((e) => CrdtChange.fromMap(e)).toList();
+  }
+
+  Future<void> deleteLocalCrdtChanges(
+    String documentId,
+    List<String> ids,
+  ) async {
+    final idsPlaceholders = List.filled(ids.length, '?').join(', ');
+
+    await _delete(
+      crdtChangesTable,
+      where: 'document_id = ? AND id IN ($idsPlaceholders)',
+      whereArgs: [documentId, ...ids],
     );
   }
 

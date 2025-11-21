@@ -100,7 +100,7 @@ class _BannerSurface extends StatelessWidget {
         const Color(0xFF2BAA4A), // green
         Colors.white,
       ),
-      NetworkStatus.connectedServiceUnavailable => (
+      NetworkStatus.servicesUnavailable => (
         'Service unavailable',
         Icons.wifi_tethering_off_rounded,
         const Color(0xFFFFA000), // amber

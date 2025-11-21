@@ -37,3 +37,13 @@ CREATE TABLE $crdtTable (
   content BLOB NOT NULL,
   sequence_number INTEGER NOT NULL,
 )""";
+
+final createCrdtChangesTable =
+    """
+CREATE TABLE $crdtChangesTable (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL,
+  content BLOB NOT NULL,
+  create_at TEXT NOT NULL,
+  FOREIGN KEY (document_id) REFERENCES $documentsTable(id) ON DELETE CASCADE
+)""";

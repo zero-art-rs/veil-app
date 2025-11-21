@@ -66,7 +66,11 @@ class SyncProvider {
 
     if (!syncModel.isLocal && !syncModel.corrupted) {
       await syncModel.sendLeaveGroupFrame();
-      await syncModel.dispose();
+      await syncModel.clearState(
+        disableNetworkListener: true,
+        disableStateBroadcast: true,
+        cancelPendingTasks: true,
+      );
     }
 
     await Hive.box(syncModel.documentState.id).deleteFromDisk();

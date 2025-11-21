@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:uuid/v4.dart';
 import 'package:veil/extensions/group_context.dart';
+import 'package:veil/main.dart';
 import 'package:veil/managers/chat/chat_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/storage/account_storage.dart';
@@ -18,17 +19,32 @@ class ChatPageViewModel {
       return;
     }
 
+    final id = UuidV4().generate();
+
     final textMessage = TextMessage(
-      id: UuidV4().generate(),
+      id: id,
       authorId: currentUserId,
       createdAt: DateTime.now().toUtc(),
       text: message,
     );
 
-    await chatManager.addMessage(textMessage);
     final json = jsonEncode(textMessage);
 
-    await syncModel.sendChatFrame(utf8.encode(json));
+    try {
+      await chatManager.addMessage(textMessage);
+      await syncModel.sendChatFrame(utf8.encode(json));
+    } catch (err, st) {
+      logger.error('Failed to send message', err, st);
+
+      chatManager.addMessage(
+        TextMessage(
+          id: id,
+          authorId: currentUserId,
+          text: message,
+          status: MessageStatus.error,
+        ),
+      );
+    }
   }
 
   ChatManager get chatManager => syncModel.chatManager;

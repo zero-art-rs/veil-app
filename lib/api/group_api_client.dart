@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -80,7 +81,7 @@ class GroupApiClient {
     final response = await _http.get(url);
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw HttpException(
         'Failed to get challenge: ${response.statusCode} ${response.body}',
       );
     }

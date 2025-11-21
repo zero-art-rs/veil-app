@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
@@ -8,7 +9,7 @@ import 'package:veil/main.dart';
 
 const _slowNetworkThreshold = Duration(seconds: 3);
 
-enum NetworkStatus { connectedServiceUnavailable, disconnected, connected }
+enum NetworkStatus { servicesUnavailable, disconnected, connected }
 
 class _ServicesStatusResponse {
   final bool node;
@@ -57,6 +58,8 @@ class _ServicesStatusResponse {
 class NetworkStatusListener {
   static final NetworkStatusListener instance =
       NetworkStatusListener._internal();
+
+  /// Emits status where it is changed
   BehaviorSubject<NetworkStatus> connectionStatus = BehaviorSubject.seeded(
     NetworkStatus.connected,
   );
@@ -102,6 +105,12 @@ class NetworkStatusListener {
             .get(uri)
             .timeout(const Duration(seconds: 8));
 
+        if (response.statusCode != 200) {
+          throw HttpException(
+            'Failed to get services status: ${response.statusCode} ${response.body}',
+          );
+        }
+
         final servicesStatusList = _ServicesStatusResponse.fromJson(
           jsonDecode(response.body),
         );
@@ -115,17 +124,22 @@ class NetworkStatusListener {
           );
         }
 
-        connectionStatus.add(
+        _emitNetworkStatus(
           servicesStatusList.isServiceAvaliable()
               ? NetworkStatus.connected
-              : NetworkStatus.connectedServiceUnavailable,
+              : NetworkStatus.servicesUnavailable,
         );
       } catch (e) {
         if (!timer.isActive) return;
         logger.warning('Failed to check network status: $e');
-        connectionStatus.add(NetworkStatus.connectedServiceUnavailable);
+        _emitNetworkStatus(NetworkStatus.servicesUnavailable);
       }
     });
+  }
+
+  void _emitNetworkStatus(NetworkStatus status) {
+    if (connectionStatus.value == status) return;
+    connectionStatus.add(status);
   }
 
   void dispose() {

@@ -236,7 +236,7 @@ class EditorPageVm extends ChangeNotifier {
 
     if (mode == EditorModes.edit) {
       logger.debug('Bufferizing frames trigger on ui');
-      await syncModel.bufferizeFrames();
+      await syncModel.selectMode(SyncModelMode.write);
     }
 
     if (runSync) {
@@ -268,6 +268,7 @@ class EditorPageVm extends ChangeNotifier {
       await syncModel.sendCrdtFrame(mdEditor.text);
     }
 
+    await syncModel.selectMode(SyncModelMode.read);
     await syncModel.applyBufferedFrames();
   }
 
