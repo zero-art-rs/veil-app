@@ -69,9 +69,6 @@ class SyncModel {
   StreamSubscription<NetworkStatus>? _networkStatusListener;
   StreamSubscription? _centrifugoDisconnectedListener;
 
-  // x  / Indicates wheter `_processQueue` should buffer incoming frames or process them immediately
-  // bool bufferFrames = true;
-
   /// Indicates current state
   SyncModelStateMode _state = SyncModelStateMode.local;
 
@@ -126,10 +123,8 @@ class SyncModel {
 
 extension SyncModelState on SyncModel {
   Future<void> setup({bool allowFullDocument = false}) async {
-    // Listen for the processing of the queues
     _queuesProcessListener.listen();
 
-    // Setup chat manager
     final hive = await Hive.openBox(documentState.id);
     final hiveChatController = HiveChatController(hive);
     chatManager = ChatManager(controller: hiveChatController);
@@ -302,6 +297,10 @@ extension SyncModelState on SyncModel {
 
       _setCentrifugoListener(listener, jwtToken: jwt);
       await _pollFrames(allowFullDocument: allowFullDocument);
+
+      if (_mode == SyncModelMode.read) {
+        await sendLocalCrdtChanges();
+      }
     });
 
     _state = SyncModelStateMode.network;
@@ -370,9 +369,11 @@ extension SyncModelState on SyncModel {
 
         final crdtList = await _processFrame(spFrame);
 
-        for (final crdt in crdtList) {
-          _handleCrdt(crdt, allowFullDocument);
-        }
+        _applyCrdtPayloadList(
+          document: documentState,
+          payloads: crdtList,
+          allowFullDocument: allowFullDocument,
+        );
       }
     }
 
@@ -408,7 +409,6 @@ extension SyncModelHandle on SyncModel {
         final snapshot = await _crdtBuffer.snapshot();
         await applyCrdtListOperation(snapshot);
         await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-        _emitCrdtUpdatesEvent();
         logger.info('Change process frames to process mode');
       });
     } on QueueCancelledException {
@@ -501,34 +501,20 @@ extension SyncModelSendOperations on SyncModel {
     }
   }
 
-  Future<void> sendCrdtFrame(String md) async {
+  Future<void> sendCrdtFrame(String md, {int maxAttempts = 3}) async {
     try {
       return await _write(
+        maxAttempts: maxAttempts,
         operation: () async {
           logger.info('Sending crdt frame..');
 
           final snapshot = await _crdtBuffer.snapshot();
+          EditorAutomergeUtils.instance.toDoc(md, documentState.crdt);
+          documentState.crdt.commit();
 
-          final forkedDocument = documentState.crdt.fork();
-          forkedDocument.setActorId(
-            uuid: AccountSecureStorage.instance.account.actorId,
-          );
+          _applyCrdtPayloadList(document: documentState, payloads: snapshot);
 
-          EditorAutomergeUtils.instance.toDoc(md, forkedDocument);
-          forkedDocument.commit();
-
-          _syncDocumentWithCrdt(
-            DocumentState(
-              id: 'forked-doc-id',
-              crdt: forkedDocument,
-              createdAt: DateTime.now(),
-              groupContextParts: GroupContextParts.empty(),
-            ),
-            snapshot,
-          );
-
-          final saveIncremential = forkedDocument.saveIncremental();
-
+          final saveIncremential = documentState.crdt.saveIncremental();
           final _ = await _db.insertLocalCrdtChange(
             documentId: documentState.id,
             data: saveIncremential,
@@ -539,7 +525,7 @@ extension SyncModelSendOperations on SyncModel {
               documentState.id,
             );
 
-            logger.debug('Local crdt changes to send : ${localChanges.length}');
+            logger.debug('Crdt changes to send : ${localChanges.length}');
             await _sendCrdtFrameList(
               localChanges.map((e) => e.content).toList(),
             );
@@ -550,10 +536,31 @@ extension SyncModelSendOperations on SyncModel {
             );
           }
 
-          documentState.crdt.loadIncremental(bytes: saveIncremential);
           await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-          _emitCrdtUpdatesEvent();
           logger.info('Sent crdt frame');
+        },
+      );
+    } on QueueCancelledException {
+      logger.debug('Send queue cancelled, crdt frame not sent');
+    }
+  }
+
+  Future<void> sendLocalCrdtChanges() async {
+    try {
+      return await _write(
+        operation: () async {
+          logger.info('Sending local crdt changes..');
+          final localChanges = await _db.getLocalCrdtChanges(documentState.id);
+
+          logger.debug('Crdt changes to send : ${localChanges.length}');
+          await _sendCrdtFrameList(localChanges.map((e) => e.content).toList());
+
+          await _db.deleteLocalCrdtChanges(
+            documentState.id,
+            localChanges.map((e) => e.id).toList(),
+          );
+
+          logger.info('Sent local crdt changes');
         },
       );
     } on QueueCancelledException {
@@ -782,7 +789,6 @@ extension SyncModelSendOperations on SyncModel {
           return await operation();
         } catch (e) {
           if (attempt == maxAttempts) {
-            // logger.error('Failed to perform send operation', e, st);
             rethrow;
           } else {
             logger.warning(
@@ -814,7 +820,7 @@ extension SyncModelOperations on SyncModel {
   Future<void> applyCrdtListOperation(List<ExposedCRDTPayload> payloads) async {
     logger.info('Applying crdt list..');
 
-    _syncDocumentWithCrdt(documentState, payloads);
+    _applyCrdtPayloadList(document: documentState, payloads: payloads);
 
     await _db.updateDocumentState(
       documentState: documentState,
@@ -881,8 +887,6 @@ extension SyncModelOperations on SyncModel {
       frame: frame,
     );
   }
-
-  // payload ->
 
   Future<void> _sendCrdtFrameList(List<Uint8List> data) async {
     final frame = await groupContext.createFrame(
@@ -956,36 +960,39 @@ extension SyncModelHelpers on SyncModel {
     }
   }
 
-  void _handleCrdt(ExposedCRDTPayload crdt, bool allowFullDocument) {
-    switch (crdt.kind) {
-      case ExposedCRDTPayloadKind.incrementalChange:
-        documentState.crdt.loadIncremental(bytes: crdt.crdt.incrementalChange);
-      case ExposedCRDTPayloadKind.fullDocument:
-        if (!allowFullDocument) return;
-        logger.debug('Received crdt full document');
-        documentState.crdt = BAutoCommit.load(data: crdt.crdt.fullDocument);
-    }
-  }
-
-  void _syncDocumentWithCrdt(
-    DocumentState document,
-    List<ExposedCRDTPayload> payloads,
-  ) {
-    logger.debug('Number of crdt payloads to apply: ${payloads.length}');
-
+  void _applyCrdtPayloadList({
+    required DocumentState document,
+    required List<ExposedCRDTPayload> payloads,
+    bool allowFullDocument = false,
+  }) {
+    logger.debug('Number of CRDT payloads to apply: ${payloads.length}');
     logger.debug(
-      'Document state before applying crdt: ID  ${document.id} ${document.crdt.getBlocks()}',
+      'Document state BEFORE applying CRDT: ID ${document.id} ${document.crdt.getBlocks()}',
     );
+
     for (final payload in payloads) {
       switch (payload.kind) {
         case ExposedCRDTPayloadKind.incrementalChange:
-          final incrementalChange = payload.crdt.incrementalChange;
-          document.crdt.loadIncremental(bytes: incrementalChange);
-        default:
+          final incremental = payload.crdt.incrementalChange;
+          document.crdt.loadIncremental(bytes: incremental);
+          break;
+
+        case ExposedCRDTPayloadKind.fullDocument:
+          if (!allowFullDocument) {
+            continue;
+          }
+          logger.debug('Received CRDT full document for ${document.id}');
+          document.crdt = BAutoCommit.load(data: payload.crdt.fullDocument);
+          break;
       }
     }
+
+    if (payloads.isNotEmpty) {
+      _emitCrdtUpdatesEvent();
+    }
+
     logger.debug(
-      'Document state after applying crdt: ID ${document.id} ${document.crdt.getBlocks()}',
+      'Document state AFTER applying CRDT: ID ${document.id} ${document.crdt.getBlocks()}',
     );
   }
 }
