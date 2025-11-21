@@ -297,11 +297,11 @@ extension SyncModelState on SyncModel {
 
       _setCentrifugoListener(listener, jwtToken: jwt);
       await _pollFrames(allowFullDocument: allowFullDocument);
-
-      if (_mode == SyncModelMode.read) {
-        await sendLocalCrdtChanges();
-      }
     });
+
+    if (_mode == SyncModelMode.read) {
+      await sendLocalCrdtChanges();
+    }
 
     _state = SyncModelStateMode.network;
   }
