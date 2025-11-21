@@ -134,7 +134,10 @@ extension SyncModelState on SyncModel {
     final hiveChatController = HiveChatController(hive);
     chatManager = ChatManager(controller: hiveChatController);
 
-    await setState(SyncModelStateMode.local);
+    await setState(
+      SyncModelStateMode.local,
+      allowFullDocument: allowFullDocument,
+    );
 
     if (!documentState.isLocal) {
       _setupNetworkListener();
@@ -215,7 +218,10 @@ extension SyncModelState on SyncModel {
         });
   }
 
-  Future<void> setState(SyncModelStateMode mode) async {
+  Future<void> setState(
+    SyncModelStateMode mode, {
+    bool allowFullDocument = false,
+  }) async {
     await _stateQueue.add(() async {
       switch (mode) {
         case SyncModelStateMode.local:
@@ -223,7 +229,7 @@ extension SyncModelState on SyncModel {
         case SyncModelStateMode.network:
           _emitIsSyncingEvent(true);
           try {
-            await _setupNetwork();
+            await _setupNetwork(allowFullDocument: allowFullDocument);
           } catch (e, st) {
             logger.error(
               'Failed to initially synchronize document, highlighting document as corrupted',
@@ -532,10 +538,11 @@ extension SyncModelSendOperations on SyncModel {
               documentState.id,
             );
 
+            logger.debug('Local crdt changes to send : ${localChanges.length}');
             await _sendCrdtFrameList([
               ...localChanges.map((e) => e.content),
               saveIncremential,
-            ], snapshot);
+            ]);
 
             await _db.deleteLocalCrdtChanges(documentState.id, [
               ...localChanges.map((e) => e.id),
@@ -877,10 +884,7 @@ extension SyncModelOperations on SyncModel {
 
   // payload ->
 
-  Future<void> _sendCrdtFrameList(
-    List<Uint8List> data,
-    List<ExposedCRDTPayload> buffer,
-  ) async {
+  Future<void> _sendCrdtFrameList(List<Uint8List> data) async {
     final frame = await groupContext.createFrame(
       content: Payloads(
         payloads: data
