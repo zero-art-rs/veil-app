@@ -528,7 +528,8 @@ extension SyncModelSendOperations on SyncModel {
           );
 
           final saveIncremential = forkedDocument.saveIncremental();
-          final id = await _db.insertLocalCrdtChange(
+
+          final _ = await _db.insertLocalCrdtChange(
             documentId: documentState.id,
             data: saveIncremential,
           );
@@ -539,15 +540,14 @@ extension SyncModelSendOperations on SyncModel {
             );
 
             logger.debug('Local crdt changes to send : ${localChanges.length}');
-            await _sendCrdtFrameList([
-              ...localChanges.map((e) => e.content),
-              saveIncremential,
-            ]);
+            await _sendCrdtFrameList(
+              localChanges.map((e) => e.content).toList(),
+            );
 
-            await _db.deleteLocalCrdtChanges(documentState.id, [
-              ...localChanges.map((e) => e.id),
-              id,
-            ]);
+            await _db.deleteLocalCrdtChanges(
+              documentState.id,
+              localChanges.map((e) => e.id).toList(),
+            );
           }
 
           documentState.crdt.loadIncremental(bytes: saveIncremential);
