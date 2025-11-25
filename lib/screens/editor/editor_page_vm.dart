@@ -34,7 +34,6 @@ class EditorPageVm extends ChangeNotifier {
   StreamSubscription? _crdtUpdatesSubscription;
   StreamSubscription? _groupInfoUpdatesEventSubscription;
   StreamSubscription? _corruptedEventSubscription;
-  Timer? _waitForJoinGroupTicker;
 
   EditorPageVm(this.syncModel);
 
@@ -82,7 +81,6 @@ class EditorPageVm extends ChangeNotifier {
       case EditorDocumentStatus.local:
         _localInit();
       case EditorDocumentStatus.network:
-        await _joinGroupIfNeeded(context);
         await _networkInit();
       case EditorDocumentStatus.corrupted:
         _setCorrupted();
@@ -147,36 +145,6 @@ class EditorPageVm extends ChangeNotifier {
       message: 'Markdown is copied to clipboard',
       kind: TopBannerCases.info,
     );
-  }
-
-  Future<void> _joinGroupIfNeeded(BuildContext context) async {
-    if (!syncModel.isUserInGroup()) {
-      allowWriteEvents = false;
-      try {
-        await syncModel.sendJoinGroupFrame(
-          AccountSecureStorage.instance.account,
-        );
-        _startWaitForJoinGroupTicker();
-      } catch (e, st) {
-        logger.error('Failed to join group', e, st);
-        if (!context.mounted) return;
-        TopBanner.show(
-          context: context,
-          message: 'Failed to join group',
-          kind: TopBannerCases.error,
-        );
-      }
-    }
-  }
-
-  void _startWaitForJoinGroupTicker() {
-    _waitForJoinGroupTicker = Timer.periodic(Duration(seconds: 1), (_) {
-      if (syncModel.isUserInGroup()) {
-        _waitForJoinGroupTicker?.cancel();
-        allowWriteEvents = true;
-        notifyListeners();
-      }
-    });
   }
 
   void _localInit() {

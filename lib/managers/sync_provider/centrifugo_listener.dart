@@ -5,6 +5,8 @@ import 'package:veil/main.dart';
 
 const _centrifugoWithoutUpdatesTimeout = 30;
 
+enum CentrifugoConnectionState { success, error }
+
 class CentrifugoListener {
   final _url = 'https://sse-veil.distributedlab.com';
   final _eventFlux = EventFlux.spawn();
@@ -20,11 +22,22 @@ class CentrifugoListener {
   CentrifugoListener({required dynamic Function(EventFluxData) processCallback})
     : _processCallback = processCallback;
 
-  void connect(String jwtToken) {
+  void connect(
+    String jwtToken, {
+    required StreamController<bool> connectionChecker,
+  }) {
     _eventFlux.connect(
       EventFluxConnectionType.get,
       '$_url/connection/uni_sse?cf_connect={"token": "$jwtToken"}',
       onSuccessCallback: (response) {
+        final isConnected =
+            (response?.status == EventFluxStatus.connected ||
+            response?.status == EventFluxStatus.connectionInitiated);
+
+        if (!connectionChecker.isClosed) {
+          connectionChecker.add(isConnected);
+        }
+
         logger.info('Centrifugo connection established');
         _centrifugoListener = response?.stream?.listen((data) {
           if (_disconnected) return;

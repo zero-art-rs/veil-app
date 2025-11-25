@@ -20,7 +20,6 @@ class NetworkStatusBanner extends StatefulWidget {
 
 class _NetworkStatusBannerState extends State<NetworkStatusBanner> {
   NetworkStatus? _status;
-  Timer? _autoHide;
   StreamSubscription<NetworkStatus>? _subscription;
 
   @override
@@ -28,24 +27,17 @@ class _NetworkStatusBannerState extends State<NetworkStatusBanner> {
     super.initState();
 
     _subscription = widget.stream.listen((s) {
-      if ((s == _status) || (_status == null && s == NetworkStatus.connected)) {
+      if (s == NetworkStatus.notSet || s == NetworkStatus.connected) {
+        setState(() => _status = null);
         return;
       }
 
-      _autoHide?.cancel();
       setState(() => _status = s);
-
-      if (s == NetworkStatus.connected) {
-        _autoHide = Timer(widget.showDurationWhenOnline, () {
-          if (mounted) setState(() => _status = null);
-        });
-      }
     });
   }
 
   @override
   void dispose() {
-    _autoHide?.cancel();
     _subscription?.cancel();
     super.dispose();
   }
@@ -94,23 +86,23 @@ class _BannerSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (text, icon, bg, fg) = switch (status) {
-      NetworkStatus.connected => (
-        'Connected',
-        Icons.check_circle_outline,
-        const Color(0xFF2BAA4A), // green
-        Colors.white,
-      ),
       NetworkStatus.servicesUnavailable => (
-        'Service unavailable',
+        'Loading...',
         Icons.wifi_tethering_off_rounded,
-        const Color(0xFFFFA000), // amber
-        Colors.black,
+        Theme.of(context).colorScheme.onPrimary, // red
+        Colors.white,
       ),
       NetworkStatus.disconnected => (
-        'No connection',
+        'Connecting...',
         Icons.signal_wifi_off_rounded,
-        const Color(0xFFE53935), // red
+        Theme.of(context).colorScheme.onPrimary, // red
         Colors.white,
+      ),
+      NetworkStatus.notSet => throw Exception(
+        'Not set status should not be shown',
+      ),
+      NetworkStatus.connected => throw Exception(
+        'Connected status should not be shown',
       ),
     };
 

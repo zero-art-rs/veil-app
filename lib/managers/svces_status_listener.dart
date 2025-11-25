@@ -9,7 +9,7 @@ import 'package:veil/main.dart';
 
 const _slowNetworkThreshold = Duration(seconds: 3);
 
-enum NetworkStatus { servicesUnavailable, disconnected, connected }
+enum NetworkStatus { servicesUnavailable, disconnected, connected, notSet }
 
 class _ServicesStatusResponse {
   final bool node;
@@ -61,7 +61,7 @@ class NetworkStatusListener {
 
   /// Emits status where it is changed
   BehaviorSubject<NetworkStatus> connectionStatus = BehaviorSubject.seeded(
-    NetworkStatus.connected,
+    NetworkStatus.notSet,
   );
   Timer? _networkLookupTicker;
   late StreamSubscription<List<ConnectivityResult>> _connectionListener;
@@ -71,7 +71,7 @@ class NetworkStatusListener {
   void start() {
     _connectionListener = Connectivity().onConnectivityChanged.skip(1).listen((
       result,
-    ) {
+    ) async {
       final interestedConnections = {
         ConnectivityResult.wifi,
         ConnectivityResult.mobile,
@@ -92,49 +92,51 @@ class NetworkStatusListener {
     });
   }
 
-  void _initLookupTicker() {
+  void _initLookupTicker() async {
+    await _checkNetworkStatus(null);
+
     _networkLookupTicker = Timer.periodic(Duration(seconds: 10), (timer) async {
-      try {
-        final stopwatch = Stopwatch()..start();
-
-        final uri = Uri.parse(
-          'https://veil.distributedlab.com/services/health',
-        );
-
-        final response = await http
-            .get(uri)
-            .timeout(const Duration(seconds: 8));
-
-        if (response.statusCode != 200) {
-          throw HttpException(
-            'Failed to get services status: ${response.statusCode} ${response.body}',
-          );
-        }
-
-        final servicesStatusList = _ServicesStatusResponse.fromJson(
-          jsonDecode(response.body),
-        );
-
-        servicesStatusList.logStatuses();
-
-        if (stopwatch.elapsedMilliseconds >=
-            _slowNetworkThreshold.inMilliseconds) {
-          logger.warning(
-            'Network lookup took ${stopwatch.elapsedMilliseconds}ms',
-          );
-        }
-
-        _emitNetworkStatus(
-          servicesStatusList.isServiceAvaliable()
-              ? NetworkStatus.connected
-              : NetworkStatus.servicesUnavailable,
-        );
-      } catch (e) {
-        if (!timer.isActive) return;
-        logger.warning('Failed to check network status: $e');
-        _emitNetworkStatus(NetworkStatus.servicesUnavailable);
-      }
+      await _checkNetworkStatus(timer);
     });
+  }
+
+  Future<void> _checkNetworkStatus(Timer? timer) async {
+    try {
+      final stopwatch = Stopwatch()..start();
+
+      final uri = Uri.parse('https://veil.distributedlab.com/services/health');
+
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode != 200) {
+        throw HttpException(
+          'Failed to get services status: ${response.statusCode} ${response.body}',
+        );
+      }
+
+      final servicesStatusList = _ServicesStatusResponse.fromJson(
+        jsonDecode(response.body),
+      );
+
+      servicesStatusList.logStatuses();
+
+      if (stopwatch.elapsedMilliseconds >=
+          _slowNetworkThreshold.inMilliseconds) {
+        logger.warning(
+          'Network lookup took ${stopwatch.elapsedMilliseconds}ms',
+        );
+      }
+
+      _emitNetworkStatus(
+        servicesStatusList.isServiceAvaliable()
+            ? NetworkStatus.connected
+            : NetworkStatus.servicesUnavailable,
+      );
+    } catch (e) {
+      if (!(timer?.isActive ?? true)) return;
+      logger.warning('Failed to check network status: $e');
+      _emitNetworkStatus(NetworkStatus.servicesUnavailable);
+    }
   }
 
   void _emitNetworkStatus(NetworkStatus status) {

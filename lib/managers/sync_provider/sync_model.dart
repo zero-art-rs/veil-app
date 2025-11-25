@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:http/http.dart';
 import 'package:queue/queue.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/managers/chat/hive_chat_controller.dart';
@@ -214,17 +215,21 @@ extension SyncModelState on SyncModel {
   }
 
   Future<void> setState(
-    SyncModelStateMode mode, {
+    SyncModelStateMode state, {
     bool allowFullDocument = false,
   }) async {
+    if (state == _state) return;
+
     await _stateQueue.add(() async {
-      switch (mode) {
+      switch (state) {
         case SyncModelStateMode.local:
           await _setupLocal();
         case SyncModelStateMode.network:
           _emitIsSyncingEvent(true);
           try {
             await _setupNetwork(allowFullDocument: allowFullDocument);
+          } on ClientException {
+            await _setupLocal();
           } catch (e, st) {
             logger.error(
               'Failed to initially synchronize document, highlighting document as corrupted',
@@ -295,9 +300,13 @@ extension SyncModelState on SyncModel {
         },
       );
 
-      _setCentrifugoListener(listener, jwtToken: jwt);
+      await _setCentrifugoListener(listener, jwtToken: jwt);
       await _pollFrames(allowFullDocument: allowFullDocument);
     });
+
+    if (!isUserInGroup()) {
+      await sendJoinGroupFrame(AccountSecureStorage.instance.account);
+    }
 
     if (_mode == SyncModelMode.read) {
       await sendLocalCrdtChanges();
@@ -318,14 +327,25 @@ extension SyncModelState on SyncModel {
     logger.info('Document resynced');
   }
 
-  void _setCentrifugoListener(
+  Future<void> _setCentrifugoListener(
     CentrifugoListener centrifugoListener, {
     required String jwtToken,
-  }) {
+  }) async {
     _centrifugoListener = centrifugoListener;
-    _centrifugoListener?.connect(jwtToken);
 
-    // Once we receive a reconnection event, centrifugoListener is alredy disconnected
+    final centrifugoLaunchedStreamController = StreamController<bool>();
+    _centrifugoListener?.connect(
+      jwtToken,
+      connectionChecker: centrifugoLaunchedStreamController,
+    );
+
+    final status = await centrifugoLaunchedStreamController.stream.first;
+    centrifugoLaunchedStreamController.close();
+
+    if (!status) {
+      throw SyncModelInitError('Failed to connect to Centrifugo');
+    }
+
     _centrifugoDisconnectedListener = _centrifugoListener?.disconnectedEvent
         .listen((_) async {
           await _resync();
@@ -506,7 +526,7 @@ extension SyncModelSendOperations on SyncModel {
       return await _write(
         maxAttempts: maxAttempts,
         operation: () async {
-          logger.info('Sending crdt frame..');
+          logger.info('Send crdt frame operation started');
 
           final snapshot = await _crdtBuffer.snapshot();
           EditorAutomergeUtils.instance.toDoc(md, documentState.crdt);
@@ -520,7 +540,8 @@ extension SyncModelSendOperations on SyncModel {
             data: saveIncremential,
           );
 
-          if (_state == SyncModelStateMode.network) {
+          if (_state == SyncModelStateMode.network && isUserInGroup()) {
+            logger.info('Sending crdt frame to server..');
             final localChanges = await _db.getLocalCrdtChanges(
               documentState.id,
             );
@@ -529,15 +550,20 @@ extension SyncModelSendOperations on SyncModel {
             await _sendCrdtFrameList(
               localChanges.map((e) => e.content).toList(),
             );
+            logger.info('Crdt frame sent..');
 
             await _db.deleteLocalCrdtChanges(
               documentState.id,
               localChanges.map((e) => e.id).toList(),
             );
+          } else {
+            logger.info(
+              'Crdt frame wasn\'t sent, user is not in group or mode is local',
+            );
           }
 
           await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-          logger.info('Sent crdt frame');
+          logger.info('Sent crdt frame operation finished');
         },
       );
     } on QueueCancelledException {
@@ -549,18 +575,30 @@ extension SyncModelSendOperations on SyncModel {
     try {
       return await _write(
         operation: () async {
-          logger.info('Sending local crdt changes..');
+          logger.info('Send local crdt changes operation started');
           final localChanges = await _db.getLocalCrdtChanges(documentState.id);
 
-          logger.debug('Crdt changes to send : ${localChanges.length}');
-          await _sendCrdtFrameList(localChanges.map((e) => e.content).toList());
+          if (localChanges.isEmpty) {
+            logger.info('No local crdt changes to send');
+            return;
+          }
 
-          await _db.deleteLocalCrdtChanges(
-            documentState.id,
-            localChanges.map((e) => e.id).toList(),
-          );
+          if (isUserInGroup()) {
+            logger.debug('Crdt changes to send : ${localChanges.length}');
+            await _sendCrdtFrameList(
+              localChanges.map((e) => e.content).toList(),
+            );
+            logger.info('Local crdt changes sent');
 
-          logger.info('Sent local crdt changes');
+            await _db.deleteLocalCrdtChanges(
+              documentState.id,
+              localChanges.map((e) => e.id).toList(),
+            );
+          } else {
+            logger.info(
+              'Local crdt frames wasn\'t sent, user is not in group or mode is local',
+            );
+          }
         },
       );
     } on QueueCancelledException {
@@ -571,6 +609,10 @@ extension SyncModelSendOperations on SyncModel {
   Future<void> sendChatFrame(List<int> messageBytes) async {
     if (_state == SyncModelStateMode.local) {
       throw SyncModelSendError('Cannot create invite in local mode');
+    }
+
+    if (!isUserInGroup()) {
+      throw SyncModelSendError('User is not in group');
     }
 
     try {
@@ -585,6 +627,10 @@ extension SyncModelSendOperations on SyncModel {
   }
 
   Future<void> updateGroupName({required String name}) async {
+    if (_state == SyncModelStateMode.local) {
+      throw SyncModelSendError('Cannot update user name in local mode');
+    }
+
     try {
       await _write(
         operation: () async {
@@ -610,6 +656,10 @@ extension SyncModelSendOperations on SyncModel {
   }
 
   Future<void> updateUserName({required String name}) async {
+    if (_state == SyncModelStateMode.local) {
+      throw SyncModelSendError('Cannot update user name in local mode');
+    }
+
     try {
       return await _write(
         maxAttempts: 1,
@@ -740,6 +790,10 @@ extension SyncModelSendOperations on SyncModel {
   }
 
   Future<void> removeMember({required String actorId}) async {
+    if (_state == SyncModelStateMode.local) {
+      throw SyncModelSendError('Cannot remove member in local mode');
+    }
+
     try {
       await _write(
         operation: () async {
@@ -769,7 +823,6 @@ extension SyncModelSendOperations on SyncModel {
     try {
       await _write(
         operation: () async {
-          logger.info('Sending join group frame..');
           return await _sendJoinGroupFrame(user);
         },
       );
@@ -780,7 +833,6 @@ extension SyncModelSendOperations on SyncModel {
 
   Future<T> _write<T>({
     int maxAttempts = 3,
-    bool isLocal = false,
     required Future<T> Function() operation,
   }) async {
     return await _sendQueue.add(() async {
