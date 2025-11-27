@@ -151,7 +151,10 @@ extension SyncModelState on SyncModel {
 
       _setupNetworkListener();
 
-      await setState(SyncModelStateMode.network);
+      await setState(
+        SyncModelStateMode.network,
+        allowFullDocument: allowFullDocument,
+      );
       if (_mode == SyncModelMode.read) await applyBufferedFrames();
     }
   }
