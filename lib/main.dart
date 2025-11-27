@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/assets/util.dart';
 import 'package:veil/managers/contacts_manager.dart';
-import 'package:veil/managers/invite_manager.dart';
 import 'package:veil/managers/svces_status_listener.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
@@ -147,13 +146,12 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _acceptInvite(BuildContext context, String inviteData) async {
-    final (groupContext, document) = await InviteManager.instance.join(
+    final syncModel = await AccountSecureStorage.instance.account.acceptInvite(
       inviteData,
     );
 
     await SyncProvider.instance.add(
-      document,
-      groupContext,
+      syncModel,
       insertToDb: true,
       allowFullDocument: true,
     );

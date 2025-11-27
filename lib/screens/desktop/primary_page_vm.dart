@@ -9,7 +9,8 @@ import 'package:veil/screens/account_page.dart';
 import 'package:veil/screens/editor_container/editor_container_page.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
+import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/widgets/banner.dart';
 
@@ -105,7 +106,14 @@ class PrimaryPageViewModel extends ChangeNotifier {
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-      await _syncProvider.add(document, groupContext, insertToDb: true);
+      await _syncProvider.add(
+        SyncModel(
+          documentState: document,
+          groupContext: groupContext,
+          localCrdtStorage: DB.instance,
+        ),
+        insertToDb: true,
+      );
       textEditingController.clear();
 
       notifyListeners();

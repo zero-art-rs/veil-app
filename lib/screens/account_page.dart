@@ -5,7 +5,7 @@ import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/account.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/utils/qr.dart';
 import 'package:veil/widgets/banner.dart';

@@ -23,11 +23,15 @@ class DocsPage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) => AlertDialog(
         title: Text('Create a document'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            label: Text('Input document title'),
-          ),
+        content: Row(
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                label: Text('Input document title'),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(

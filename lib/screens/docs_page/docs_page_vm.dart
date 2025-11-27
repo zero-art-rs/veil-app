@@ -8,7 +8,8 @@ import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
+import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
 
 class DocsPageViewModel extends ChangeNotifier {
@@ -81,7 +82,14 @@ class DocsPageViewModel extends ChangeNotifier {
     );
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-    await _syncProvider.add(document, groupContext, insertToDb: true);
+    await _syncProvider.add(
+      SyncModel(
+        documentState: document,
+        groupContext: groupContext,
+        localCrdtStorage: DB.instance,
+      ),
+      insertToDb: true,
+    );
   }
 
   Future<void> deleteDoc(DocumentState doc) async {

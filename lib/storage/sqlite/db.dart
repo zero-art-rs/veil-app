@@ -8,8 +8,10 @@ import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sharing/spk_provider.dart';
+import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
 import 'package:veil/src/rust/api/automerge.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
+import 'package:veil/storage/models/external_account.dart';
 import 'package:veil/storage/sqlite/models/account.dart';
 import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/storage/sqlite/models/crdt_change.dart';
@@ -21,14 +23,41 @@ import 'package:veil/utils/platform.dart';
 
 const _dbName = 'veil.db';
 
-class DB {
+class DB extends LocalCrdtStorage {
   static final instance = DB._();
   late Database _connection;
   Transaction? _tx;
 
   DB._();
 
-  Future<void> open({String? inMemoryPath}) async {
+  Future<void> openTest({required String inMemoryPath}) async {
+    databaseFactory = databaseFactoryFfi;
+
+    _connection = await openDatabase(
+      '$inMemoryPath/$_dbName',
+      version: 1,
+      readOnly: false,
+      onConfigure: (db) {
+        db.execute('PRAGMA foreign_keys = ON');
+      },
+      onCreate: (db, version) async {
+        await db.execute(createContactsTable);
+        await db.execute(createSpksTable);
+        await db.execute(createDocumentsTable);
+        await db.execute(createCrdtChangesTable);
+
+        final ownerAccount = SQLAccount(
+          actorId: 'owner',
+          publicKey: Uint8List(0),
+          name: 'owner',
+        );
+
+        await db.insert(accountsTable, ownerAccount.toJson());
+      },
+    );
+  }
+
+  Future<void> open() async {
     if (PlatformUtils.isWindows || PlatformUtils.isLinux) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
@@ -38,7 +67,7 @@ class DB {
     logger.info('Database path: ${dir.path}/$_dbName');
 
     _connection = await openDatabase(
-      inMemoryPath ?? '${dir.path}/$_dbName',
+      '${dir.path}/$_dbName',
       version: 1,
       readOnly: false,
       onConfigure: (db) {
@@ -424,21 +453,21 @@ class DB {
     );
   }
 
-  Future<String> insertLocalCrdtChange({
+  @override
+  Future<void> insertLocalCrdtChange({
     required String documentId,
     required Uint8List data,
   }) async {
-    final id = UuidV4().generate();
-
     await _insert(
       crdtChangesTable,
       CrdtChange.fromContent(documentId: documentId, content: data).toJson(),
     );
-
-    return id;
   }
 
-  Future<List<CrdtChange>> getLocalCrdtChanges(String documentId) async {
+  @override
+  Future<List<CrdtChange>> getLocalCrdtChanges({
+    required String documentId,
+  }) async {
     final rawChanges = await _query(
       crdtChangesTable,
       where: 'document_id = ?',
@@ -449,10 +478,11 @@ class DB {
     return rawChanges.map((e) => CrdtChange.fromMap(e)).toList();
   }
 
-  Future<void> deleteLocalCrdtChanges(
-    String documentId,
-    List<String> ids,
-  ) async {
+  @override
+  Future<void> deleteLocalCrdtChanges({
+    required String documentId,
+    required List<String> ids,
+  }) async {
     final idsPlaceholders = List.filled(ids.length, '?').join(', ');
 
     await _delete(

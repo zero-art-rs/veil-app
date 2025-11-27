@@ -5,9 +5,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
 
 class SyncProvider {
@@ -29,25 +27,25 @@ class SyncProvider {
         ),
       );
 
-      await add(documentState, groupContext);
+      await add(
+        SyncModel(
+          documentState: documentState,
+          groupContext: groupContext,
+          localCrdtStorage: DB.instance,
+        ),
+      );
     }
   }
 
   Future<void> add(
-    DocumentState documentState,
-    BGroupContext groupContext, {
+    SyncModel syncModel, {
     bool insertToDb = false,
     bool allowFullDocument = false,
   }) async {
-    final syncModel = SyncModel(
-      documentState: documentState,
-      groupContext: groupContext,
-    );
-
     syncModel.setup(allowFullDocument: allowFullDocument);
 
     if (insertToDb) {
-      await _db.insertDocumentState(documentState: documentState);
+      await _db.insertDocumentState(documentState: syncModel.documentState);
     }
 
     current.add(syncModel);

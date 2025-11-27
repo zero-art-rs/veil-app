@@ -1,6 +1,6 @@
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:uuid/v4.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
 import 'package:veil/storage/sqlite/db.dart';
 
 class LocalStateUtils {

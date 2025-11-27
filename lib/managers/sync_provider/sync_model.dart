@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:http/http.dart';
 import 'package:queue/queue.dart';
@@ -18,12 +19,14 @@ import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sync_provider/buffer.dart';
 import 'package:veil/managers/queues_listener.dart';
+import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
 import 'package:veil/managers/sync_provider/sync_model_errors.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/account.dart';
+import 'package:veil/storage/models/document_state.dart';
 import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
@@ -42,8 +45,11 @@ enum SyncModelMode { read, write }
 /// It handles its own state and sharing with it via streams
 class SyncModel {
   final Talker? _logger;
+  final Account _account;
   final DocumentState documentState;
   final BGroupContext groupContext;
+  final bool saveToDb;
+  final LocalCrdtStorage _localCrdtStorage;
   late final ChatManager chatManager;
   CentrifugoListener? _centrifugoListener;
   final _db = DB.instance;
@@ -100,12 +106,17 @@ class SyncModel {
   SyncModel({
     required this.documentState,
     required this.groupContext,
+    required LocalCrdtStorage localCrdtStorage,
+    this.saveToDb = true,
+    Account? account,
     Talker? logger,
-  }) : _logger = logger;
+  }) : _localCrdtStorage = localCrdtStorage,
+       _logger = logger,
+       _account = account ?? AccountSecureStorage.instance.account;
 
   bool isUserInGroup() {
     return groupContext.retrieveGroupInfo().members.any(
-      (e) => e.id == AccountSecureStorage.instance.account.actorId,
+      (e) => e.id == _account.actorId,
     );
   }
 
@@ -113,9 +124,7 @@ class SyncModel {
     return groupContext
             .retrieveGroupInfo()
             .members
-            .firstWhereOrNull(
-              (e) => e.id == AccountSecureStorage.instance.account.actorId,
-            )
+            .firstWhereOrNull((e) => e.id == _account.actorId)
             ?.role
             .value ==
         ownerRole;
@@ -136,15 +145,14 @@ extension SyncModelState on SyncModel {
     );
 
     if (!documentState.isLocal) {
+      final _ = await NetworkStatusListener.instance.connectionStatus.any(
+        (e) => e == NetworkStatus.connected,
+      );
+
       _setupNetworkListener();
 
-      final networkStatus =
-          NetworkStatusListener.instance.connectionStatus.value;
-
-      if (networkStatus == NetworkStatus.connected) {
-        await setState(SyncModelStateMode.network);
-        if (_mode == SyncModelMode.read) await applyBufferedFrames();
-      }
+      await setState(SyncModelStateMode.network);
+      if (_mode == SyncModelMode.read) await applyBufferedFrames();
     }
   }
 
@@ -275,6 +283,7 @@ extension SyncModelState on SyncModel {
 
     await _processQueue.add(() async {
       final listener = CentrifugoListener(
+        logger: logger,
         processCallback: (response) async {
           if (response.data.isEmpty) return;
           try {
@@ -305,7 +314,7 @@ extension SyncModelState on SyncModel {
     });
 
     if (!isUserInGroup()) {
-      await sendJoinGroupFrame(AccountSecureStorage.instance.account);
+      await sendJoinGroupFrame(_account);
     }
 
     if (_mode == SyncModelMode.read) {
@@ -324,7 +333,7 @@ extension SyncModelState on SyncModel {
     } else {
       await setState(SyncModelStateMode.local);
     }
-    logger.info('Document resynced');
+    logger.info('Document resynced, current mode: $_state');
   }
 
   Future<void> _setCentrifugoListener(
@@ -397,10 +406,12 @@ extension SyncModelState on SyncModel {
       }
     }
 
-    await _db.updateDocumentState(
-      documentState: documentState,
-      groupContextParts: await groupContext.asParts(),
-    );
+    if (saveToDb) {
+      await _db.updateDocumentState(
+        documentState: documentState,
+        groupContextParts: await groupContext.asParts(),
+      );
+    }
 
     logger.debug(
       'Document epoch after polling: ${(await groupContext.epoch()).toInt()}',
@@ -499,10 +510,12 @@ extension SyncModelSendOperations on SyncModel {
           logger.info('Sending leave group frame..');
           final frame = await groupContext.leaveGroup();
 
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
+          if (saveToDb) {
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
+            );
+          }
 
           await GroupApiClient.instance.sendFrame(
             groupId: documentState.id,
@@ -510,10 +523,12 @@ extension SyncModelSendOperations on SyncModel {
           );
 
           logger.info('Sent leave group frame');
-          await _db.updateDocumentState(
-            documentState: documentState,
-            groupContextParts: await groupContext.asParts(),
-          );
+          if (saveToDb) {
+            await _db.updateDocumentState(
+              documentState: documentState,
+              groupContextParts: await groupContext.asParts(),
+            );
+          }
         },
       );
     } on QueueCancelledException {
@@ -521,7 +536,7 @@ extension SyncModelSendOperations on SyncModel {
     }
   }
 
-  Future<void> sendCrdtFrame(String md, {int maxAttempts = 3}) async {
+  Future<void> sendCrdtFrame(String md, {int maxAttempts = 7}) async {
     try {
       return await _write(
         maxAttempts: maxAttempts,
@@ -535,15 +550,16 @@ extension SyncModelSendOperations on SyncModel {
           _applyCrdtPayloadList(document: documentState, payloads: snapshot);
 
           final saveIncremential = documentState.crdt.saveIncremental();
-          final _ = await _db.insertLocalCrdtChange(
+
+          await _localCrdtStorage.insertLocalCrdtChange(
             documentId: documentState.id,
             data: saveIncremential,
           );
 
           if (_state == SyncModelStateMode.network && isUserInGroup()) {
             logger.info('Sending crdt frame to server..');
-            final localChanges = await _db.getLocalCrdtChanges(
-              documentState.id,
+            final localChanges = await _localCrdtStorage.getLocalCrdtChanges(
+              documentId: documentState.id,
             );
 
             logger.debug('Crdt changes to send : ${localChanges.length}');
@@ -552,9 +568,9 @@ extension SyncModelSendOperations on SyncModel {
             );
             logger.info('Crdt frame sent..');
 
-            await _db.deleteLocalCrdtChanges(
-              documentState.id,
-              localChanges.map((e) => e.id).toList(),
+            await _localCrdtStorage.deleteLocalCrdtChanges(
+              documentId: documentState.id,
+              ids: localChanges.map((e) => e.id).toList(),
             );
           } else {
             logger.info(
@@ -576,7 +592,10 @@ extension SyncModelSendOperations on SyncModel {
       return await _write(
         operation: () async {
           logger.info('Send local crdt changes operation started');
-          final localChanges = await _db.getLocalCrdtChanges(documentState.id);
+
+          final localChanges = await _localCrdtStorage.getLocalCrdtChanges(
+            documentId: documentState.id,
+          );
 
           if (localChanges.isEmpty) {
             logger.info('No local crdt changes to send');
@@ -590,9 +609,9 @@ extension SyncModelSendOperations on SyncModel {
             );
             logger.info('Local crdt changes sent');
 
-            await _db.deleteLocalCrdtChanges(
-              documentState.id,
-              localChanges.map((e) => e.id).toList(),
+            await _localCrdtStorage.deleteLocalCrdtChanges(
+              documentId: documentState.id,
+              ids: localChanges.map((e) => e.id).toList(),
             );
           } else {
             logger.info(
@@ -606,7 +625,7 @@ extension SyncModelSendOperations on SyncModel {
     }
   }
 
-  Future<void> sendChatFrame(List<int> messageBytes) async {
+  Future<void> sendChatFrame(TextMessage message) async {
     if (_state == SyncModelStateMode.local) {
       throw SyncModelSendError('Cannot create invite in local mode');
     }
@@ -618,7 +637,8 @@ extension SyncModelSendOperations on SyncModel {
     try {
       return await _write(
         operation: () async {
-          await _sendChatFrame(messageBytes);
+          final json = jsonEncode(message);
+          await _sendChatFrame(utf8.encode(json));
         },
       );
     } on QueueCancelledException {
@@ -637,10 +657,12 @@ extension SyncModelSendOperations on SyncModel {
           logger.info('Creating change group frame...');
           final frame = await groupContext.changeGroup(name: name);
 
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
+          if (saveToDb) {
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
+            );
+          }
 
           logger.info('Sending change group frame...');
           await GroupApiClient.instance.sendFrame(
@@ -667,10 +689,12 @@ extension SyncModelSendOperations on SyncModel {
           logger.info('Creating change user frame...');
           final frame = await groupContext.changeUser(name: name);
 
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
+          if (saveToDb) {
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
+            );
+          }
 
           logger.info('Sending change user frame...');
           await GroupApiClient.instance.sendFrame(
@@ -712,10 +736,12 @@ extension SyncModelSendOperations on SyncModel {
             content: Payloads(payloads: [payload]).writeToBuffer(),
           );
 
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
+          if (saveToDb) {
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
+            );
+          }
 
           logger.info('Sending identified invite frame');
           await GroupApiClient.instance.sendFrame(
@@ -751,7 +777,7 @@ extension SyncModelSendOperations on SyncModel {
     try {
       return await _write(
         operation: () async {
-          logger.info('Creating unidentified member invite..');
+          logger.info('Started create unidentified member invite operation');
           final secretKey = SecretManager.intance.generateSecretKey();
 
           final payloads = Payloads(
@@ -768,10 +794,12 @@ extension SyncModelSendOperations on SyncModel {
             content: payloads,
           );
 
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
+          if (saveToDb) {
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
+            );
+          }
 
           logger.info('Sending unidentified invite frame...');
           await GroupApiClient.instance.sendFrame(
@@ -802,10 +830,12 @@ extension SyncModelSendOperations on SyncModel {
             userId: actorId,
             content: [],
           );
-          await _db.updateGroupContextDocumentState(
-            id: documentState.id,
-            parts: await groupContext.asParts(),
-          );
+          if (saveToDb) {
+            await _db.updateGroupContextDocumentState(
+              id: documentState.id,
+              parts: await groupContext.asParts(),
+            );
+          }
           logger.info('Sending remove member frame...');
           await GroupApiClient.instance.sendFrame(
             groupId: documentState.id,
@@ -874,10 +904,12 @@ extension SyncModelOperations on SyncModel {
 
     _applyCrdtPayloadList(document: documentState, payloads: payloads);
 
-    await _db.updateDocumentState(
-      documentState: documentState,
-      groupContextParts: await groupContext.asParts(),
-    );
+    if (saveToDb) {
+      await _db.updateDocumentState(
+        documentState: documentState,
+        groupContextParts: await groupContext.asParts(),
+      );
+    }
 
     logger.info('Applied crdt list');
   }
@@ -929,10 +961,12 @@ extension SyncModelOperations on SyncModel {
       ).writeToBuffer(),
     );
 
-    await _db.updateGroupContextDocumentState(
-      id: documentState.id,
-      parts: await groupContext.asParts(),
-    );
+    if (saveToDb) {
+      await _db.updateGroupContextDocumentState(
+        id: documentState.id,
+        parts: await groupContext.asParts(),
+      );
+    }
 
     await GroupApiClient.instance.sendFrame(
       groupId: documentState.id,
@@ -949,10 +983,12 @@ extension SyncModelOperations on SyncModel {
       ).writeToBuffer(),
     );
 
-    await _db.updateGroupContextDocumentState(
-      id: documentState.id,
-      parts: await groupContext.asParts(),
-    );
+    if (saveToDb) {
+      await _db.updateGroupContextDocumentState(
+        id: documentState.id,
+        parts: await groupContext.asParts(),
+      );
+    }
 
     await GroupApiClient.instance.sendFrame(
       groupId: documentState.id,
@@ -966,10 +1002,12 @@ extension SyncModelOperations on SyncModel {
       user: BUser(name: user.name, publicKey: user.keypair.rawPublicKey),
     );
 
-    await _db.updateGroupContextDocumentState(
-      id: documentState.id,
-      parts: await groupContext.asParts(),
-    );
+    if (saveToDb) {
+      await _db.updateGroupContextDocumentState(
+        id: documentState.id,
+        parts: await groupContext.asParts(),
+      );
+    }
 
     await GroupApiClient.instance.sendFrame(
       groupId: documentState.id,
@@ -1045,6 +1083,21 @@ extension SyncModelHelpers on SyncModel {
 
     logger.debug(
       'Document state AFTER applying CRDT: ID ${document.id} ${document.crdt.getBlocks()}',
+    );
+  }
+}
+
+extension SyncModelTest on SyncModel {
+  Future<void> testSetup({bool allowFullDocument = false}) async {
+    _queuesProcessListener.listen();
+
+    final hive = await Hive.openBox(documentState.id);
+    final hiveChatController = HiveChatController(hive);
+    chatManager = ChatManager(controller: hiveChatController);
+
+    await setState(
+      SyncModelStateMode.local,
+      allowFullDocument: allowFullDocument,
     );
   }
 }

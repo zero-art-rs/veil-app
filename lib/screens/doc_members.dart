@@ -10,8 +10,8 @@ import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart' as m;
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_member.dart';
+import 'package:veil/storage/models/external_account.dart';
 import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/ays_modal.dart';
@@ -24,7 +24,7 @@ const _invitedStatus = 1;
 const _inGroupStatus = 0;
 
 class MemberScreenModel {
-  final m.DocumentMember member;
+  final DocumentMember member;
   final bool isYou;
   final bool isOwner;
 
@@ -194,10 +194,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  Future<void> _removeMember(
-    BuildContext context,
-    m.DocumentMember user,
-  ) async {
+  Future<void> _removeMember(BuildContext context, DocumentMember user) async {
     await aysAsyncModal(
       context: context,
       title: 'Are you sure to remove ${user.account.name} from group?',

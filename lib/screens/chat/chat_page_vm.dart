@@ -28,11 +28,9 @@ class ChatPageViewModel {
       text: message,
     );
 
-    final json = jsonEncode(textMessage);
-
     try {
       await chatManager.addMessage(textMessage);
-      await syncModel.sendChatFrame(utf8.encode(json));
+      await syncModel.sendChatFrame(textMessage);
     } catch (err, st) {
       logger.error('Failed to send message', err, st);
 

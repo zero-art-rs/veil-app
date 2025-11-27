@@ -1,20 +1,52 @@
 import 'dart:convert';
 
+import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/api/group_api_client.dart';
+import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/src/rust/api/group_context.dart';
-import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
+import 'package:veil/storage/models/keypair.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
 
-class InviteManager {
-  final accountStorage = AccountSecureStorage.instance;
-  static final InviteManager instance = InviteManager._();
-  InviteManager._();
+class Account {
+  String name;
+  final String actorId;
+  final Keypair keypair;
 
-  Future<(BGroupContext, DocumentState)> join(String base64Invite) async {
+  Account({required this.name, required this.actorId, required this.keypair});
+
+  factory Account.withName(String name) {
+    final keypair = Keypair.generate();
+
+    return Account(
+      name: name,
+      actorId: hashPublicKey(pk: keypair.rawPublicKey),
+      keypair: keypair,
+    );
+  }
+
+  factory Account.fromJson(Map<String, dynamic> json) {
+    return Account(
+      name: json['name'],
+      actorId: json['actorId'],
+      keypair: Keypair.fromJson(json['keypair']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'name': name, 'actorId': actorId, 'keypair': keypair.toJson()};
+  }
+
+  Future<SyncModel> acceptInvite(
+    String base64Invite, {
+    LocalCrdtStorage? localCrdtStorage,
+    Talker? logger,
+    bool saveToDb = true,
+  }) async {
     final inviteBytes = base64Decode(base64Invite);
     final invite = Invite.fromBuffer(inviteBytes);
 
@@ -31,8 +63,7 @@ class InviteManager {
     }
 
     final inviteContext = BInviteContext(
-      identitySecretKey:
-          AccountSecureStorage.instance.account.keypair.rawPrivateKey,
+      identitySecretKey: keypair.rawPrivateKey,
       spkSecretKey: spkSecretKey,
       invite: inviteBytes,
     );
@@ -71,6 +102,13 @@ class InviteManager {
       await DB.instance.removeSpk(spkPublicKey);
     }
 
-    return (groupContext, document);
+    return SyncModel(
+      account: this,
+      documentState: document,
+      groupContext: groupContext,
+      saveToDb: saveToDb,
+      logger: logger,
+      localCrdtStorage: localCrdtStorage ?? DB.instance,
+    );
   }
 }

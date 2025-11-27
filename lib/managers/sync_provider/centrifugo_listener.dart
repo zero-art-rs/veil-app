@@ -1,15 +1,16 @@
 import 'dart:async';
 
 import 'package:eventflux/eventflux.dart';
-import 'package:veil/main.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 
-const _centrifugoWithoutUpdatesTimeout = 30;
+const _centrifugoWithoutUpdatesTimeout = 90;
 
 enum CentrifugoConnectionState { success, error }
 
 class CentrifugoListener {
   final _url = 'https://sse-veil.distributedlab.com';
   final _eventFlux = EventFlux.spawn();
+  final Talker logger;
   final dynamic Function(EventFluxData) _processCallback;
   StreamSubscription<dynamic>? _centrifugoListener;
   DateTime? _lastEventTime;
@@ -19,8 +20,10 @@ class CentrifugoListener {
   Stream<bool> get disconnectedEvent => _disconnectedEventController.stream;
   var _disconnected = false;
 
-  CentrifugoListener({required dynamic Function(EventFluxData) processCallback})
-    : _processCallback = processCallback;
+  CentrifugoListener({
+    required dynamic Function(EventFluxData) processCallback,
+    required this.logger,
+  }) : _processCallback = processCallback;
 
   void connect(
     String jwtToken, {
@@ -36,6 +39,7 @@ class CentrifugoListener {
 
         if (!connectionChecker.isClosed) {
           connectionChecker.add(isConnected);
+          connectionChecker.close();
         }
 
         logger.info('Centrifugo connection established');
