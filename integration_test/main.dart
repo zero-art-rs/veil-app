@@ -29,12 +29,12 @@ void main() {
     'Concurrent keyupdate via send crdt frame',
     timeout: Timeout(Duration(minutes: 10)),
     () async {
-      await Directory('integration_test/output').create(recursive: true);
+      final logger = Talker();
+      logger.info(Directory.current.path);
 
+      await Directory('integration_test/output').create(recursive: true);
       final ownerFile = File('integration_test/output/owner_1.log');
       final memberFile = File('integration_test/output/member_1.log');
-
-      final logger = Talker();
 
       final ownerLogger = Talker(
         history: FileTalkerHistory(TalkerSettings(), file: ownerFile),

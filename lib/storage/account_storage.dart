@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:veil/storage/app_storage.dart';
 import 'package:veil/storage/models/account.dart';
 
+
 class AccountSecureStorage {
   static final AccountSecureStorage instance = AccountSecureStorage._();
 
