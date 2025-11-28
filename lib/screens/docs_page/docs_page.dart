@@ -23,11 +23,15 @@ class DocsPage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) => AlertDialog(
         title: Text('Create a document'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            label: Text('Input document title'),
-          ),
+        content: Row(
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                label: Text('Input document title'),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -40,8 +44,8 @@ class DocsPage extends StatelessWidget {
                 await vm.createDoc(controller.text);
                 if (!context.mounted) return;
                 Navigator.pop(context);
-              } catch (err) {
-                logger.e('Failed to create document: $err');
+              } catch (err, st) {
+                logger.error('Failed to create document', err, st);
                 TopBanner.show(
                   context: context,
                   message: 'Failed to create document',
@@ -96,14 +100,14 @@ class DocsPage extends StatelessWidget {
                       'Are you sure to delete ${vm.syncModels[i].groupContext.retrieveGroupInfo().name}?',
                   callback: () async {
                     try {
-                      await vm.deleteDoc(vm.syncModels[i].document);
-                    } catch (err) {
+                      await vm.deleteDoc(vm.syncModels[i].documentState);
+                    } catch (err, st) {
                       if (!context.mounted) return;
                       TopBanner.show(
                         context: context,
                         message: 'Failed to delete document',
                       );
-                      logger.e('Failed to delete document: $err');
+                      logger.error('Failed to delete document', err, st);
                     }
                   },
                 ),
@@ -220,12 +224,12 @@ class _DocCard extends StatelessWidget {
                       child: Column(
                         children: [
                           if (syncModel.isLocal)
-                          AppLabel(
-                            text: 'Local',
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surface,
-                          ),
+                            AppLabel(
+                              text: 'Local',
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surface,
+                            ),
 
                           if (syncModel.corrupted)
                             AppLabel(

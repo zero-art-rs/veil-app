@@ -27,5 +27,23 @@ CREATE TABLE $documentsTable (
   created_at TEXT NOT NULL,
   group_context_parts TEXT NOT NULL,
   sequence_number INTEGER NOT NULL,
-  local_only INTEGER NOT NULL DEFAULT 0
+  is_local INTEGER NOT NULL DEFAULT 0
+)""";
+
+final createCRDTTable =
+    """
+CREATE TABLE $crdtTable (
+  id TEXT PRIMARY KEY,
+  content BLOB NOT NULL,
+  sequence_number INTEGER NOT NULL,
+)""";
+
+final createCrdtChangesTable =
+    """
+CREATE TABLE $crdtChangesTable (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL,
+  content BLOB NOT NULL,
+  create_at TEXT NOT NULL,
+  FOREIGN KEY (document_id) REFERENCES $documentsTable(id) ON DELETE CASCADE
 )""";

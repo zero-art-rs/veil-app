@@ -1,20 +1,20 @@
 import 'dart:typed_data';
 
-class SQLDocument {
+class SQLDocumentState {
   String id;
   Uint8List content;
   DateTime createdAt;
   String groupContextParts;
   int sequenceNumber;
-  int localOnly;
+  int isLocal;
 
-  SQLDocument({
+  SQLDocumentState({
     required this.id,
     required this.content,
     required this.groupContextParts,
     required this.sequenceNumber,
     required this.createdAt,
-    this.localOnly = 0,
+    this.isLocal = 0,
   });
 
   Map<String, Object?> toJson() {
@@ -24,18 +24,18 @@ class SQLDocument {
       'created_at': createdAt.toIso8601String(),
       'group_context_parts': groupContextParts,
       'sequence_number': sequenceNumber,
-      'local_only': localOnly,
+      'is_local': isLocal,
     };
   }
 
-  factory SQLDocument.fromJson(Map<String, Object?> json) {
-    return SQLDocument(
+  factory SQLDocumentState.fromJson(Map<String, Object?> json) {
+    return SQLDocumentState(
       id: json['id'] as String,
       content: json['content'] as Uint8List,
       createdAt: DateTime.parse(json['created_at'] as String),
       groupContextParts: json['group_context_parts'] as String,
       sequenceNumber: json['sequence_number'] as int,
-      localOnly: json['local_only'] as int,
+      isLocal: json['is_local'] as int,
     );
   }
 }

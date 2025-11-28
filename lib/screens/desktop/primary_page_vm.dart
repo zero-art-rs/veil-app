@@ -9,7 +9,8 @@ import 'package:veil/screens/account_page.dart';
 import 'package:veil/screens/editor_container/editor_container_page.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
+import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/widgets/banner.dart';
 
@@ -38,25 +39,32 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
       // remove listeners for removed sync models
       _syncModelListeners.keys
-          .where((key) => !_syncModels.map((e) => e.document.id).contains(key))
+          .where(
+            (key) => !_syncModels.map((e) => e.documentState.id).contains(key),
+          )
           .forEach((key) {
             _syncModelListeners[key]?.forEach((e) => e.cancel());
           });
 
       // add listeners for new sync models
       for (final syncModel in _syncModels) {
-        if (_syncModelListeners[syncModel.document.id] == null) {
+        if (_syncModelListeners[syncModel.documentState.id] == null) {
           final groupUpdatesListener = syncModel.groupInfoUpdateEvent.listen(
-            (event) => notifyListeners(),
+            (_) => notifyListeners(),
           );
 
           final statusListener = syncModel.corruptedEvent.listen(
-            (e) => notifyListeners(),
+            (_) => notifyListeners(),
           );
 
-          _syncModelListeners[syncModel.document.id] = [
+          final synchronizingListener = syncModel.isProcessing.listen(
+            (_) => notifyListeners(),
+          );
+
+          _syncModelListeners[syncModel.documentState.id] = [
             groupUpdatesListener,
             statusListener,
+            synchronizingListener,
           ];
         }
       }
@@ -90,20 +98,27 @@ class PrimaryPageViewModel extends ChangeNotifier {
         owner: AccountSecureStorage.instance.account,
       );
 
-      final document = Document(
+      final document = DocumentState(
         id: docID,
         createdAt: DateTime.now(),
-        automergeDoc: content,
+        crdt: content,
         groupContextParts: await groupContext.asParts(),
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-      await _syncProvider.add(document, groupContext, insertToDb: true);
+      await _syncProvider.add(
+        SyncModel(
+          documentState: document,
+          groupContext: groupContext,
+          localCrdtStorage: DB.instance,
+        ),
+        insertToDb: true,
+      );
       textEditingController.clear();
 
       notifyListeners();
-    } catch (err) {
-      logger.e('Failed to create document: $err');
+    } catch (err, st) {
+      logger.error('Failed to create document', err, st);
       if (!context.mounted) return;
       TopBanner.show(
         context: context,
@@ -121,12 +136,12 @@ class PrimaryPageViewModel extends ChangeNotifier {
   Future<void> removeDocument(BuildContext context, String id) async {
     try {
       final index = _syncModels.indexWhere(
-        (element) => element.document.id == id,
+        (element) => element.documentState.id == id,
       );
       if (index == -1) throw FormatException('Document not found');
 
       await _syncProvider.remove(id);
-      _syncModels.removeWhere((element) => element.document.id == id);
+      _syncModels.removeWhere((element) => element.documentState.id == id);
 
       if (_syncModels.isEmpty) {
         setSelectedIndex(0);
@@ -140,8 +155,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
       }
 
       notifyListeners();
-    } catch (err) {
-      logger.e('Failed to remove document: $err');
+    } catch (err, st) {
+      logger.error('Failed to remove document', err, st);
       if (!context.mounted) return;
 
       TopBanner.show(

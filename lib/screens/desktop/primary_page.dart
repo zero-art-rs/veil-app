@@ -36,6 +36,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
     BuildContext context,
     PrimaryPageViewModel vm,
     GroupInfo groupInfo,
+    String id,
   ) {
     showDialog(
       context: context,
@@ -66,9 +67,9 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   child: FilledButton(
                     onPressed: () async {
                       try {
-                        await vm.removeDocument(context, groupInfo.id);
-                      } catch (err) {
-                        logger.e('Failed to remove document: $err');
+                        await vm.removeDocument(context, id);
+                      } catch (err, st) {
+                        logger.error('Failed to remove document', err, st);
 
                         if (!context.mounted) return;
                         TopBanner.show(
@@ -183,7 +184,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   label: doc.$2.groupContext.retrieveGroupInfo().name,
                   onTap: () => vm.setSelectedPage(
                     EditorContainerPage(
-                      key: doc.$2.document.key,
+                      key: doc.$2.documentState.key,
                       syncModel: doc.$2,
                     ),
                   ),
@@ -203,6 +204,19 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
 
                       if (doc.$2.isLocal) AppLabel(text: 'Local'),
 
+                      if (doc.$2.isSyncing)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+
                       PopupMenuButton(
                         icon: Icon(Icons.more_vert_rounded),
                         itemBuilder: (context) {
@@ -217,6 +231,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                                 context,
                                 vm,
                                 doc.$2.groupContext.retrieveGroupInfo(),
+                                doc.$2.documentState.id,
                               ),
                             ),
                           ];

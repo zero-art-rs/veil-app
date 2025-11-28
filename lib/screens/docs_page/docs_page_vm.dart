@@ -8,7 +8,8 @@ import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
+import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
 
 class DocsPageViewModel extends ChangeNotifier {
@@ -25,14 +26,16 @@ class DocsPageViewModel extends ChangeNotifier {
 
       // remove listeners for removed sync models
       _syncModelListeners.keys
-          .where((key) => !syncModels.map((e) => e.document.id).contains(key))
+          .where(
+            (key) => !syncModels.map((e) => e.documentState.id).contains(key),
+          )
           .forEach((key) {
             _syncModelListeners[key]?.forEach((e) => e.cancel());
           });
 
       // add listeners for new sync models
       for (final syncModel in syncModels) {
-        if (_syncModelListeners[syncModel.document.id] == null) {
+        if (_syncModelListeners[syncModel.documentState.id] == null) {
           final groupUpdatesListener = syncModel.groupInfoUpdateEvent.listen(
             (event) => notifyListeners(),
           );
@@ -41,9 +44,14 @@ class DocsPageViewModel extends ChangeNotifier {
             (e) => notifyListeners(),
           );
 
-          _syncModelListeners[syncModel.document.id] = [
+          final synchronizingListener = syncModel.isProcessing.listen(
+            (_) => notifyListeners(),
+          );
+
+          _syncModelListeners[syncModel.documentState.id] = [
             groupUpdatesListener,
             statusListener,
+            synchronizingListener,
           ];
         }
       }
@@ -66,18 +74,25 @@ class DocsPageViewModel extends ChangeNotifier {
       owner: AccountSecureStorage.instance.account,
     );
 
-    final document = Document(
+    final document = DocumentState(
       id: docID,
       createdAt: DateTime.now(),
-      automergeDoc: content,
+      crdt: content,
       groupContextParts: await groupContext.asParts(),
     );
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-    await _syncProvider.add(document, groupContext, insertToDb: true);
+    await _syncProvider.add(
+      SyncModel(
+        documentState: document,
+        groupContext: groupContext,
+        localCrdtStorage: DB.instance,
+      ),
+      insertToDb: true,
+    );
   }
 
-  Future<void> deleteDoc(Document doc) async {
+  Future<void> deleteDoc(DocumentState doc) async {
     await _syncProvider.remove(doc.id);
     notifyListeners();
   }
@@ -86,6 +101,6 @@ class DocsPageViewModel extends ChangeNotifier {
   void dispose() {
     super.dispose();
     _docsListener.cancel();
-    logger.i('Docs page disposed');
+    logger.info('Docs page disposed');
   }
 }

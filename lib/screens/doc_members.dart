@@ -10,8 +10,8 @@ import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart' as m;
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_member.dart';
+import 'package:veil/storage/models/external_account.dart';
 import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/ays_modal.dart';
@@ -24,7 +24,7 @@ const _invitedStatus = 1;
 const _inGroupStatus = 0;
 
 class MemberScreenModel {
-  final m.DocumentMember member;
+  final DocumentMember member;
   final bool isYou;
   final bool isOwner;
 
@@ -194,17 +194,14 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  Future<void> _removeMember(
-    BuildContext context,
-    m.DocumentMember user,
-  ) async {
+  Future<void> _removeMember(BuildContext context, DocumentMember user) async {
     await aysAsyncModal(
       context: context,
       title: 'Are you sure to remove ${user.account.name} from group?',
       content: 'This action cannot be undone.',
       callback: () async {
         try {
-          logger.i('Removing member in group context..');
+          logger.info('Removing member in group context..');
 
           await widget.syncModel.removeMember(actorId: user.account.actorId);
 
@@ -213,8 +210,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
               (e) => e.member.account.actorId == user.account.actorId,
             );
           });
-        } catch (e) {
-          logger.e('Failed to remove member: $e');
+        } catch (e, st) {
+          logger.error('Failed to remove member', e, st);
           if (!context.mounted) return;
           TopBanner.show(
             context: context,
@@ -237,9 +234,9 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
           await widget.syncModel.updateUserName(
             name: widget.updateUserNameTextController.text,
           );
-        } catch (e) {
+        } catch (e, st) {
           if (!mounted) return;
-          logger.e('Failed to update name: $e');
+          logger.error('Failed to update name', e, st);
           TopBanner.show(
             context: context,
             message: 'Failed to update name',
@@ -296,8 +293,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     final work = Future<String>(() async {
       try {
         return await widget.syncModel.createUnidentifiedMemberInviteLink();
-      } catch (e) {
-        logger.e('Failed to create unidentified invite link: $e');
+      } catch (e, st) {
+        logger.error('Failed to create unidentified invite link', e, st);
         rethrow;
       }
     });
@@ -311,8 +308,8 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         return await widget.syncModel.createIdentifiedMemberLink(
           contact: contact,
         );
-      } catch (e) {
-        logger.e('Failed to create indentified invite link: $e');
+      } catch (e, st) {
+        logger.error('Failed to create indentified invite link', e, st);
         rethrow;
       }
     });

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:veil/storage/app_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/account.dart';
 
 class AccountSecureStorage {
   static final AccountSecureStorage instance = AccountSecureStorage._();
@@ -15,9 +15,7 @@ class AccountSecureStorage {
 
   Account get account {
     if (_account == null) {
-      throw StateError(
-        'Account not initialized. Call init() first.',
-      );
+      throw StateError('Account not initialized. Call init() first.');
     }
     return _account!;
   }
@@ -56,5 +54,11 @@ class AccountSecureStorage {
     final newAccount = Account.withName('Account');
     await setAccount(newAccount);
     return newAccount;
+  }
+}
+
+extension AccountStorageTest on AccountSecureStorage {
+  void testInit() {
+    _account = Account.withName('Account');
   }
 }

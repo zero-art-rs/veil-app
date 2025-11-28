@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:veil/src/rust/api/group_context.dart' as bridge;
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/account.dart';
 
 class GroupContextFactory {
   /// Returns group context and frame

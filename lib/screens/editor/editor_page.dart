@@ -97,7 +97,7 @@ class _EditorPageView extends StatelessWidget {
                 ],
                 selected: <EditorModes>{vm.selectedMode},
                 onSelectionChanged: (newSelection) async {
-                  await vm.selectMode(newSelection.first);
+                  await vm.selectMode(context, newSelection.first);
                 },
               ),
             ),
@@ -151,7 +151,7 @@ class _EditorPageView extends StatelessWidget {
         ],
       ),
       body: CallbackShortcuts(
-        bindings: vm.saveActionWidget(),
+        bindings: vm.saveActionWidget(context),
         child: Focus(
           autofocus: true,
           child: Stack(

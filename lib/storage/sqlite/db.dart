@@ -3,14 +3,18 @@ import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:uuid/v4.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sharing/spk_provider.dart';
+import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
 import 'package:veil/src/rust/api/automerge.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
+import 'package:veil/storage/models/external_account.dart';
 import 'package:veil/storage/sqlite/models/account.dart';
 import 'package:veil/storage/sqlite/consts.dart';
+import 'package:veil/storage/sqlite/models/crdt_change.dart';
 import 'package:veil/storage/sqlite/models/document.dart';
 import 'package:veil/storage/sqlite/models/spk.dart';
 import 'package:veil/storage/sqlite/schemes.dart';
@@ -19,24 +23,18 @@ import 'package:veil/utils/platform.dart';
 
 const _dbName = 'veil.db';
 
-class DB {
+class DB extends LocalCrdtStorage {
   static final instance = DB._();
   late Database _connection;
   Transaction? _tx;
 
   DB._();
 
-  Future<void> open({String? inMemoryPath}) async {
-    if (PlatformUtils.isWindows || PlatformUtils.isLinux) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-    }
-
-    final dir = await getApplicationSupportDirectory();
-    logger.i('Database path: ${dir.path}/$_dbName');
+  Future<void> openTest({required String inMemoryPath}) async {
+    databaseFactory = databaseFactoryFfi;
 
     _connection = await openDatabase(
-      inMemoryPath ?? '${dir.path}/$_dbName',
+      '$inMemoryPath/$_dbName',
       version: 1,
       readOnly: false,
       onConfigure: (db) {
@@ -46,6 +44,40 @@ class DB {
         await db.execute(createContactsTable);
         await db.execute(createSpksTable);
         await db.execute(createDocumentsTable);
+        await db.execute(createCrdtChangesTable);
+
+        final ownerAccount = SQLAccount(
+          actorId: 'owner',
+          publicKey: Uint8List(0),
+          name: 'owner',
+        );
+
+        await db.insert(accountsTable, ownerAccount.toJson());
+      },
+    );
+  }
+
+  Future<void> open() async {
+    if (PlatformUtils.isWindows || PlatformUtils.isLinux) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+
+    final dir = await getApplicationSupportDirectory();
+    logger.info('Database path: ${dir.path}/$_dbName');
+
+    _connection = await openDatabase(
+      '${dir.path}/$_dbName',
+      version: 1,
+      readOnly: false,
+      onConfigure: (db) {
+        db.execute('PRAGMA foreign_keys = ON');
+      },
+      onCreate: (db, version) async {
+        await db.execute(createContactsTable);
+        await db.execute(createSpksTable);
+        await db.execute(createDocumentsTable);
+        await db.execute(createCrdtChangesTable);
 
         final ownerAccount = SQLAccount(
           actorId: 'owner',
@@ -300,26 +332,26 @@ class DB {
     return contacts;
   }
 
-  Future<List<Document>> getDocumentList() async {
+  Future<List<DocumentState>> getDocumentStateList() async {
     final rawDocuments = await _connection.rawQuery(
       "SELECT * FROM documents ORDER BY created_at ASC",
     );
 
     final sqlDocuments = rawDocuments
-        .map((e) => SQLDocument.fromJson(e))
+        .map((e) => SQLDocumentState.fromJson(e))
         .toList();
 
     final documents = sqlDocuments
         .map(
-          (doc) => Document(
+          (doc) => DocumentState(
             id: doc.id,
-            automergeDoc: BAutoCommit.fromBytes(bytes: doc.content),
+            crdt: BAutoCommit.fromBytes(bytes: doc.content),
             createdAt: doc.createdAt,
             groupContextParts: GroupContextParts.fromJsonString(
               doc.groupContextParts,
             ),
             sequenceNumber: doc.sequenceNumber,
-            localOnly: doc.localOnly == 1,
+            isLocal: doc.isLocal == 1,
           ),
         )
         .toList();
@@ -327,7 +359,7 @@ class DB {
     return documents;
   }
 
-  Future<Document?> getDocumentById(String id) async {
+  Future<DocumentState?> getDocumentById(String id) async {
     final rawDocument = await _connection.query(
       documentsTable,
       where: 'id = ?',
@@ -337,16 +369,16 @@ class DB {
 
     if (rawDocument.isEmpty) return null;
 
-    final doc = SQLDocument.fromJson(rawDocument.first);
+    final doc = SQLDocumentState.fromJson(rawDocument.first);
 
-    return Document(
+    return DocumentState(
       id: doc.id,
-      automergeDoc: BAutoCommit.fromBytes(bytes: doc.content),
+      crdt: BAutoCommit.fromBytes(bytes: doc.content),
       createdAt: doc.createdAt,
       groupContextParts: GroupContextParts.fromJsonString(
         doc.groupContextParts,
       ),
-      localOnly: doc.localOnly == 1,
+      isLocal: doc.isLocal == 1,
       sequenceNumber: doc.sequenceNumber,
     );
   }
@@ -360,14 +392,16 @@ class DB {
     );
   }
 
-  Future<void> insertDocument({required Document document}) async {
-    final sqlDoc = SQLDocument(
-      id: document.id,
-      content: document.automergeDoc.save(),
-      createdAt: document.createdAt,
-      groupContextParts: document.groupContextParts.toJsonString(),
-      sequenceNumber: document.sequenceNumber,
-      localOnly: document.localOnly ? 1 : 0,
+  Future<void> insertDocumentState({
+    required DocumentState documentState,
+  }) async {
+    final sqlDoc = SQLDocumentState(
+      id: documentState.id,
+      content: documentState.crdt.save(),
+      createdAt: documentState.createdAt,
+      groupContextParts: documentState.groupContextParts.toJsonString(),
+      sequenceNumber: documentState.sequenceNumber,
+      isLocal: documentState.isLocal ? 1 : 0,
     );
 
     await _insert(
@@ -377,23 +411,88 @@ class DB {
     );
   }
 
-  Future<void> updateDocument({
-    required Document doc,
-    required GroupContextParts parts,
+  Future<void> updateDocumentState({
+    required DocumentState documentState,
+    required GroupContextParts groupContextParts,
   }) async {
     await _update(
       documentsTable,
       {
-        'content': doc.automergeDoc.save(),
-        'group_context_parts': parts.toJsonString(),
-        'sequence_number': doc.sequenceNumber,
+        'content': documentState.crdt.save(),
+        'group_context_parts': groupContextParts.toJsonString(),
+        'sequence_number': documentState.sequenceNumber,
       },
       where: 'id = ?',
-      whereArgs: [doc.id],
+      whereArgs: [documentState.id],
     );
   }
 
-  Future<void> deleteDocument(String id) async {
+  Future<void> updateCrdtDocumentState({
+    required DocumentState documentState,
+  }) async {
+    await _update(
+      documentsTable,
+      {
+        'content': documentState.crdt.save(),
+        'sequence_number': documentState.sequenceNumber,
+      },
+      where: 'id = ?',
+      whereArgs: [documentState.id],
+    );
+  }
+
+  Future<void> updateGroupContextDocumentState({
+    required String id,
+    required GroupContextParts parts,
+  }) async {
+    await _update(
+      documentsTable,
+      {'group_context_parts': parts.toJsonString()},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  @override
+  Future<void> insertLocalCrdtChange({
+    required String documentId,
+    required Uint8List data,
+  }) async {
+    await _insert(
+      crdtChangesTable,
+      CrdtChange.fromContent(documentId: documentId, content: data).toJson(),
+    );
+  }
+
+  @override
+  Future<List<CrdtChange>> getLocalCrdtChanges({
+    required String documentId,
+  }) async {
+    final rawChanges = await _query(
+      crdtChangesTable,
+      where: 'document_id = ?',
+      whereArgs: [documentId],
+      orderBy: 'create_at ASC',
+    );
+
+    return rawChanges.map((e) => CrdtChange.fromMap(e)).toList();
+  }
+
+  @override
+  Future<void> deleteLocalCrdtChanges({
+    required String documentId,
+    required List<String> ids,
+  }) async {
+    final idsPlaceholders = List.filled(ids.length, '?').join(', ');
+
+    await _delete(
+      crdtChangesTable,
+      where: 'document_id = ? AND id IN ($idsPlaceholders)',
+      whereArgs: [documentId, ...ids],
+    );
+  }
+
+  Future<void> deleteDocumentState(String id) async {
     await _delete(documentsTable, where: "id = ?", whereArgs: [id]);
   }
 }

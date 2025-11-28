@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
@@ -35,7 +34,6 @@ class EditorPageVm extends ChangeNotifier {
   StreamSubscription? _crdtUpdatesSubscription;
   StreamSubscription? _groupInfoUpdatesEventSubscription;
   StreamSubscription? _corruptedEventSubscription;
-  Timer? _waitForJoinGroupTicker;
 
   EditorPageVm(this.syncModel);
 
@@ -83,7 +81,6 @@ class EditorPageVm extends ChangeNotifier {
       case EditorDocumentStatus.local:
         _localInit();
       case EditorDocumentStatus.network:
-        await _joinGroupIfNeeded(context);
         await _networkInit();
       case EditorDocumentStatus.corrupted:
         _setCorrupted();
@@ -95,8 +92,8 @@ class EditorPageVm extends ChangeNotifier {
   Future<void> updateGroupName(BuildContext context, String groupName) async {
     try {
       await syncModel.updateGroupName(name: groupNameController.text);
-    } catch (e) {
-      logger.e('Failed to update group name: $e');
+    } catch (e, st) {
+      logger.error('Failed to update group name', e, st);
       if (!context.mounted) return;
       TopBanner.show(
         context: context,
@@ -110,7 +107,7 @@ class EditorPageVm extends ChangeNotifier {
     allowWriteEvents = false;
     documentStatus = EditorDocumentStatus.corrupted;
     mdEditor.text = EditorAutomergeUtils.instance.toText(
-      syncModel.document.automergeDoc,
+      syncModel.documentState.crdt,
     );
 
     notifyListeners();
@@ -150,50 +147,20 @@ class EditorPageVm extends ChangeNotifier {
     );
   }
 
-  Future<void> _joinGroupIfNeeded(BuildContext context) async {
-    if (!syncModel.isUserInGroup()) {
-      allowWriteEvents = false;
-      try {
-        await syncModel.sendJoinGroupFrame(
-          AccountSecureStorage.instance.account,
-        );
-        _startWaitForJoinGroupTicker();
-      } catch (e) {
-        logger.e('Failed to join group: $e');
-        if (!context.mounted) return;
-        TopBanner.show(
-          context: context,
-          message: 'Failed to join group',
-          kind: TopBannerCases.error,
-        );
-      }
-    }
-  }
-
-  void _startWaitForJoinGroupTicker() {
-    _waitForJoinGroupTicker = Timer.periodic(Duration(seconds: 1), (_) {
-      if (syncModel.isUserInGroup()) {
-        _waitForJoinGroupTicker?.cancel();
-        allowWriteEvents = true;
-        notifyListeners();
-      }
-    });
-  }
-
   void _localInit() {
     mdEditor.text = EditorAutomergeUtils.instance.toText(
-      syncModel.document.automergeDoc,
+      syncModel.documentState.crdt,
     );
     notifyListeners();
   }
 
   Future<void> _networkInit() async {
-    syncModel.document.automergeDoc.setActorId(
+    syncModel.documentState.crdt.setActorId(
       uuid: AccountSecureStorage.instance.account.actorId,
     );
 
     mdEditor.text = EditorAutomergeUtils.instance.toText(
-      syncModel.document.automergeDoc,
+      syncModel.documentState.crdt,
     );
 
     _documentContentBeforeEditing = sha256Hash(mdEditor.text);
@@ -202,7 +169,7 @@ class EditorPageVm extends ChangeNotifier {
   void _handleRemoveMember(BuildContext context) {
     allowWriteEvents = false;
     notifyListeners();
-    logger.i('User removed from group, adding handling on ui');
+    logger.info('User removed from group, adding handling on ui');
     TopBanner.show(
       context: context,
       message: 'You have been removed from the group',
@@ -210,10 +177,12 @@ class EditorPageVm extends ChangeNotifier {
     );
   }
 
-  Map<ShortcutActivator, void Function()> saveActionWidget() {
+  Map<ShortcutActivator, void Function()> saveActionWidget(
+    BuildContext context,
+  ) {
     final handleOnSaveAction = () async {
       if (selectedMode == EditorModes.edit) {
-        await selectMode(EditorModes.view);
+        await selectMode(context, EditorModes.view);
       }
     };
 
@@ -229,17 +198,29 @@ class EditorPageVm extends ChangeNotifier {
     return map;
   }
 
-  Future<void> selectMode(EditorModes mode) async {
+  Future<void> selectMode(BuildContext context, EditorModes mode) async {
     final runSync =
         selectedMode == EditorModes.edit && mode == EditorModes.view;
 
     if (mode == EditorModes.edit) {
-      logger.d('Bufferizing frames trigger on ui');
-      syncModel.bufferizeFrames();
+      logger.debug('Bufferizing frames trigger on ui');
+      await syncModel.selectMode(SyncModelMode.write);
     }
 
     if (runSync) {
-      await syncLocalAndNetworkState();
+      try {
+        await syncLocalAndNetworkState();
+      } catch (e, st) {
+        logger.error('Failed to sync local and network state', e, st);
+
+        if (!context.mounted) return;
+
+        TopBanner.show(
+          context: context,
+          message: 'Failed to sync local and network state',
+          kind: TopBannerCases.error,
+        );
+      }
     }
 
     selectedMode = mode;
@@ -255,6 +236,7 @@ class EditorPageVm extends ChangeNotifier {
       await syncModel.sendCrdtFrame(mdEditor.text);
     }
 
+    await syncModel.selectMode(SyncModelMode.read);
     await syncModel.applyBufferedFrames();
   }
 

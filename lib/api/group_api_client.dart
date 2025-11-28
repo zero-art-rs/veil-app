@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -29,11 +30,13 @@ class GroupApiClient {
   }) async {
     final url = Uri.parse('$baseUrl/v1/group/$groupId/frames');
 
-    final response = await _http.post(
-      url,
-      headers: {'Content-Type': 'application/protobuf'},
-      body: frame,
-    );
+    final response = await _http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/protobuf'},
+          body: frame,
+        )
+        .timeout(Duration(seconds: 5));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
@@ -78,7 +81,7 @@ class GroupApiClient {
     final response = await _http.get(url);
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw HttpException(
         'Failed to get challenge: ${response.statusCode} ${response.body}',
       );
     }

@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:rxdart/subjects.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/external_account.dart';
 import 'package:veil/storage/sqlite/db.dart';
 
 class Contact {
