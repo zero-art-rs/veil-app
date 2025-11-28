@@ -19,6 +19,7 @@ import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sync_provider/buffer.dart';
 import 'package:veil/managers/queues_listener.dart';
+import 'package:veil/managers/sync_provider/events.dart';
 import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
 import 'package:veil/managers/sync_provider/sync_model_errors.dart';
 import 'package:veil/protos/zero_art.pb.dart';
@@ -83,22 +84,12 @@ class SyncModel {
   SyncModelMode _mode = SyncModelMode.read;
 
   /// Handle state in UI with
-  get isLocal => documentState.isLocal;
+  get removedFromGroup => documentState.isLocal;
   bool corrupted = false;
   bool isSyncing = false;
 
-  final _corrupedEvent = StreamController<bool>.broadcast();
-  final _groupInfoUpdatesEvent = StreamController<bool>.broadcast();
-  final _crdtUpdatesEvent = StreamController<BAutoCommit>.broadcast();
-  final _removedFromGroupEvent = StreamController<bool>.broadcast();
-  final _synchronizingEvent = StreamController<bool>.broadcast();
-
-  Stream<bool> get synchronizingEvent => _synchronizingEvent.stream;
-  Stream<bool> get corruptedEvent => _corrupedEvent.stream;
-  Stream<bool> get groupInfoUpdateEvent => _groupInfoUpdatesEvent.stream;
-  Stream<BAutoCommit> get crdtUpdatesEvent => _crdtUpdatesEvent.stream;
-  Stream<bool> get removedFromGroupEvent => _removedFromGroupEvent.stream;
-  Stream<bool> get isProcessing => _queuesProcessListener.isProcessing;
+  final _eventController = StreamController<SyncModelEvent>.broadcast();
+  Stream<SyncModelEvent> get eventStream => _eventController.stream;
 
   /// Marker to track detection of group info changes for emitting `change group info` event
   String _previousGroupInfoHash = '';
@@ -204,10 +195,8 @@ extension SyncModelState on SyncModel {
 
     // Closing state broadcast streams
     if (disableStateBroadcast) {
-      logger.debug('Closing state broadcast streams..');
-      await _removedFromGroupEvent.close();
-      await _groupInfoUpdatesEvent.close();
-      await _crdtUpdatesEvent.close();
+      logger.debug('Closing state broadcast stream..');
+      await _eventController.close();
     }
 
     logger.debug('Sync provider disposed');
@@ -236,8 +225,8 @@ extension SyncModelState on SyncModel {
         case SyncModelStateMode.local:
           await _setupLocal();
         case SyncModelStateMode.network:
-          _emitIsSyncingEvent(true);
           try {
+            _emitIsSyncingEvent(true);
             await _setupNetwork(allowFullDocument: allowFullDocument);
           } on ClientException {
             await _setupLocal();
@@ -471,10 +460,8 @@ extension SyncModelProcessOperations on SyncModel {
             .convert(groupContext.groupInfo())
             .toString();
 
-        if (currentGroupInfoHash != _previousGroupInfoHash &&
-            !_groupInfoUpdatesEvent.isClosed) {
-          logger.info('Group info changed, sending update..');
-          _emitGroupInfoUpdatesEvent();
+        if (currentGroupInfoHash != _previousGroupInfoHash) {
+          _emitGroupInfoUpdatesEvent(groupContext.retrieveGroupInfo());
         }
 
         if (_mode == SyncModelMode.write) {
@@ -488,7 +475,7 @@ extension SyncModelProcessOperations on SyncModel {
           snapshot.addAll(crdtList);
           await applyCrdtListOperation(snapshot);
           await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-          _emitCrdtUpdatesEvent();
+          _emitCrdtUpdatesEvent(documentState.crdt);
         }
       });
     } on QueueCancelledException {
@@ -1021,35 +1008,36 @@ extension SyncModelOperations on SyncModel {
 }
 
 extension SyncModelHelpers on SyncModel {
-  void _emitIsSyncingEvent(bool isSyncing) {
-    if (!_synchronizingEvent.isClosed) {
-      this.isSyncing = isSyncing;
-      _synchronizingEvent.add(isSyncing);
+  void _emitCorruptedEvent() {
+    if (!_eventController.isClosed) {
+      corrupted = true;
+      _eventController.add(SyncModelCorruptedEvent());
     }
   }
 
-  void _emitCorruptedEvent() {
-    if (!_corrupedEvent.isClosed) {
-      corrupted = true;
-      _corrupedEvent.add(corrupted);
+  void _emitIsSyncingEvent(bool isSyncing) {
+    if (!_eventController.isClosed) {
+      this.isSyncing = isSyncing;
+      _eventController.add(SyncModelSyncingEvent(isSyncing));
     }
   }
 
   void _emitRemovedFromGroupEvent() {
-    if (!_removedFromGroupEvent.isClosed) {
-      _removedFromGroupEvent.add(true);
+    if (!_eventController.isClosed) {
+      _eventController.add(SyncModelRemovedFromGroupEvent());
     }
   }
 
-  void _emitCrdtUpdatesEvent() {
-    if (!_crdtUpdatesEvent.isClosed) {
-      _crdtUpdatesEvent.add(documentState.crdt);
+  void _emitCrdtUpdatesEvent(BAutoCommit crdt) {
+    if (!_eventController.isClosed) {
+      _eventController.add(SyncModelCrdtEvent(crdt));
     }
   }
 
-  void _emitGroupInfoUpdatesEvent() {
-    if (!_groupInfoUpdatesEvent.isClosed) {
-      _groupInfoUpdatesEvent.add(true);
+  void _emitGroupInfoUpdatesEvent(GroupInfo groupInfo) {
+    if (!_eventController.isClosed) {
+      logger.info('Group info changed, sending update..');
+      _eventController.add(SyncModelGroupInfoEvent(groupInfo));
     }
   }
 
@@ -1081,7 +1069,7 @@ extension SyncModelHelpers on SyncModel {
     }
 
     if (payloads.isNotEmpty) {
-      _emitCrdtUpdatesEvent();
+      _emitCrdtUpdatesEvent(document.crdt);
     }
 
     logger.debug(

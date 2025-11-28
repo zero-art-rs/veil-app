@@ -265,7 +265,7 @@ class _MyAppState extends State<MyApp> {
             child: DesktopPrimaryPage(),
           ),
           ChangeNotifierProvider(
-            create: (_) => DocsPageViewModel()..sink(),
+            create: (_) => DocsPageViewModel()..init(),
             child: DocsPage(),
           ),
         ],

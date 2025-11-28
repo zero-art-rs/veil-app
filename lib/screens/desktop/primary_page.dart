@@ -202,7 +202,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                           ).colorScheme.onErrorContainer,
                         ),
 
-                      if (doc.$2.isLocal) AppLabel(text: 'Local'),
+                      if (doc.$2.removedFromGroup) AppLabel(text: 'Local'),
 
                       if (doc.$2.isSyncing)
                         Padding(

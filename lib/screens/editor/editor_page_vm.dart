@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_2_pdf/markdown_2_pdf.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:queue/queue.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
+import 'package:veil/managers/sync_provider/events.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/utils/editor_automerge.dart';
@@ -19,6 +21,7 @@ enum EditorModes { edit, view }
 enum EditorDocumentStatus { local, network, corrupted }
 
 class EditorPageVm extends ChangeNotifier {
+  final _eventQueue = Queue();
   final SyncModel syncModel;
   final mdEditor = TextEditingController();
 
@@ -29,47 +32,36 @@ class EditorPageVm extends ChangeNotifier {
   EditorDocumentStatus documentStatus = EditorDocumentStatus.network;
 
   final groupNameController = TextEditingController();
-  StreamSubscription? _isProcessingSubscription;
-  StreamSubscription? _removeFromGroupSubscription;
-  StreamSubscription? _crdtUpdatesSubscription;
-  StreamSubscription? _groupInfoUpdatesEventSubscription;
-  StreamSubscription? _corruptedEventSubscription;
+  StreamSubscription? _eventListener;
 
   EditorPageVm(this.syncModel);
 
   void init(BuildContext context) async {
-    allowWriteEvents = !syncModel.isLocal;
+    allowWriteEvents = !syncModel.removedFromGroup;
 
     groupNameController.text = syncModel.groupContext.retrieveGroupInfo().name;
 
-    _corruptedEventSubscription = syncModel.corruptedEvent.listen((e) {
-      _setCorrupted();
+    _eventListener = syncModel.eventStream.listen((e) {
+      _eventQueue.add(() async {
+        switch (e) {
+          case SyncModelCorruptedEvent():
+            _setCorrupted();
+          case SyncModelSyncingEvent():
+            isSinking = e.processing;
+          case SyncModelGroupInfoEvent():
+            groupNameController.text = e.groupInfo.name;
+          case SyncModelRemovedFromGroupEvent():
+            _handleRemoveMember(context);
+          case SyncModelCrdtEvent():
+            mdEditor.text = EditorAutomergeUtils.instance.toText(e.crdt);
+            _documentContentBeforeEditing = sha256Hash(mdEditor.text);
+        }
+
+        notifyListeners();
+      });
     });
 
-    _groupInfoUpdatesEventSubscription = syncModel.groupInfoUpdateEvent.listen((
-      e,
-    ) {
-      groupNameController.text = syncModel.groupContext
-          .retrieveGroupInfo()
-          .name;
-    });
-
-    _isProcessingSubscription = syncModel.isProcessing.listen((e) {
-      isSinking = e;
-      notifyListeners();
-    });
-
-    _removeFromGroupSubscription = syncModel.removedFromGroupEvent.listen((_) {
-      if (context.mounted) _handleRemoveMember(context);
-    });
-
-    _crdtUpdatesSubscription = syncModel.crdtUpdatesEvent.listen((e) {
-      mdEditor.text = EditorAutomergeUtils.instance.toText(e);
-      _documentContentBeforeEditing = sha256Hash(mdEditor.text);
-      notifyListeners();
-    });
-
-    if (syncModel.isLocal) {
+    if (syncModel.removedFromGroup) {
       documentStatus = EditorDocumentStatus.local;
     }
 
@@ -109,8 +101,6 @@ class EditorPageVm extends ChangeNotifier {
     mdEditor.text = EditorAutomergeUtils.instance.toText(
       syncModel.documentState.crdt,
     );
-
-    notifyListeners();
   }
 
   Future<void> exportPDF(BuildContext context) async {
@@ -151,7 +141,6 @@ class EditorPageVm extends ChangeNotifier {
     mdEditor.text = EditorAutomergeUtils.instance.toText(
       syncModel.documentState.crdt,
     );
-    notifyListeners();
   }
 
   Future<void> _networkInit() async {
@@ -168,8 +157,6 @@ class EditorPageVm extends ChangeNotifier {
 
   void _handleRemoveMember(BuildContext context) {
     allowWriteEvents = false;
-    notifyListeners();
-    logger.info('User removed from group, adding handling on ui');
     TopBanner.show(
       context: context,
       message: 'You have been removed from the group',
@@ -251,11 +238,7 @@ class EditorPageVm extends ChangeNotifier {
   @override
   void dispose() {
     syncModel.applyBufferedFrames();
-    _corruptedEventSubscription?.cancel();
-    _isProcessingSubscription?.cancel();
-    _crdtUpdatesSubscription?.cancel();
-    _removeFromGroupSubscription?.cancel();
-    _groupInfoUpdatesEventSubscription?.cancel();
+    _eventListener?.cancel();
     super.dispose();
   }
 }

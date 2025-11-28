@@ -7,7 +7,9 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sync_provider/events.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/protos/zero_art.pbserver.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models/document_member.dart';
@@ -67,9 +69,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  List<MemberScreenModel> _prepareMemberList() {
-    final groupInfo = widget.syncModel.groupContext.retrieveGroupInfo();
-
+  List<MemberScreenModel> _prepareMemberList(GroupInfo groupInfo) {
     final members = groupInfo.members
         .map(
           (e) => MemberScreenModel(
@@ -96,12 +96,16 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   void initState() {
     super.initState();
 
-    members = _prepareMemberList();
+    members = _prepareMemberList(
+      widget.syncModel.groupContext.retrieveGroupInfo(),
+    );
 
-    _groupInfoUpdates = widget.syncModel.groupInfoUpdateEvent.listen((_) {
-      setState(() {
-        members = _prepareMemberList();
-      });
+    _groupInfoUpdates = widget.syncModel.eventStream.listen((e) {
+      if (e is SyncModelGroupInfoEvent) {
+        setState(() {
+          members = _prepareMemberList(e.groupInfo);
+        });
+      }
     });
   }
 

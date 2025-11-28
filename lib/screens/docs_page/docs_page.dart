@@ -223,7 +223,7 @@ class _DocCard extends StatelessWidget {
                       alignment: Alignment.topLeft,
                       child: Column(
                         children: [
-                          if (syncModel.isLocal)
+                          if (syncModel.removedFromGroup)
                             AppLabel(
                               text: 'Local',
                               backgroundColor: Theme.of(

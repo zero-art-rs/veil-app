@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:queue/queue.dart';
 import 'package:uuid/v4.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
+import 'package:veil/managers/sync_provider/events.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/src/rust/api/automerge.dart';
@@ -14,47 +16,19 @@ import 'package:veil/utils/group_context_factory.dart';
 
 class DocsPageViewModel extends ChangeNotifier {
   final _syncProvider = SyncProvider.instance;
+  final _eventQueue = Queue();
 
   late StreamSubscription<List<SyncModel>> _docsListener;
-  final _syncModelListeners = <String, List<StreamSubscription<bool>>>{};
+  final _syncModelsListeners = <String, StreamSubscription<SyncModelEvent>>{};
 
   List<SyncModel> syncModels = [];
 
-  Future<void> sink() async {
+  Future<void> init() async {
     _syncProvider.subject.listen((event) {
       syncModels = event;
 
-      // remove listeners for removed sync models
-      _syncModelListeners.keys
-          .where(
-            (key) => !syncModels.map((e) => e.documentState.id).contains(key),
-          )
-          .forEach((key) {
-            _syncModelListeners[key]?.forEach((e) => e.cancel());
-          });
-
-      // add listeners for new sync models
-      for (final syncModel in syncModels) {
-        if (_syncModelListeners[syncModel.documentState.id] == null) {
-          final groupUpdatesListener = syncModel.groupInfoUpdateEvent.listen(
-            (event) => notifyListeners(),
-          );
-
-          final statusListener = syncModel.corruptedEvent.listen(
-            (e) => notifyListeners(),
-          );
-
-          final synchronizingListener = syncModel.isProcessing.listen(
-            (_) => notifyListeners(),
-          );
-
-          _syncModelListeners[syncModel.documentState.id] = [
-            groupUpdatesListener,
-            statusListener,
-            synchronizingListener,
-          ];
-        }
-      }
+      _removeStaleListeners();
+      _addNewListeners();
 
       notifyListeners();
     });
@@ -95,6 +69,43 @@ class DocsPageViewModel extends ChangeNotifier {
   Future<void> deleteDoc(DocumentState doc) async {
     await _syncProvider.remove(doc.id);
     notifyListeners();
+  }
+
+  void _removeStaleListeners() {
+    final existingIds = syncModels.map((e) => e.documentState.id).toSet();
+
+    final removedIds = _syncModelsListeners.keys
+        .where((id) => !existingIds.contains(id))
+        .toList();
+
+    for (final id in removedIds) {
+      _syncModelsListeners[id]?.cancel();
+      _syncModelsListeners.remove(id);
+    }
+  }
+
+  void _addNewListeners() {
+    for (final model in syncModels) {
+      final id = model.documentState.id;
+
+      if (_syncModelsListeners.containsKey(id)) continue;
+
+      _syncModelsListeners[id] = model.eventStream.listen((event) {
+        _eventQueue.add(() async {
+          _handleSyncEvent(event);
+        });
+      });
+    }
+  }
+
+  void _handleSyncEvent(SyncModelEvent e) {
+    switch (e) {
+      case SyncModelGroupInfoEvent():
+      case SyncModelCorruptedEvent():
+      case SyncModelSyncingEvent():
+        notifyListeners();
+        break;
+    }
   }
 
   @override

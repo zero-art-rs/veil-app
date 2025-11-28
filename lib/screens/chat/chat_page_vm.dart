@@ -1,4 +1,3 @@
-
 import 'package:collection/collection.dart';
 import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:uuid/v4.dart';
@@ -14,7 +13,7 @@ class ChatPageViewModel {
   ChatPageViewModel(this.syncModel);
 
   Future<void> sendMessage(String message) async {
-    if (syncModel.isLocal) {
+    if (syncModel.removedFromGroup) {
       return;
     }
 

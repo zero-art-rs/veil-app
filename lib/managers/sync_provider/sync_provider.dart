@@ -62,7 +62,7 @@ class SyncProvider {
       return;
     }
 
-    if (!syncModel.isLocal && !syncModel.corrupted) {
+    if (!syncModel.removedFromGroup && !syncModel.corrupted) {
       await syncModel.sendLeaveGroupFrame();
       await syncModel.clearState(
         disableNetworkListener: true,
