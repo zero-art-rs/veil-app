@@ -172,7 +172,6 @@ class PrimaryPageViewModel extends ChangeNotifier {
     switch (e) {
       case SyncModelGroupInfoEvent():
       case SyncModelCorruptedEvent():
-        notifyListeners();
       case SyncModelSyncingEvent():
         notifyListeners();
     }
