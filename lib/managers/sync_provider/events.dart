@@ -10,9 +10,9 @@ class SyncModelCrdtEvent extends SyncModelEvent {
 }
 
 class SyncModelSyncingEvent extends SyncModelEvent {
-  final bool processing;
+  final bool syncingEvent;
 
-  SyncModelSyncingEvent(this.processing);
+  SyncModelSyncingEvent(this.syncingEvent);
 }
 
 class SyncModelGroupInfoEvent extends SyncModelEvent {

@@ -114,8 +114,12 @@ void main() {
       await Future.wait([ownerWork, memberWork]);
       await Future.delayed(Duration(seconds: 5));
 
-      await ownerSyncModel.isProcessing.firstWhere((e) => !e);
-      await memberSyncModel.isProcessing.firstWhere((e) => !e);
+      await ownerSyncModel.queuesProcessListener.isProcessing.firstWhere(
+        (e) => !e,
+      );
+      await memberSyncModel.queuesProcessListener.isProcessing.firstWhere(
+        (e) => !e,
+      );
 
       logger.info(
         'owner crdt blocks: ${ownerSyncModel.documentState.crdt.getBlocks()}',

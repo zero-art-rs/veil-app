@@ -33,6 +33,7 @@ class EditorPageVm extends ChangeNotifier {
 
   final groupNameController = TextEditingController();
   StreamSubscription? _eventListener;
+  StreamSubscription? _isProcessingListener;
 
   EditorPageVm(this.syncModel);
 
@@ -46,8 +47,8 @@ class EditorPageVm extends ChangeNotifier {
         switch (e) {
           case SyncModelCorruptedEvent():
             _setCorrupted();
-          case SyncModelSyncingEvent():
-            isSinking = e.processing;
+          // case SyncModelSync/ingEvent():
+          // isSinking = e.syncingEvent;
           case SyncModelGroupInfoEvent():
             groupNameController.text = e.groupInfo.name;
           case SyncModelRemovedFromGroupEvent():
@@ -60,6 +61,15 @@ class EditorPageVm extends ChangeNotifier {
         notifyListeners();
       });
     });
+
+    _isProcessingListener = syncModel.queuesProcessListener.isProcessing.listen(
+      (e) {
+        _eventQueue.add(() async {
+          isSinking = e;
+          notifyListeners();
+        });
+      },
+    );
 
     if (syncModel.removedFromGroup) {
       documentStatus = EditorDocumentStatus.local;
@@ -237,6 +247,7 @@ class EditorPageVm extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isProcessingListener?.cancel();
     syncModel.applyBufferedFrames();
     _eventListener?.cancel();
     super.dispose();

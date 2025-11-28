@@ -69,7 +69,7 @@ class SyncModel {
   final _stateQueue = Queue();
 
   /// Listener for the busy state of the queues
-  late final QueuesListener _queuesProcessListener = QueuesListener(
+  late final QueuesListener queuesProcessListener = QueuesListener(
     streams: [_processQueue.remainingItems, _sendQueue.remainingItems],
   );
 
@@ -124,7 +124,7 @@ class SyncModel {
 
 extension SyncModelState on SyncModel {
   Future<void> setup({bool allowFullDocument = false}) async {
-    _queuesProcessListener.listen();
+    queuesProcessListener.listen();
 
     final hive = await Hive.openBox(documentState.id);
     final hiveChatController = HiveChatController(hive);
@@ -171,7 +171,7 @@ extension SyncModelState on SyncModel {
     if (cancelPendingTasks) {
       _processQueue.cancel();
       _sendQueue.cancel();
-      _queuesProcessListener.dispose();
+      queuesProcessListener.dispose();
     }
 
     logger.debug(
@@ -1080,7 +1080,7 @@ extension SyncModelHelpers on SyncModel {
 
 extension SyncModelTest on SyncModel {
   Future<void> testSetup({bool allowFullDocument = false}) async {
-    _queuesProcessListener.listen();
+    queuesProcessListener.listen();
 
     final hive = await Hive.openBox(documentState.id);
     final hiveChatController = HiveChatController(hive);
