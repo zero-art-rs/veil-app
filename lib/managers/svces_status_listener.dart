@@ -70,8 +70,10 @@ class NetworkStatusListener {
   NetworkStatusListener._internal();
 
   void start() {
+    final shouldNotSkipFirstStatus = PlatformUtils.isLinux || PlatformUtils.isWindows;
+
     _connectionListener = Connectivity().onConnectivityChanged
-        .skip(PlatformUtils.isLinux ? 0 : 1)
+        .skip(shouldNotSkipFirstStatus ? 0 : 1)
         .listen((result) async {
           final interestedConnections = {
             ConnectivityResult.wifi,

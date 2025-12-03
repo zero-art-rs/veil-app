@@ -42,7 +42,6 @@ dependencies:
   google_fonts: ^6.3.0
   flutter_secure_storage: ^9.2.4
   uuid: ^4.5.1
-  # logger: ^2.6.1
   convert: ^3.1.2
   hex: ^0.2.0
   qr_flutter: ^4.1.0
