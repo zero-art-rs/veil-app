@@ -23,11 +23,10 @@ update-deps:
 	@echo "Regenerating Flutter_Rust bindings"
 	flutter_rust_bridge_codegen generate
 
-build-packages:
-	@echo "Building packages"
-	fastforge release --name veil
+build-unsingned-dmg:
 
-build-dmg:
+
+build-signed-dmg:
 	rm dist/veil.dmg || true
 	flutter build macos --release
 	codesign --options=runtime --deep --force \

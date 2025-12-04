@@ -1,14 +1,10 @@
 ## Prerequirements
 First of all, you need to install [Flutter](https://docs.flutter.dev/install) to run this project.
 
-
-
 This project uses `Rust` <--> `Dart bridge` and `Protobuf`. So, you need to install [Rust language](https://rust-lang.org/tools/install/) and [Protobuf](https://protobuf.dev/installation/).
 
-## 🚀 How to Run
+## Make commands
 ```bash
-# Download flutter project dependencies
-flutter pub get
 # Runs the application, PLATFORM by default is macos
 make run PLATFORM={platform}
 
@@ -24,20 +20,14 @@ flutter devices
 * Windows
 * Linux (Ubuntu)
 
-## 📦 Create `.deb` for Linux and `.dmg` for MacOS
-Everything is already configured — just run:
-
+## 📦 Create `.deb` for Linux
+Run the following commands:
 ```bash
 # Install Fastforge to pack application
 dart pub global activate fastforge
 
-# Needed to construct .dmg
-npm install -g appdmg
-
 # Build a release package
 fastforge release --name veil 
-# or 
-make build-packages
 ```
 
 ## 🛠 Development Tips (Optional)

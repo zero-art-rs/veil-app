@@ -6,7 +6,3 @@ releases:
         package:
           platform: linux
           target: deb
-      - name: macos-dmg
-        package:
-          platform: macos
-          target: dmg
