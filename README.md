@@ -1,5 +1,11 @@
-## 🚀 How to Run
+## Prerequirements
+First of all, you need to install [Flutter](https://docs.flutter.dev/install) to run this project.
 
+
+
+This project uses `Rust` <--> `Dart bridge` and `Protobuf`. So, you need to install [Rust language](https://rust-lang.org/tools/install/) and [Protobuf](https://protobuf.dev/installation/).
+
+## 🚀 How to Run
 ```bash
 # Download flutter project dependencies
 flutter pub get
@@ -15,7 +21,7 @@ flutter devices
 
 ## 🧩 Supported Platforms
 * macOS
-* iOS
+* Windows
 * Linux (Ubuntu)
 
 ## 📦 Create `.deb` for Linux and `.dmg` for MacOS
@@ -36,12 +42,9 @@ make build-packages
 
 ## 🛠 Development Tips (Optional)
 
-### 🔧 Compile `.proto` Files
+### 🔧 Compile `.proto` files
 
 ```bash
-# Install the protobuf compiler
-brew install protobuf
-
 # Activate Dart protoc plugin (⚠️ version 21.1.2 required for zero_art.proto)
 dart pub global activate protoc_plugin 21.1.2
 
@@ -56,7 +59,7 @@ protoc \
   google/protobuf/timestamp.proto
 ```
 
-### ⚙️ Rust Bridge (Flutter ↔ Rust)
+### ⚙️ Rust Bridge (Flutter <--> Rust)
 
 This project uses [`flutter_rust_bridge`](https://cjycode.com/flutter_rust_bridge/quickstart)
 to generate Rust ↔ Dart bindings.
