@@ -40,6 +40,8 @@ The `unsigned app` means that you can't distribute it between other users. Their
 # Install Fastforge to pack application
 dart pub global activate fastforge
 
+export PATH="$PATH":"$HOME/.pub-cache/bin"
+
 # Build a release package
 fastforge release --name veil 
 ```
