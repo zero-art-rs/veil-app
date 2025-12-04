@@ -3,6 +3,50 @@ First of all, you need to install [Flutter](https://docs.flutter.dev/install) to
 
 This project uses `Rust` <--> `Dart bridge` and `Protobuf`. So, you need to install [Rust language](https://rust-lang.org/tools/install/) and [Protobuf](https://protobuf.dev/installation/).
 
+## 🧩 Supported Platforms
+* macOS
+* Windows
+* Linux (Ubuntu)
+
+## Run app
+### Mac OS and Linux
+
+```
+# PLATFORM is one of [macos, linux]
+
+make run PLATFORM=macos
+```
+
+Under the hood, this command adds tracing logs from `zrt_client_sdk` for the debugging issues. 
+
+### Windows 
+
+```
+zrt_client_sdk=debug flutter run -d windows
+```
+
+
+## Build app
+### Mac OS (.app)
+To build unsigned app use the following command:
+```
+make build-macos-app
+```
+the output `.app` file find in `/dist` directory.
+The `unsigned app` means that you can't distribute it between other users. Their system will not allow to install it.
+
+## Linux (.deb)
+```
+# Install Fastforge to pack application
+dart pub global activate fastforge
+
+# Build a release package
+fastforge release --name veil 
+```
+
+## Windows
+
+
 ## Make commands
 ```bash
 # Runs the application, PLATFORM by default is macos
@@ -19,16 +63,6 @@ flutter devices
 * macOS
 * Windows
 * Linux (Ubuntu)
-
-## 📦 Create `.deb` for Linux
-Run the following commands:
-```bash
-# Install Fastforge to pack application
-dart pub global activate fastforge
-
-# Build a release package
-fastforge release --name veil 
-```
 
 ## 🛠 Development Tips (Optional)
 
