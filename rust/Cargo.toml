@@ -12,11 +12,18 @@ flutter_rust_bridge = "=2.11.1"
 automerge = { version = "0.6.1", features = ["optree-visualisation"]}
 anyhow = "1.0.99"
 sha2 = "0.10.9"
-zrt-client-sdk = { git = "https://github.com/zero-art-rs/client-sdk.git", branch = "dev" }
-zrt-zk = { git = "https://github.com/zero-art-rs/core.git" }
-zrt-art = { git = "https://git@github.com/zero-art-rs/core.git" }
-zrt-crypto = { git = "https://github.com/zero-art-rs/core.git" }
-cortado = { git = "https://git@github.com/zero-art-rs/core.git" }
+#zrt-client-sdk = { git = "https://github.com/zero-art-rs/client-sdk.git", branch = "dev" }
+#zrt-zk = { git = "https://github.com/zero-art-rs/core.git" }
+#zrt-art = { git = "https://git@github.com/zero-art-rs/core.git" }
+#zrt-crypto = { git = "https://github.com/zero-art-rs/core.git" }
+#cortado = { git = "https://git@github.com/zero-art-rs/core.git" }
+
+zrt-client-sdk = { git = "https://github.com/zero-art-rs/client-sdk.git", branch = "feature/merge-core" }
+zrt-zk = { git = "https://github.com/zero-art-rs/core.git", branch = "feature/zrt-art-refactor" }
+zrt-art = { git = "https://github.com/zero-art-rs/core.git", branch = "feature/zrt-art-refactor" }
+zrt-crypto = { git = "https://github.com/zero-art-rs/core.git", branch = "feature/zrt-art-refactor" }
+cortado = { git = "https://github.com/zero-art-rs/core.git", branch = "feature/zrt-art-refactor" }
+
 bulletproofs = { version = "5.0.0", git="https://github.com/zero-art-rs/bulletproofs"}
 ark-serialize = { version = "0.5.0", git = "https://github.com/arkworks-rs/algebra", rev = "7601bf9" }
 prost = "0.14.1"
