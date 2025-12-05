@@ -23,12 +23,6 @@ update-deps:
 	@echo "Regenerating Flutter_Rust bindings"
 	flutter_rust_bridge_codegen generate
 
-build-macos-app:
-	@echo "Building macOS app..."
-	flutter build macos --release
-	mkdir -p dist
-	cp -R build/macos/Build/Products/Release/Veil.app dist/
-
 build-signed-dmg:
 	rm dist/veil.dmg || true
 	flutter build macos --release
