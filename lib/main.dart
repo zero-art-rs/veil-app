@@ -32,7 +32,7 @@ late final Talker logger;
 Future<void> main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    logger = Talker();
+    logger = Talker(logger: TalkerLogger(formatter: ColoredLoggerFormatter()));
     await RustLib.init();
     initTracing();
     NetworkStatusListener.instance.start();

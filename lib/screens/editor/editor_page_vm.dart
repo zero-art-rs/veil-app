@@ -200,7 +200,7 @@ class EditorPageVm extends ChangeNotifier {
         selectedMode == EditorModes.edit && mode == EditorModes.view;
 
     if (mode == EditorModes.edit) {
-      logger.debug('Bufferizing frames trigger on ui');
+      logger.debug('Enable edit mode');
       await syncModel.selectMode(SyncModelMode.write);
     }
 

@@ -9,6 +9,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:http/http.dart';
 import 'package:queue/queue.dart';
 import 'package:talker_flutter/talker_flutter.dart';
+import 'package:uuid/v4.dart';
 import 'package:veil/managers/chat/hive_chat_controller.dart';
 import 'package:veil/managers/svces_status_listener.dart';
 import 'package:veil/managers/sync_provider/centrifugo_listener.dart';
@@ -32,7 +33,6 @@ import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/editor_automerge.dart';
 import 'package:veil/utils/group_context_factory.dart';
-import 'package:veil/utils/local_state.dart';
 import 'package:veil/utils/payload.dart';
 import 'package:veil/utils/secret_factory.dart';
 
@@ -398,12 +398,7 @@ extension SyncModelState on SyncModel {
       }
     }
 
-    if (saveToDb) {
-      await _db.updateDocumentState(
-        documentState: documentState,
-        groupContextParts: await groupContext.asParts(),
-      );
-    }
+    await _saveState();
 
     logger.debug(
       'Document epoch after polling: ${(await groupContext.epoch()).toInt()}',
@@ -418,7 +413,6 @@ extension SyncModelHandle on SyncModel {
   Future<void> selectMode(SyncModelMode mode) async {
     try {
       await _processQueue.add(() async {
-        logger.info('Change process frames to buffer mode');
         _mode = mode;
       });
     } on QueueCancelledException {
@@ -475,7 +469,6 @@ extension SyncModelProcessOperations on SyncModel {
           snapshot.addAll(crdtList);
           await applyCrdtListOperation(snapshot);
           await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
-          _emitCrdtUpdatesEvent(documentState.crdt);
         }
       });
     } on QueueCancelledException {
@@ -484,7 +477,7 @@ extension SyncModelProcessOperations on SyncModel {
       if (isUserRemovedError(e)) {
         logger.info('User removed from group, making local only');
         _emitRemovedFromGroupEvent();
-        await disableNetworkSyncOperation();
+        await makeLocal();
       } else {
         rethrow;
       }
@@ -497,28 +490,17 @@ extension SyncModelSendOperations on SyncModel {
     try {
       return await _write(
         operation: () async {
-          logger.info('Sending leave group frame..');
+          logger.info('Start leave group operation..');
           final frame = await groupContext.leaveGroup();
-
-          if (saveToDb) {
-            await _db.updateGroupContextDocumentState(
-              id: documentState.id,
-              parts: await groupContext.asParts(),
-            );
-          }
-
+          await _saveGroupContext();
+          logger.info('Sending leave group frame...');
           await GroupApiClient.instance.sendFrame(
             groupId: documentState.id,
             frame: frame,
           );
-
-          logger.info('Sent leave group frame');
-          if (saveToDb) {
-            await _db.updateDocumentState(
-              documentState: documentState,
-              groupContextParts: await groupContext.asParts(),
-            );
-          }
+          logger.info('Leave group frame sent');
+          await _saveState();
+          logger.info('Finish leave group operation');
         },
       );
     } on QueueCancelledException {
@@ -644,22 +626,17 @@ extension SyncModelSendOperations on SyncModel {
     try {
       await _write(
         operation: () async {
-          logger.info('Creating change group frame...');
+          logger.info('Started update group name operation');
           final frame = await groupContext.changeGroup(name: name);
 
-          if (saveToDb) {
-            await _db.updateGroupContextDocumentState(
-              id: documentState.id,
-              parts: await groupContext.asParts(),
-            );
-          }
+          await _saveGroupContext();
 
           logger.info('Sending change group frame...');
           await GroupApiClient.instance.sendFrame(
             groupId: documentState.id,
             frame: frame,
           );
-          logger.info('Change group frame was sent');
+          logger.info('Finished update group name operation');
         },
       );
     } on QueueCancelledException {
@@ -676,15 +653,10 @@ extension SyncModelSendOperations on SyncModel {
       return await _write(
         maxAttempts: 1,
         operation: () async {
-          logger.info('Creating change user frame...');
+          logger.info('Start change user name operation');
           final frame = await groupContext.changeUser(name: name);
 
-          if (saveToDb) {
-            await _db.updateGroupContextDocumentState(
-              id: documentState.id,
-              parts: await groupContext.asParts(),
-            );
-          }
+          await _saveGroupContext();
 
           logger.info('Sending change user frame...');
           await GroupApiClient.instance.sendFrame(
@@ -707,13 +679,13 @@ extension SyncModelSendOperations on SyncModel {
     try {
       return await _write(
         operation: () async {
-          logger.info('Creating identified member invite..');
+          logger.info('Create indentifiend invite operation started');
           final firstSpk = contact.spks.firstOrNull;
           final spkPublicKey = firstSpk != null
               ? Uint8List.fromList(firstSpk)
               : null;
 
-          logger.info('Spk to use apply: $spkPublicKey');
+          logger.info('Spk to use: $spkPublicKey');
 
           final payload = Payload(
             crdt: CRDTPayload(fullDocument: documentState.crdt.save()),
@@ -726,12 +698,7 @@ extension SyncModelSendOperations on SyncModel {
             content: Payloads(payloads: [payload]).writeToBuffer(),
           );
 
-          if (saveToDb) {
-            await _db.updateGroupContextDocumentState(
-              id: documentState.id,
-              parts: await groupContext.asParts(),
-            );
-          }
+          await _saveGroupContext();
 
           logger.info('Sending identified invite frame');
           await GroupApiClient.instance.sendFrame(
@@ -784,19 +751,14 @@ extension SyncModelSendOperations on SyncModel {
             content: payloads,
           );
 
-          if (saveToDb) {
-            await _db.updateGroupContextDocumentState(
-              id: documentState.id,
-              parts: await groupContext.asParts(),
-            );
-          }
+          await _saveGroupContext();
 
           logger.info('Sending unidentified invite frame...');
           await GroupApiClient.instance.sendFrame(
             groupId: documentState.id,
             frame: frame,
           );
-          logger.info('Unidentified invite frame sent');
+          logger.info('Create unidentified invite operation finished');
 
           return DeeplinkManager.instance.buildInvite(invite);
         },
@@ -815,23 +777,20 @@ extension SyncModelSendOperations on SyncModel {
     try {
       await _write(
         operation: () async {
-          logger.info('Removing member in group context..');
+          logger.info('Remove member operation started');
           final frame = await groupContext.removeMember(
             userId: actorId,
             content: [],
           );
-          if (saveToDb) {
-            await _db.updateGroupContextDocumentState(
-              id: documentState.id,
-              parts: await groupContext.asParts(),
-            );
-          }
+
+          await _saveGroupContext();
+
           logger.info('Sending remove member frame...');
           await GroupApiClient.instance.sendFrame(
             groupId: documentState.id,
             frame: frame,
           );
-          logger.info('Remove member frame sent');
+          logger.info('Remove member operation finished');
         },
       );
     } on QueueCancelledException {
@@ -856,6 +815,10 @@ extension SyncModelSendOperations on SyncModel {
     required Future<T> Function() operation,
   }) async {
     return await _sendQueue.add(() async {
+      if (_processQueue.remainingItemCount > 0) {
+        await _processQueue.onComplete;
+      }
+
       for (var attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           return await operation();
@@ -882,7 +845,7 @@ extension SyncModelOperations on SyncModel {
     _emitCorruptedEvent();
     await clearState(
       disableNetworkListener: true,
-      disableStateBroadcast: true,
+      disableStateBroadcast: false,
       cancelPendingTasks: true,
     );
 
@@ -894,21 +857,26 @@ extension SyncModelOperations on SyncModel {
 
     _applyCrdtPayloadList(document: documentState, payloads: payloads);
 
-    if (saveToDb) {
-      await _db.updateDocumentState(
-        documentState: documentState,
-        groupContextParts: await groupContext.asParts(),
-      );
-    }
+    await _saveState();
 
     logger.info('Applied crdt list');
   }
 
-  Future<void> disableNetworkSyncOperation() async {
+  Future<void> makeLocal() async {
     await clearState();
-    documentState.isLocal = true;
 
-    LocalStateUtils.instance.makeDocumentLocal(documentState);
+    final oldId = documentState.id;
+    final newId = UuidV4().generate();
+    documentState.isLocal = true;
+    documentState.id = newId;
+
+    final oldBox = await Hive.openBox(oldId);
+    final newBox = await Hive.openBox(newId);
+    await newBox.putAll(oldBox.toMap());
+    await oldBox.deleteFromDisk();
+
+    await DB.instance.deleteDocumentState(oldId);
+    await DB.instance.insertDocumentState(documentState: documentState);
   }
 
   Future<List<ExposedCRDTPayload>> _processFrame(SPFrame spframe) async {
@@ -945,23 +913,23 @@ extension SyncModelOperations on SyncModel {
   }
 
   Future<void> _sendChatFrame(List<int> messageBytes) async {
+    logger.info('Send chat frame operation started');
+
     final frame = await groupContext.createFrame(
       content: Payloads(
         payloads: [Payload(chat: ChatPayload(text: messageBytes))],
       ).writeToBuffer(),
     );
 
-    if (saveToDb) {
-      await _db.updateGroupContextDocumentState(
-        id: documentState.id,
-        parts: await groupContext.asParts(),
-      );
-    }
+    await _saveGroupContext();
 
+    logger.info('Sending chat frame...');
     await GroupApiClient.instance.sendFrame(
       groupId: documentState.id,
       frame: frame,
     );
+
+    logger.info('Send chat frame operation finished');
   }
 
   Future<void> _sendCrdtFrameList(List<Uint8List> data) async {
@@ -973,12 +941,7 @@ extension SyncModelOperations on SyncModel {
       ).writeToBuffer(),
     );
 
-    if (saveToDb) {
-      await _db.updateGroupContextDocumentState(
-        id: documentState.id,
-        parts: await groupContext.asParts(),
-      );
-    }
+    await _saveGroupContext();
 
     await GroupApiClient.instance.sendFrame(
       groupId: documentState.id,
@@ -987,23 +950,19 @@ extension SyncModelOperations on SyncModel {
   }
 
   Future<void> _sendJoinGroupFrame(Account user) async {
-    logger.info('Sending join group frame..');
+    logger.info('Join group operation started');
     final frame = await groupContext.joinGroupAs(
       user: BUser(name: user.name, publicKey: user.keypair.rawPublicKey),
     );
 
-    if (saveToDb) {
-      await _db.updateGroupContextDocumentState(
-        id: documentState.id,
-        parts: await groupContext.asParts(),
-      );
-    }
+    await _saveGroupContext();
 
+    logger.info('Sending join group frame...');
     await GroupApiClient.instance.sendFrame(
       groupId: documentState.id,
       frame: frame,
     );
-    logger.info('Sent join group frame');
+    logger.info('Join group operation finished');
   }
 }
 
@@ -1075,6 +1034,27 @@ extension SyncModelHelpers on SyncModel {
     logger.debug(
       'Document state AFTER applying CRDT: ID ${document.id} ${document.crdt.getBlocks()}',
     );
+  }
+
+  Future<void> _saveGroupContext() async {
+    if (saveToDb) {
+      logger.info('Saving group context..');
+
+      await _db.updateGroupContextDocumentState(
+        id: documentState.id,
+        parts: await groupContext.asParts(),
+      );
+    }
+  }
+
+  Future<void> _saveState() async {
+    if (saveToDb) {
+      logger.info('Saving document state..');
+      await _db.updateDocumentState(
+        documentState: documentState,
+        groupContextParts: await groupContext.asParts(),
+      );
+    }
   }
 }
 
