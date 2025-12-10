@@ -46,7 +46,7 @@ enum SyncModelMode { read, write }
 /// It handles its own state and sharing with it via streams
 class SyncModel {
   final Talker? _logger;
-  final Account _account;
+  final Account account;
   final DocumentState documentState;
   final BGroupContext groupContext;
   final bool saveToDb;
@@ -103,11 +103,11 @@ class SyncModel {
     Talker? logger,
   }) : _localCrdtStorage = localCrdtStorage,
        _logger = logger,
-       _account = account ?? AccountSecureStorage.instance.account;
+       account = account ?? AccountSecureStorage.instance.account;
 
   bool isUserInGroup() {
     return groupContext.retrieveGroupInfo().members.any(
-      (e) => e.id == _account.actorId,
+      (e) => e.id == account.actorId,
     );
   }
 
@@ -115,7 +115,7 @@ class SyncModel {
     return groupContext
             .retrieveGroupInfo()
             .members
-            .firstWhereOrNull((e) => e.id == _account.actorId)
+            .firstWhereOrNull((e) => e.id == account.actorId)
             ?.role
             .value ==
         ownerRole;
@@ -306,7 +306,7 @@ extension SyncModelState on SyncModel {
     });
 
     if (!isUserInGroup()) {
-      await sendJoinGroupFrame(_account);
+      await sendJoinGroupFrame(account);
     }
 
     if (_mode == SyncModelMode.read) {
@@ -375,14 +375,13 @@ extension SyncModelState on SyncModel {
         messageSequenceNumber: documentState.sequenceNumber,
       );
 
-      if (result.spFrames.first.seqNum.toInt() ==
-          documentState.sequenceNumber) {
+      if (result.spFrames.last.seqNum.toInt() == documentState.sequenceNumber) {
         break;
       }
 
-      for (final spFrame in result.spFrames.reversed) {
+      for (final spFrame in result.spFrames) {
         logger.debug(
-          'Current processing frame epoch: ${(await groupContext.epoch()).toInt()}',
+          'Current processing frame epoch: ${(spFrame.frame.frame.epoch).toInt()}',
         );
         logger.debug(
           'Current processing frame sequence number: ${spFrame.seqNum.toInt()}',
@@ -815,12 +814,12 @@ extension SyncModelSendOperations on SyncModel {
     required Future<T> Function() operation,
   }) async {
     return await _sendQueue.add(() async {
-      if (_processQueue.remainingItemCount > 0) {
-        await _processQueue.onComplete;
-      }
-
       for (var attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
+          if (_processQueue.remainingItemCount > 0) {
+            await _processQueue.onComplete;
+          }
+
           return await operation();
         } catch (e) {
           if (attempt == maxAttempts) {

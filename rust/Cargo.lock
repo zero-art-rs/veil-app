@@ -544,8 +544,8 @@ checksum = "832133bbabbbaa9fbdba793456a2827627a7d2b8fb96032fa1e7666d7895832b"
 
 [[package]]
 name = "bulletproofs"
-version = "5.0.0"
-source = "git+https://github.com/zero-art-rs/bulletproofs#1e95af1139deea191de7f79ed139b3092eb9e541"
+version = "5.0.1"
+source = "git+https://github.com/zero-art-rs/bulletproofs#d27dde04bb9a0a9fe2618a95ab452fcab8f7d944"
 dependencies = [
  "byteorder",
  "clear_on_drop",
@@ -747,7 +747,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "cortado"
 version = "0.1.0"
-source = "git+https://github.com/zero-art-rs/core.git?branch=feature%2Fzrt-art-refactor#31683a3598fa309246e10da79472adfeb7abfb7f"
+source = "git+https://github.com/zero-art-rs/core.git?branch=feature%2Fzrt-art-refactor#0a76fa52963a605cfe2c26ddc1d8f16629c81b3c"
 dependencies = [
  "ark-algebra-test-templates",
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
@@ -2656,7 +2656,7 @@ dependencies = [
  "ark-std",
  "automerge",
  "base64",
- "bulletproofs 5.0.0",
+ "bulletproofs 5.0.1 (git+https://github.com/zero-art-rs/bulletproofs)",
  "chrono",
  "cortado",
  "flutter_rust_bridge",
@@ -2910,7 +2910,7 @@ dependencies = [
  "ark-serialize 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-std",
  "ark-test-curves",
- "bulletproofs 5.0.1",
+ "bulletproofs 5.0.1 (git+https://github.com/zkcrypto/bulletproofs)",
  "curve25519-dalek",
  "group",
  "merlin",
@@ -2926,14 +2926,14 @@ dependencies = [
 [[package]]
 name = "zrt-art"
 version = "0.3.0"
-source = "git+https://github.com/zero-art-rs/core.git?branch=feature%2Fzrt-art-refactor#31683a3598fa309246e10da79472adfeb7abfb7f"
+source = "git+https://github.com/zero-art-rs/core.git?branch=feature%2Fzrt-art-refactor#0a76fa52963a605cfe2c26ddc1d8f16629c81b3c"
 dependencies = [
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-ed25519",
  "ark-ff 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-serialize 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-std",
- "bulletproofs 5.0.0",
+ "bulletproofs 5.0.1 (git+https://github.com/zero-art-rs/bulletproofs)",
  "chrono",
  "cortado",
  "criterion",
@@ -2955,7 +2955,7 @@ dependencies = [
 [[package]]
 name = "zrt-client-sdk"
 version = "0.1.0"
-source = "git+https://github.com/zero-art-rs/client-sdk.git?branch=feature%2Fmerge-core#3c5ac71ab928ffaf0b4ee33feb835bb78ce2fca6"
+source = "git+https://github.com/zero-art-rs/client-sdk.git?branch=feature%2Fmerge-core#daa11521d4782970cd7a9ad94a476c203651b66b"
 dependencies = [
  "aes-gcm",
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
@@ -2965,7 +2965,7 @@ dependencies = [
  "ark-std",
  "bimap",
  "blake3",
- "bulletproofs 5.0.0",
+ "bulletproofs 5.0.1 (git+https://github.com/zero-art-rs/bulletproofs)",
  "chrono",
  "cortado",
  "curve25519-dalek",
@@ -2995,7 +2995,7 @@ dependencies = [
 [[package]]
 name = "zrt-crypto"
 version = "0.1.0"
-source = "git+https://github.com/zero-art-rs/core.git?branch=feature%2Fzrt-art-refactor#31683a3598fa309246e10da79472adfeb7abfb7f"
+source = "git+https://github.com/zero-art-rs/core.git?branch=feature%2Fzrt-art-refactor#0a76fa52963a605cfe2c26ddc1d8f16629c81b3c"
 dependencies = [
  "ark-serialize 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "cortado",
@@ -3010,14 +3010,14 @@ dependencies = [
 [[package]]
 name = "zrt-zk"
 version = "0.3.0"
-source = "git+https://github.com/zero-art-rs/core.git?branch=feature%2Fzrt-art-refactor#31683a3598fa309246e10da79472adfeb7abfb7f"
+source = "git+https://github.com/zero-art-rs/core.git?branch=feature%2Fzrt-art-refactor#0a76fa52963a605cfe2c26ddc1d8f16629c81b3c"
 dependencies = [
  "ark-ec 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-ed25519",
  "ark-ff 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-serialize 0.5.0 (git+https://github.com/arkworks-rs/algebra?rev=7601bf9)",
  "ark-std",
- "bulletproofs 5.0.0",
+ "bulletproofs 5.0.1 (git+https://github.com/zero-art-rs/bulletproofs)",
  "chrono",
  "cortado",
  "curve25519-dalek",

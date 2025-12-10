@@ -36,7 +36,7 @@ class GroupApiClient {
           headers: {'Content-Type': 'application/protobuf'},
           body: frame,
         )
-        .timeout(Duration(seconds: 5));
+        .timeout(Duration(seconds: 30));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
