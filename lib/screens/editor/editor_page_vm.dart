@@ -93,7 +93,7 @@ class EditorPageVm extends ChangeNotifier {
 
   Future<void> updateGroupName(BuildContext context, String groupName) async {
     try {
-      await syncModel.updateGroupName(name: groupNameController.text);
+      await syncModel.sendUpdateGroupName(name: groupNameController.text);
     } catch (e, st) {
       logger.error('Failed to update group name', e, st);
       if (!context.mounted) return;

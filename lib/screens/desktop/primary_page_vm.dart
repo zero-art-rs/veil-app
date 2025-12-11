@@ -80,6 +80,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+
       await _syncProvider.add(
         SyncModel(
           documentState: document,

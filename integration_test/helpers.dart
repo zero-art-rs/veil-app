@@ -104,7 +104,7 @@ Future<List<String>> generateInviteLinks(SyncModel syncModel, int count) async {
   List<String> links = [];
 
   for (var i = 0; i < count; i++) {
-    final link = await syncModel.createUnidentifiedMemberInviteLink();
+    final link = await syncModel.sendUnidentifiedInvite();
     links.add(link);
   }
 

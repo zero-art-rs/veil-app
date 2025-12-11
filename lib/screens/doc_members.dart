@@ -207,7 +207,9 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         try {
           logger.info('Removing member in group context..');
 
-          await widget.syncModel.removeMember(actorId: user.account.actorId);
+          await widget.syncModel.sendRemoveMember(
+            actorId: user.account.actorId,
+          );
 
           setState(() {
             members.removeWhere(
@@ -235,7 +237,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       context: context,
       work: () async {
         try {
-          await widget.syncModel.updateUserName(
+          await widget.syncModel.sendUpdateUserName(
             name: widget.updateUserNameTextController.text,
           );
         } catch (e, st) {
@@ -296,7 +298,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   void _inviteUndentifiedMember(BuildContext context) {
     final work = Future<String>(() async {
       try {
-        return await widget.syncModel.createUnidentifiedMemberInviteLink();
+        return await widget.syncModel.sendUnidentifiedInvite();
       } catch (e, st) {
         logger.error('Failed to create unidentified invite link', e, st);
         rethrow;
@@ -309,9 +311,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   Future<void> _inviteContactMember(Contact contact) async {
     final future = Future(() async {
       try {
-        return await widget.syncModel.createIdentifiedMemberLink(
-          contact: contact,
-        );
+        return await widget.syncModel.sendIdentifiedInvite(contact: contact);
       } catch (e, st) {
         logger.error('Failed to create indentified invite link', e, st);
         rethrow;

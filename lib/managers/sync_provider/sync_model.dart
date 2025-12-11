@@ -228,8 +228,6 @@ extension SyncModelState on SyncModel {
           try {
             _emitIsSyncingEvent(true);
             await _setupNetwork(allowFullDocument: allowFullDocument);
-          } on ClientException {
-            await _setupLocal();
           } catch (e, st) {
             logger.error(
               'Failed to initially synchronize document, highlighting document as corrupted',
@@ -314,6 +312,8 @@ extension SyncModelState on SyncModel {
     }
 
     _state = SyncModelStateMode.network;
+
+    logger.info('here');
   }
 
   Future<void> _resync() async {
@@ -617,7 +617,7 @@ extension SyncModelSendOperations on SyncModel {
     }
   }
 
-  Future<void> updateGroupName({required String name}) async {
+  Future<void> sendUpdateGroupName({required String name}) async {
     if (_state == SyncModelStateMode.local) {
       throw SyncModelSendError('Cannot update user name in local mode');
     }
@@ -643,7 +643,7 @@ extension SyncModelSendOperations on SyncModel {
     }
   }
 
-  Future<void> updateUserName({required String name}) async {
+  Future<void> sendUpdateUserName({required String name}) async {
     if (_state == SyncModelStateMode.local) {
       throw SyncModelSendError('Cannot update user name in local mode');
     }
@@ -670,7 +670,7 @@ extension SyncModelSendOperations on SyncModel {
     }
   }
 
-  Future<String> createIdentifiedMemberLink({required Contact contact}) async {
+  Future<String> sendIdentifiedInvite({required Contact contact}) async {
     if (_state == SyncModelStateMode.local) {
       throw SyncModelSendError('Cannot create invite in local mode');
     }
@@ -725,7 +725,7 @@ extension SyncModelSendOperations on SyncModel {
     }
   }
 
-  Future<String> createUnidentifiedMemberInviteLink() async {
+  Future<String> sendUnidentifiedInvite() async {
     if (_state == SyncModelStateMode.local) {
       throw SyncModelSendError('Cannot create invite in local mode');
     }
@@ -768,7 +768,7 @@ extension SyncModelSendOperations on SyncModel {
     }
   }
 
-  Future<void> removeMember({required String actorId}) async {
+  Future<void> sendRemoveMember({required String actorId}) async {
     if (_state == SyncModelStateMode.local) {
       throw SyncModelSendError('Cannot remove member in local mode');
     }

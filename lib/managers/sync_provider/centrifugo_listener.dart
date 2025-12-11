@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:eventflux/eventflux.dart';
 import 'package:talker_flutter/talker_flutter.dart';
+import 'package:veil/assets/config.dart';
 
 const _centrifugoWithoutUpdatesTimeout = 90;
 
 enum CentrifugoConnectionState { success, error }
 
 class CentrifugoListener {
-  final _url = 'https://sse-veil.distributedlab.com';
+  final _url = AppConfig.instance.sseBasePath;
   final _eventFlux = EventFlux.spawn();
   final Talker logger;
   final dynamic Function(EventFluxData) _processCallback;

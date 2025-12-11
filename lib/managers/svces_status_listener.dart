@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:rxdart/subjects.dart';
+import 'package:veil/assets/config.dart';
 import 'package:veil/main.dart';
 
 const _slowNetworkThreshold = Duration(seconds: 3);
@@ -104,7 +105,9 @@ class NetworkStatusListener {
     try {
       final stopwatch = Stopwatch()..start();
 
-      final uri = Uri.parse('https://veil.distributedlab.com/services/health');
+      final uri = Uri.parse(
+        '${AppConfig.instance.monitorBasePath}/health',
+      );
 
       final response = await http.get(uri).timeout(const Duration(seconds: 8));
 

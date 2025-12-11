@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/api/group_api_client.dart';
+import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/src/rust/api/group_context.dart';
@@ -29,6 +30,48 @@ void main() {
     AccountSecureStorage.instance.testInit();
   });
 
+  test('Test change user name operation', () async {
+    final syncModel = await generateSyncModel(
+      logFileName: 'sync_model.log',
+      logOutputDir: 'change_user_name',
+    );
+
+    await syncModel.testSetup();
+    await syncModel.setState(SyncModelStateMode.network);
+
+    final newName = 'New name';
+    await syncModel.sendUpdateUserName(name: newName);
+
+    // Waiting for the frame from centrifugo
+    await Future.delayed(Duration(seconds: 2));
+
+    final user = syncModel.groupContext.retrieveGroupInfo().members.firstWhere(
+      (e) => e.id == syncModel.account.actorId,
+    );
+    assert(user.name == newName, 'User name was not changed');
+  });
+
+  test('Test change group name operation', () async {
+    final syncModel = await generateSyncModel(
+      logFileName: 'sync_model.log',
+      logOutputDir: 'change_group_name',
+    );
+
+    await syncModel.testSetup();
+    await syncModel.setState(SyncModelStateMode.network);
+
+    final newGroupName = 'New group name';
+    await syncModel.sendUpdateGroupName(name: newGroupName);
+
+    // Waiting for the frame from centrifugo
+    await Future.delayed(Duration(seconds: 2));
+
+    assert(
+      syncModel.groupContext.retrieveGroupInfo().name == newGroupName,
+      'Group name was not changed',
+    );
+  });
+
   test(
     'Test leave group operation',
     timeout: Timeout(Duration(seconds: 60)),
@@ -40,7 +83,7 @@ void main() {
 
       await syncModel.testSetup();
       await syncModel.setState(SyncModelStateMode.network);
-      final _ = await syncModel.createUnidentifiedMemberInviteLink();
+      final _ = await syncModel.sendUnidentifiedInvite();
       await syncModel.setState(SyncModelStateMode.local);
 
       await Future.delayed(Duration(seconds: 1));
@@ -141,41 +184,35 @@ void main() {
       final List<Future> workList = [];
       for (final item in allMembersList.indexed) {
         final work = Future(() async {
-          try {
-            await Future.delayed(Duration(seconds: 5));
-            for (var i = 0; i < sendFramesCount; i++) {
-              final message = item.$1 == 0
-                  ? 'owner_message_$i'
-                  : 'member_message_${item.$1}';
-
-              final blocks = item.$2.documentState.crdt.getBlocks();
-              item.$2.documentState.crdt.insertBlock(
-                index: blocks.length,
-                text: message,
-              );
-
-              await item.$2.sendCrdtFrame(
-                item.$2.documentState.crdt.getBlocks().join('\n'),
-              );
-
-              await Future.delayed(
-                Duration(milliseconds: Random().nextInt(500) + 200),
-              );
+          for (var i = 0; i < sendFramesCount; i++) {
+            if (item.$2.corrupted) {
+              throw Exception('Document is corrupted');
             }
-          } catch (e) {
-            await item.$2.clearState(
-              disableNetworkListener: true,
-              disableStateBroadcast: true,
-              cancelPendingTasks: true,
+
+            final message = item.$1 == 0
+                ? 'owner_message'
+                : 'member_message_${item.$1}';
+
+            final blocks = item.$2.documentState.crdt.getBlocks();
+            item.$2.documentState.crdt.insertBlock(
+              index: blocks.length,
+              text: message,
             );
-            return;
+
+            await item.$2.sendCrdtFrame(
+              item.$2.documentState.crdt.getBlocks().join('\n'),
+            );
+
+            await Future.delayed(
+              Duration(milliseconds: Random().nextInt(500) + 200),
+            );
           }
         });
 
         workList.add(work);
       }
 
-      await Future.wait(workList);
+      await Future.wait(workList, eagerError: true);
 
       final List<Future> workList2 = [];
       for (var syncModel in allMembersList) {
@@ -198,14 +235,7 @@ void main() {
       }
 
       final allEqual = values.every((v) => v == values.first);
-
       assert(allEqual, 'Different crdt document state!');
-
-      final allNotCorrupted = allMembersList.map((e) => !e.corrupted).toList();
-      assert(
-        allNotCorrupted.every((e) => allNotCorrupted.first == e),
-        'Documents should NOT be corrupted!',
-      );
     },
   );
 }
