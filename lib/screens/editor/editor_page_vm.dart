@@ -47,8 +47,6 @@ class EditorPageVm extends ChangeNotifier {
         switch (e) {
           case SyncModelCorruptedEvent():
             _setCorrupted();
-          // case SyncModelSync/ingEvent():
-          // isSinking = e.syncingEvent;
           case SyncModelGroupInfoEvent():
             groupNameController.text = e.groupInfo.name;
           case SyncModelRemovedFromGroupEvent():

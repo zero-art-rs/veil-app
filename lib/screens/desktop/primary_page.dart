@@ -8,6 +8,7 @@ import 'package:veil/screens/desktop/primary_page_vm.dart';
 import 'package:veil/screens/editor_container/editor_container_page.dart';
 import 'package:veil/widgets/app_label.dart';
 import 'package:veil/widgets/banner.dart';
+import 'package:veil/widgets/circular_loader.dart';
 import 'package:veil/widgets/loader_dialog.dart';
 import 'package:veil/widgets/sidebar.dart';
 
@@ -205,17 +206,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                       if (doc.$2.removedFromGroup) AppLabel(text: 'Local'),
 
                       if (doc.$2.isSyncing)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
-                          child: SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
+                        CircularLoader(padding: EdgeInsets.only(left: 8)),
 
                       PopupMenuButton(
                         icon: Icon(Icons.more_vert_rounded),

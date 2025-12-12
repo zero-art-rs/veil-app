@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/api/group_api_client.dart';
+import 'package:veil/assets/config.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
@@ -23,6 +24,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
+    await AppConfig.instance.load();
     Talker().info('Logs will be saved to ${Directory.current.path}');
     await DB.instance.openTest(inMemoryPath: 'test_data');
     Hive.init('test_data');
@@ -146,10 +148,10 @@ void main() {
 
   test(
     'Concurrent keyupdate via send crdt frame',
-    timeout: Timeout(Duration(minutes: 10)),
+    timeout: Timeout(Duration(minutes: 60)),
     () async {
-      final sendFramesCount = 7;
-      final membersCount = 5;
+      final sendFramesCount = 5;
+      final membersCount = 24;
       final logger = Talker();
 
       logger.info('Group participants count is ${membersCount + 1}');

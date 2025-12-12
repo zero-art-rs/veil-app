@@ -3,7 +3,7 @@ import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:provider/provider.dart';
 
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/widgets/sync_widget.dart';
+import 'package:veil/widgets/circular_loader.dart';
 import 'editor_page_vm.dart';
 import 'package:veil/utils/platform.dart';
 
@@ -147,7 +147,7 @@ class _EditorPageView extends StatelessWidget {
                 );
               },
             ),
-          if (vm.isSinking) SyncCircleView(),
+          if (vm.isSinking) CircularLoader(size: 24,),
         ],
       ),
       body: CallbackShortcuts(
@@ -167,7 +167,7 @@ class _EditorPageView extends StatelessWidget {
                             child: TextField(
                               controller: vm.mdEditor,
                               decoration: const InputDecoration(
-                                hintText: "Start writing...",
+                                hintText: "Start write here",
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.all(16),
                               ),

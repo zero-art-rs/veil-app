@@ -102,12 +102,21 @@ class Account {
       await DB.instance.removeSpk(spkPublicKey);
     }
 
+    final logger_ =
+        logger ??
+        Talker(
+          logger: TalkerLogger(
+            formatter: ColoredLoggerFormatter(),
+            settings: TalkerLoggerSettings(defaultTitle: 'Sync model $groupId'),
+          ),
+        );
+
     return SyncModel(
       account: this,
       documentState: document,
       groupContext: groupContext,
       saveToDb: saveToDb,
-      logger: logger,
+      logger: logger_,
       localCrdtStorage: localCrdtStorage ?? DB.instance,
     );
   }
