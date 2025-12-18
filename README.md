@@ -1,7 +1,7 @@
 ## Prerequirements
 First of all, you need to install [Flutter](https://docs.flutter.dev/install) to run this project.
 
-This project uses `Rust` <--> `Dart bridge` and `Protobuf`. So, you need to install [Rust language](https://rust-lang.org/tools/install/) and [Protobuf](https://protobuf.dev/installation/).
+This project uses `Rust` ↔ `Dart` and `Protobuf`. So, you need to install [Rust](https://rust-lang.org/tools/install/) and [Protobuf](https://protobuf.dev/installation/).
 
 ## Supported Platforms
 * macOS
@@ -26,13 +26,19 @@ zrt_client_sdk=debug flutter run -d windows
 ```
 
 
-## Build app
+## Build app  
 ### Mac OS (.app)
 
 To build unsigned app use the following command:
 
 ```
-make build-macos-app
+# Install Fastforge to pack application
+dart pub global activate fastforge
+
+export PATH="$PATH":"$HOME/.pub-cache/bin"
+
+# Build a release package
+fastforge release --name veil-macos
 ```
 
 the output `.app` file find in `/dist` directory.
@@ -47,7 +53,7 @@ dart pub global activate fastforge
 export PATH="$PATH":"$HOME/.pub-cache/bin"
 
 # Build a release package
-fastforge release --name veil 
+fastforge release --name veil-linux
 ```
 
 ### Windows (.exe)
@@ -62,7 +68,7 @@ dart pub global activate fastforge
 $env:PATH = "$env:PATH;C:\Users\YOUR_USER_NAME\AppData\Local\Pub\Cache\bin"
 
 # Build a release package
-fastforge release --name veil 
+fastforge release --name veil-windows
 ```
 
 ## Make commands
@@ -71,7 +77,7 @@ fastforge release --name veil
 # Runs the application, PLATFORM by default is macos
 make run PLATFORM={platform}
 
-# Use it to update rust dependencies
+# Use it to update rust dependencies with the bridge
 make update 
 
 # To list available devices/platforms:

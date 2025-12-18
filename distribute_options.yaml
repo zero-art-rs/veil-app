@@ -1,12 +1,20 @@
 output: dist/
 releases:
-  - name: veil
+  - name: veil-macos
     jobs:
-      - name: linux-deb
+      - name: build-macos-app
+        package:
+          platform: macos
+          target: dmg
+  - name: veil-windows
+    jobs:
+      - name: build-windows-app
+        package:
+          platform: windows
+          target: exe
+  - name: veil-linux
+    jobs:
+      - name: build-linux-app
         package:
           platform: linux
           target: deb
-      - name: windows-veil
-        package:
-          platform: windows
-          target: exe   
