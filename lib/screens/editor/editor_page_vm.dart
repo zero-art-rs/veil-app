@@ -47,8 +47,6 @@ class EditorPageVm extends ChangeNotifier {
         switch (e) {
           case SyncModelCorruptedEvent():
             _setCorrupted();
-          // case SyncModelSync/ingEvent():
-          // isSinking = e.syncingEvent;
           case SyncModelGroupInfoEvent():
             groupNameController.text = e.groupInfo.name;
           case SyncModelRemovedFromGroupEvent():
@@ -93,7 +91,7 @@ class EditorPageVm extends ChangeNotifier {
 
   Future<void> updateGroupName(BuildContext context, String groupName) async {
     try {
-      await syncModel.updateGroupName(name: groupNameController.text);
+      await syncModel.sendUpdateGroupName(name: groupNameController.text);
     } catch (e, st) {
       logger.error('Failed to update group name', e, st);
       if (!context.mounted) return;
@@ -200,7 +198,7 @@ class EditorPageVm extends ChangeNotifier {
         selectedMode == EditorModes.edit && mode == EditorModes.view;
 
     if (mode == EditorModes.edit) {
-      logger.debug('Bufferizing frames trigger on ui');
+      logger.debug('Enable edit mode');
       await syncModel.selectMode(SyncModelMode.write);
     }
 

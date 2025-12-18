@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:queue/queue.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import 'package:uuid/v4.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
@@ -56,8 +57,19 @@ class DocsPageViewModel extends ChangeNotifier {
     );
 
     await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+
+    final logger = Talker(
+      logger: TalkerLogger(
+        formatter: ColoredLoggerFormatter(),
+        settings: TalkerLoggerSettings(
+          defaultTitle: 'Sync model $docID',
+        ),
+      ),
+    );
+
     await _syncProvider.add(
       SyncModel(
+        logger: logger,
         documentState: document,
         groupContext: groupContext,
         localCrdtStorage: DB.instance,

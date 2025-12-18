@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:veil/assets/config.dart';
 
 class SpkClient {
   static final instance = SpkClient();
   final Dio _dio = Dio();
 
-  final String baseUrl = 'https://veil.distributedlab.com';
+  final String baseUrl = AppConfig.instance.apiBasePath;
 
   Future<void> sendSPKs({
     required String id,

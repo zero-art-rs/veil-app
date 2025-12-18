@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:talker_flutter/talker_flutter.dart';
+import 'package:veil/assets/config.dart';
 import 'package:veil/assets/util.dart';
 import 'package:veil/managers/contacts_manager.dart';
 import 'package:veil/managers/svces_status_listener.dart';
@@ -28,14 +29,16 @@ import 'package:veil/utils/url_protocol/api.dart';
 import 'package:veil/widgets/future_dialog.dart';
 import 'package:veil/widgets/network_status_banner.dart';
 
-late final Talker logger;
+final Talker logger = Talker(
+  logger: TalkerLogger(formatter: ColoredLoggerFormatter()),
+);
 
 Future<void> main() async {
   try {
     // register custom scheme for windows deeplinking
     registerProtocolHandler('veil');
     WidgetsFlutterBinding.ensureInitialized();
-    logger = Talker();
+    await AppConfig.instance.load();
     await RustLib.init();
     initTracing();
     NetworkStatusListener.instance.start();

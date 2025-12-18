@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:rxdart/subjects.dart';
+import 'package:talker/talker.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/storage/account_storage.dart';
@@ -27,8 +28,16 @@ class SyncProvider {
         ),
       );
 
+      final logger = Talker(
+        logger: TalkerLogger(
+          formatter: ColoredLoggerFormatter(),
+          settings: TalkerLoggerSettings(lineSymbol: '-'),
+        ),
+      );
+
       await add(
         SyncModel(
+          logger: logger,
           documentState: documentState,
           groupContext: groupContext,
           localCrdtStorage: DB.instance,
