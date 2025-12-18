@@ -57,18 +57,13 @@ fastforge release --name veil-linux
 ```
 
 ### Windows (.exe)
-
-To create an `.exe` installer you should download [Inno Setup](https://jrsoftware.org/isdl.php#stable) before.
-
 ```
-# Install Fastforge to pack application
-dart pub global activate fastforge
-
-# Set YOUR_USER_NAME to add fastforge to your path (temporary)
-$env:PATH = "$env:PATH;C:\Users\YOUR_USER_NAME\AppData\Local\Pub\Cache\bin"
-
-# Build a release package
-fastforge release --name veil-windows
+flutter build windows --release
+$version = (Select-String "^version:" pubspec.yaml).Line.Split(":")[1].Trim()
+Compress-Archive `
+  -Path build\windows\x64\runner\Release\* `
+  -DestinationPath dist\veil-$version-win64.zip `
+  -Force
 ```
 
 ## Make commands
