@@ -77,8 +77,10 @@ Future<SyncModel> generateSyncModel({
   String logFileName = 'syncModel.log',
   String logOutputDir = 'general',
   String accountName = 'owner',
+  bool printLogsToConsole = true,
 }) async {
   final talker = Talker(
+    settings: TalkerSettings(useConsoleLogs: printLogsToConsole),
     history: FileTalkerHistory(
       TalkerSettings(),
       file: File('integration_test/$logOutputDir/$logFileName'),
@@ -116,12 +118,14 @@ Future<SyncModel> acceptInvite(
   Account account, {
   String outputDir = 'general',
   String logFileName = 'syncModel.log',
+  bool printLogsToConsole = true,
 }) async {
   final documentDeepLink = DeeplinkManager.instance.retrieveDocumentDeepLink(
     Uri.parse(invite),
   );
 
   final talker = Talker(
+    settings: TalkerSettings(useConsoleLogs: printLogsToConsole),
     history: FileTalkerHistory(
       TalkerSettings(),
       file: File('integration_test/$outputDir/$logFileName'),

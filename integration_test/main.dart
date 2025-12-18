@@ -32,46 +32,102 @@ void main() {
     AccountSecureStorage.instance.testInit();
   });
 
-  test('Test change user name operation', () async {
-    final syncModel = await generateSyncModel(
-      logFileName: 'sync_model.log',
-      logOutputDir: 'change_user_name',
-    );
+  group('Change user name operation', () {
+    test('Basic test', () async {
+      final syncModel = await generateSyncModel(
+        logFileName: 'sync_model.log',
+        logOutputDir: 'change_user_name',
+      );
 
-    await syncModel.testSetup();
-    await syncModel.setState(SyncModelStateMode.network);
+      await syncModel.testSetup();
+      await syncModel.setState(SyncModelStateMode.network);
 
-    final newName = 'New name';
-    await syncModel.sendUpdateUserName(name: newName);
+      final newName = 'New name';
+      await syncModel.sendUpdateUserName(name: newName);
 
-    // Waiting for the frame from centrifugo
-    await Future.delayed(Duration(seconds: 2));
+      // Waiting for the frame from centrifugo
+      await Future.delayed(Duration(seconds: 2));
 
-    final user = syncModel.groupContext.retrieveGroupInfo().members.firstWhere(
-      (e) => e.id == syncModel.account.actorId,
-    );
-    assert(user.name == newName, 'User name was not changed');
+      final user = syncModel.groupContext
+          .retrieveGroupInfo()
+          .members
+          .firstWhere((e) => e.id == syncModel.account.actorId);
+      assert(user.name == newName, 'User name was not changed');
+    });
+
+    test('Last sender test', () async {
+      final syncModel = await generateSyncModel(
+        logFileName: 'sync_model.log',
+        logOutputDir: 'change_user_name',
+      );
+
+      await syncModel.testSetup();
+      await syncModel.setState(SyncModelStateMode.network);
+
+      final newName = 'New name';
+      await syncModel.sendUpdateUserName(name: newName);
+
+      // Waiting for the frame from centrifugo
+      await Future.delayed(Duration(seconds: 2));
+
+      final user = syncModel.groupContext
+          .retrieveGroupInfo()
+          .members
+          .firstWhere((e) => e.id == syncModel.account.actorId);
+      assert(user.name == newName, 'User name was not changed');
+    });
   });
 
-  test('Test change group name operation', () async {
-    final syncModel = await generateSyncModel(
-      logFileName: 'sync_model.log',
-      logOutputDir: 'change_group_name',
-    );
+  group('Test change group name operation', () {
+    test('Basic test', () async {
+      final syncModel = await generateSyncModel(
+        logFileName: 'sync_model.log',
+        logOutputDir: 'change_group_name',
+      );
 
-    await syncModel.testSetup();
-    await syncModel.setState(SyncModelStateMode.network);
+      await syncModel.testSetup();
+      await syncModel.setState(SyncModelStateMode.network);
+      await syncModel.sendCrdtFrame('12345');
 
-    final newGroupName = 'New group name';
-    await syncModel.sendUpdateGroupName(name: newGroupName);
+      // Waiting for the frame from centrifugo
+      await Future.delayed(Duration(seconds: 2));
 
-    // Waiting for the frame from centrifugo
-    await Future.delayed(Duration(seconds: 2));
+      final newGroupName = 'New group name';
+      await syncModel.sendUpdateGroupName(name: newGroupName);
 
-    assert(
-      syncModel.groupContext.retrieveGroupInfo().name == newGroupName,
-      'Group name was not changed',
-    );
+      // Waiting for the frame from centrifugo
+      await Future.delayed(Duration(seconds: 2));
+
+      assert(
+        syncModel.groupContext.retrieveGroupInfo().name == newGroupName,
+        'Group name was not changed',
+      );
+    });
+
+    test('Last sender test', () async {
+      final syncModel = await generateSyncModel(
+        logFileName: 'sync_model.log',
+        logOutputDir: 'last_sender_change_group_name',
+      );
+
+      await syncModel.testSetup();
+      await syncModel.setState(SyncModelStateMode.network);
+      await syncModel.sendCrdtFrame('12345');
+
+      // Waiting for the frame from centrifugo
+      await Future.delayed(Duration(seconds: 2));
+
+      final newGroupName = 'New group name';
+      await syncModel.sendUpdateGroupName(name: newGroupName);
+
+      // Waiting for the frame from centrifugo
+      await Future.delayed(Duration(seconds: 2));
+
+      assert(
+        syncModel.groupContext.retrieveGroupInfo().name == newGroupName,
+        'Group name was not changed',
+      );
+    });
   });
 
   test(
@@ -148,10 +204,10 @@ void main() {
 
   test(
     'Concurrent keyupdate via send crdt frame',
-    timeout: Timeout(Duration(minutes: 60)),
+    timeout: Timeout(Duration(minutes: 120)),
     () async {
-      final sendFramesCount = 5;
-      final membersCount = 24;
+      final sendFramesCount = 10;
+      final membersCount = 50;
       final logger = Talker();
 
       logger.info('Group participants count is ${membersCount + 1}');
@@ -159,21 +215,27 @@ void main() {
       final ownerSyncModel = await generateSyncModel(
         logOutputDir: 'concurrent_keyupdate',
         logFileName: 'owner.log',
+        printLogsToConsole: false,
       );
 
       await ownerSyncModel.testSetup();
       await ownerSyncModel.setState(SyncModelStateMode.network);
+
+      logger.info('Generating invite links...');
       final links = await generateInviteLinks(ownerSyncModel, membersCount);
+      logger.info('Links were generated');
       final members = generateAccountList(membersCount);
 
       var membersSyncModelList = [];
       for (var i = 0; i < membersCount; i++) {
+        logger.info('Accepting invite for member ${i + 1}...');
         membersSyncModelList.add(
           await acceptInvite(
             links[i],
             members[i],
             logFileName: 'member_$i.log',
             outputDir: 'concurrent_keyupdate',
+            printLogsToConsole: false,
           ),
         );
       }
@@ -214,7 +276,9 @@ void main() {
         workList.add(work);
       }
 
+      logger.info('Waiting for all tasks to complete...');
       await Future.wait(workList, eagerError: true);
+      logger.info('Tasks completed, waiting for all members to process...');
 
       final List<Future> workList2 = [];
       for (var syncModel in allMembersList) {

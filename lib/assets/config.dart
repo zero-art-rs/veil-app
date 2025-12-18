@@ -26,9 +26,15 @@ class AppConfig {
        _monitorBasePath = monitorBasePath;
 
   Future<void> load() async {
-    final raw = await rootBundle.loadString('assets/config.json');
-    final json = jsonDecode(raw);
+    final config = await () async {
+      try {
+        return await rootBundle.loadString('assets/config.json');
+      } catch (_) {
+        return await rootBundle.loadString('assets/config.local.json');
+      }
+    }();
 
+    final json = jsonDecode(config);
     _monitorBasePath = json[_monitorBasePathKey];
     _apiBasePath = json[_apiBasePathKey];
     _sseBasePath = json[_sseBasePathKey];

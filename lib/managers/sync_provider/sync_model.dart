@@ -158,24 +158,25 @@ extension SyncModelState on SyncModel {
       _networkStatusListener?.cancel();
     }
 
-    logger?.modelLog('Dispose centrifugo listener..', level: LogLevel.debug);
+    logger?.stateLog('Dispose centrifugo listener..', level: LogLevel.debug);
     await _centrifugoListener?.dispose();
     await _centrifugoDisconnectedListener?.cancel();
 
-    logger?.modelLog(
-      'Cleaning up queues and queues listener...',
-      level: LogLevel.debug,
-    );
     if (cancelPendingTasks) {
+      logger?.stateLog(
+        'Cleaning up queues and queues listener...',
+        level: LogLevel.debug,
+      );
       _processQueue.cancel();
       _writeQueue.cancel();
       queuesProcessListener.dispose();
     }
 
-    logger?.modelLog(
+    logger?.stateLog(
       'Waiting for the cancelling pending works... process queue items: ${_processQueue.remainingItemCount}, write queue items: ${_writeQueue.remainingItemCount}',
       level: LogLevel.debug,
     );
+
     if (_processQueue.remainingItemCount > 0) {
       await _processQueue.onComplete;
     }
@@ -187,14 +188,20 @@ extension SyncModelState on SyncModel {
     // Apply remaining buffered crdt payload list
     final snapshot = await _crdtBuffer.snapshot();
     if (snapshot.isNotEmpty) {
-      logger?.debug('Applying remaining buffered frames before dispose..');
+      logger?.stateLog(
+        'Applying remaining buffered frames before dispose..',
+        level: LogLevel.debug,
+      );
       await applyCrdtListOperation(snapshot);
       await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
     }
 
     // Closing state broadcast streams
     if (disableStateBroadcast) {
-      logger?.debug('Closing state broadcast stream..');
+      logger?.stateLog(
+        'Closing state broadcast stream..',
+        level: LogLevel.debug,
+      );
       await _eventController.close();
     }
 
@@ -454,6 +461,7 @@ extension SyncModelProcessOperations on SyncModel {
       await _processQueue.add(() async {
         logger?.processLog(
           'Received frame, epoch: ${spframe.frame.frame.epoch}, seqNum: ${spframe.seqNum}, start processing..',
+          level: LogLevel.debug,
         );
 
         _previousGroupInfoHash = sha256
@@ -482,6 +490,11 @@ extension SyncModelProcessOperations on SyncModel {
           await applyCrdtListOperation(snapshot);
           await _crdtBuffer.removeWhere((e) => snapshot.contains(e));
         }
+
+        logger?.processLog(
+          'Frame processed, epoch: ${spframe.frame.frame.epoch}, seqNum: ${spframe.seqNum}',
+          level: LogLevel.debug,
+        );
       });
     } on QueueCancelledException {
       logger?.processLog('Process queue cancelled', level: LogLevel.debug);

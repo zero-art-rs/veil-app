@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/widgets/circular_loader.dart';
+import 'package:veil/widgets/square_rounded_btn.dart';
 import 'editor_page_vm.dart';
 import 'package:veil/utils/platform.dart';
 
@@ -64,6 +65,13 @@ class _EditorPageView extends StatelessWidget {
           ),
         ),
         actions: [
+          IconButton(
+            iconSize: 28,
+            onPressed: () async {
+              await vm.selectMode(context, EditorModes.view);
+            },
+            icon: Icon(Icons.save),
+          ),
           IconButton(
             onPressed: () async {
               await vm.exportPDF(context);
@@ -147,7 +155,7 @@ class _EditorPageView extends StatelessWidget {
                 );
               },
             ),
-          if (vm.isSinking) CircularLoader(size: 24,),
+          if (vm.isSinking) CircularLoader(size: 24),
         ],
       ),
       body: CallbackShortcuts(
@@ -161,7 +169,7 @@ class _EditorPageView extends StatelessWidget {
                 children: [
                   if (vm.selectedMode == EditorModes.edit)
                     Expanded(
-                      child: Column(
+                      child: Stack(
                         children: [
                           Expanded(
                             child: TextField(

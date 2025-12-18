@@ -66,6 +66,32 @@ flutter devices
 * Windows
 * Linux (Ubuntu)
 
+## Local development
+You need to pull the [infrastructure](https://github.com/zero-art-rs/infrastructure) repository and follow the steps described in the README file.
+In a `assets` directory you can see `config.local.json`.
+
+``` json
+{
+    "api_base_path": "http://localhost:8080",
+    "sse_base_path": "http://localhost:8000",
+    "monitor_base_path": "http://localhost:8090"
+}
+```
+
+If you haven’t modified any ports in the infrastructure, no action is required.
+
+To use this configuration, open the `pubspec.yaml` file and, under the `flutter/assets` section, replace `config.json` with `config.local.json`.
+
+``` yaml
+*** 
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/config.local.json
+```
+
 ## 🛠 Development Tips (Optional)
 
 ### 🔧 Compile `.proto` files
