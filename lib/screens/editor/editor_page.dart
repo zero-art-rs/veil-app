@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/widgets/circular_loader.dart';
-import 'package:veil/widgets/square_rounded_btn.dart';
 import 'editor_page_vm.dart';
 import 'package:veil/utils/platform.dart';
 
@@ -169,8 +168,7 @@ class _EditorPageView extends StatelessWidget {
                 children: [
                   if (vm.selectedMode == EditorModes.edit)
                     Expanded(
-                      child: Stack(
-                        children: [
+                        child: 
                           Expanded(
                             child: TextField(
                               controller: vm.mdEditor,
@@ -184,8 +182,6 @@ class _EditorPageView extends StatelessWidget {
                               onChanged: (_) => vm.notify(),
                             ),
                           ),
-                        ],
-                      ),
                     ),
 
                   if (vm.selectedMode == EditorModes.edit && isDesktop)
