@@ -25,6 +25,7 @@ import 'package:app_links/app_links.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/platform.dart';
+import 'package:veil/utils/url_protocol/api.dart';
 import 'package:veil/widgets/future_dialog.dart';
 import 'package:veil/widgets/network_status_banner.dart';
 
@@ -34,6 +35,8 @@ final Talker logger = Talker(
 
 Future<void> main() async {
   try {
+    // register custom scheme for windows deeplinking
+    registerProtocolHandler('veil');
     WidgetsFlutterBinding.ensureInitialized();
     await AppConfig.instance.load();
     await RustLib.init();

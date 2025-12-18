@@ -6,3 +6,7 @@ releases:
         package:
           platform: linux
           target: deb
+      - name: windows-veil
+        package:
+          platform: windows
+          target: exe   

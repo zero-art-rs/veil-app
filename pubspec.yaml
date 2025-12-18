@@ -74,6 +74,8 @@ dependencies:
   queue: ^3.0.0
   talker_flutter: ^5.0.2
   talker: ^5.0.2
+  win32: ^5.15.0
+  ffi: ^2.1.4
 
 dev_dependencies:
   flutter_test:

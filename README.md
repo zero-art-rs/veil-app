@@ -3,7 +3,7 @@ First of all, you need to install [Flutter](https://docs.flutter.dev/install) to
 
 This project uses `Rust` <--> `Dart bridge` and `Protobuf`. So, you need to install [Rust language](https://rust-lang.org/tools/install/) and [Protobuf](https://protobuf.dev/installation/).
 
-## 🧩 Supported Platforms
+## Supported Platforms
 * macOS
 * Windows
 * Linux (Ubuntu)
@@ -28,14 +28,18 @@ zrt_client_sdk=debug flutter run -d windows
 
 ## Build app
 ### Mac OS (.app)
+
 To build unsigned app use the following command:
+
 ```
 make build-macos-app
 ```
+
 the output `.app` file find in `/dist` directory.
 The `unsigned app` means that you can't distribute it between other users. Their system will not allow to install it.
 
-## Linux (.deb)
+### Linux (.deb)
+
 ```
 # Install Fastforge to pack application
 dart pub global activate fastforge
@@ -46,10 +50,23 @@ export PATH="$PATH":"$HOME/.pub-cache/bin"
 fastforge release --name veil 
 ```
 
-## Windows
+### Windows (.exe)
 
+To create an `.exe` installer you should download [Inno Setup](https://jrsoftware.org/isdl.php#stable) before.
+
+```
+# Install Fastforge to pack application
+dart pub global activate fastforge
+
+# Set YOUR_USER_NAME to add fastforge to your path (temporary)
+$env:PATH = "$env:PATH;C:\Users\YOUR_USER_NAME\AppData\Local\Pub\Cache\bin"
+
+# Build a release package
+fastforge release --name veil 
+```
 
 ## Make commands
+
 ```bash
 # Runs the application, PLATFORM by default is macos
 make run PLATFORM={platform}
@@ -60,11 +77,6 @@ make update
 # To list available devices/platforms:
 flutter devices
 ```
-
-## 🧩 Supported Platforms
-* macOS
-* Windows
-* Linux (Ubuntu)
 
 ## Local development
 You need to pull the [infrastructure](https://github.com/zero-art-rs/infrastructure) repository and follow the steps described in the README file.
@@ -91,10 +103,9 @@ flutter:
   assets:
     - assets/config.local.json
 ```
+## For developers
 
-## 🛠 Development Tips (Optional)
-
-### 🔧 Compile `.proto` files
+### Compile `.proto` files
 
 ```bash
 # Activate Dart protoc plugin (⚠️ version 21.1.2 required for zero_art.proto)
@@ -111,7 +122,7 @@ protoc \
   google/protobuf/timestamp.proto
 ```
 
-### ⚙️ Rust Bridge (Flutter <--> Rust)
+### Rust Bridge (Flutter <--> Rust)
 
 This project uses [`flutter_rust_bridge`](https://cjycode.com/flutter_rust_bridge/quickstart)
 to generate Rust ↔ Dart bindings.
