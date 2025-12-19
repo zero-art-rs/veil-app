@@ -70,6 +70,7 @@ class _EditorPageView extends StatelessWidget {
               await vm.selectMode(context, EditorModes.view);
             },
             icon: Icon(Icons.save),
+            tooltip: 'Save document',
           ),
           IconButton(
             onPressed: () async {
@@ -168,20 +169,19 @@ class _EditorPageView extends StatelessWidget {
                 children: [
                   if (vm.selectedMode == EditorModes.edit)
                     Expanded(
-                        child: 
-                          Expanded(
-                            child: TextField(
-                              controller: vm.mdEditor,
-                              decoration: const InputDecoration(
-                                hintText: "Start write here",
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(16),
-                              ),
-                              keyboardType: TextInputType.multiline,
-                              maxLines: null,
-                              onChanged: (_) => vm.notify(),
-                            ),
+                      child: Expanded(
+                        child: TextField(
+                          controller: vm.mdEditor,
+                          decoration: const InputDecoration(
+                            hintText: "Start write here",
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(16),
                           ),
+                          keyboardType: TextInputType.multiline,
+                          maxLines: null,
+                          onChanged: (_) => vm.notify(),
+                        ),
+                      ),
                     ),
 
                   if (vm.selectedMode == EditorModes.edit && isDesktop)

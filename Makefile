@@ -8,7 +8,7 @@ CERT ?= "Not specified"
 APPLE_ID ?= "Not specified"
 APP_PASSWORD ?= "Not specified"
 TEAM_ID ?= "Not specified"
-VERSION := $(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)
+VERSION := $(shell sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)
 
 run:
 	@echo "Running Flutter app for $(PLATFORM)..."
