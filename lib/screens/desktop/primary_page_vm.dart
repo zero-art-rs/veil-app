@@ -6,6 +6,7 @@ import 'package:talker_flutter/talker_flutter.dart';
 import 'package:uuid/v4.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/managers/sync_provider/events.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/screens/account_page.dart';
@@ -91,7 +92,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
 
       await _syncProvider.add(
         SyncModel(
-          logger: logger,
+          logger: SyncModelLogger(logger, document.id),
           documentState: document,
           groupContext: groupContext,
           localCrdtStorage: DB.instance,

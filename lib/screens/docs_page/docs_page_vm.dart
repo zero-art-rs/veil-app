@@ -7,6 +7,7 @@ import 'package:uuid/v4.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/events.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/src/rust/api/automerge.dart';
@@ -61,15 +62,13 @@ class DocsPageViewModel extends ChangeNotifier {
     final logger = Talker(
       logger: TalkerLogger(
         formatter: ColoredLoggerFormatter(),
-        settings: TalkerLoggerSettings(
-          defaultTitle: 'Sync model $docID',
-        ),
+        settings: TalkerLoggerSettings(defaultTitle: 'Sync model $docID'),
       ),
     );
 
     await _syncProvider.add(
       SyncModel(
-        logger: logger,
+        logger: SyncModelLogger(logger, document.id),
         documentState: document,
         groupContext: groupContext,
         localCrdtStorage: DB.instance,

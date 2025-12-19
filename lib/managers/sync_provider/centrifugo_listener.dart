@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:eventflux/eventflux.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/assets/config.dart';
-import 'package:veil/managers/sync_provider/logger.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 
 const _centrifugoWithoutUpdatesTimeout = 90;
 
@@ -12,7 +12,7 @@ enum CentrifugoConnectionState { success, error }
 class CentrifugoListener {
   final _url = AppConfig.instance.sseBasePath;
   final _eventFlux = EventFlux.spawn();
-  final Talker? logger;
+  final SyncModelLogger? logger;
   final dynamic Function(EventFluxData) _processCallback;
   StreamSubscription<dynamic>? _centrifugoListener;
   DateTime? _lastEventTime;
@@ -94,7 +94,7 @@ class CentrifugoListener {
     final difference = now.difference(_lastEventTime!);
 
     if (difference.inSeconds >= _centrifugoWithoutUpdatesTimeout) {
-      logger?.warning(
+      logger?.centrifugoLog(
         'No events received from Centrifugo for ${difference.inSeconds} seconds, disconnecting...',
       );
 

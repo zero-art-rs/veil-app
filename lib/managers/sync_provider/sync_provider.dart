@@ -5,6 +5,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:talker/talker.dart';
 import 'package:veil/main.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/sqlite/db.dart';
@@ -37,7 +38,7 @@ class SyncProvider {
 
       await add(
         SyncModel(
-          logger: logger,
+          logger: SyncModelLogger(logger, documentState.id),
           documentState: documentState,
           groupContext: groupContext,
           localCrdtStorage: DB.instance,

@@ -5,6 +5,7 @@ import 'package:uuid/v4.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/account_storage.dart';
@@ -43,7 +44,7 @@ Future<SyncModel> createSyncModel({
   SyncModel syncModel = SyncModel(
     documentState: documentState,
     groupContext: groupContext,
-    logger: logger,
+    logger: logger != null ? SyncModelLogger(logger, documentState.id) : null,
     saveToDb: false,
     account: owner ?? AccountSecureStorage.instance.account,
     localCrdtStorage: InMemoryLocalCrdtStorage(),

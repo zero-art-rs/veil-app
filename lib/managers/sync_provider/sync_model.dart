@@ -21,7 +21,7 @@ import 'package:veil/managers/sync_provider/buffer.dart';
 import 'package:veil/managers/queues_listener.dart';
 import 'package:veil/managers/sync_provider/events.dart';
 import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
-import 'package:veil/managers/sync_provider/logger.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model_errors.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
@@ -43,7 +43,7 @@ enum SyncModelMode { read, write }
 /// `SyncModel` represents a single document synchronization state and operations
 /// It handles its own state and sharing with it via streams
 class SyncModel {
-  final Talker? logger;
+  final SyncModelLogger? logger;
   final Account account;
   final DocumentState documentState;
   final BGroupContext groupContext;
@@ -205,7 +205,7 @@ extension SyncModelState on SyncModel {
       await _eventController.close();
     }
 
-    logger?.debug('Sync provider disposed');
+    logger?.stateLog('Sync provider disposed', level: LogLevel.debug);
   }
 
   void _setupNetworkListener() {
@@ -518,7 +518,7 @@ extension SyncModelSendOperations on SyncModel {
           logger?.writeLog('Start leave group operation..');
           final frame = await groupContext.leaveGroup();
           await _saveGroupContext();
-          logger?.warning('Sending leave group frame...');
+          logger?.writeLog('Sending leave group frame...');
           await GroupApiClient.instance.sendFrame(
             groupId: documentState.id,
             frame: frame,
@@ -529,7 +529,10 @@ extension SyncModelSendOperations on SyncModel {
         },
       );
     } on QueueCancelledException {
-      logger?.debug('Send queue cancelled, leave group frame not sent');
+      logger?.writeLog(
+        'Send queue cancelled, leave group frame not sent',
+        level: LogLevel.debug,
+      );
     }
   }
 
@@ -648,7 +651,7 @@ extension SyncModelSendOperations on SyncModel {
     try {
       return await _write(
         operation: () async {
-          logger?.info('Send chat frame operation started');
+          logger?.writeLog('Send chat frame operation started');
 
           final json = jsonEncode(message);
 
@@ -660,13 +663,13 @@ extension SyncModelSendOperations on SyncModel {
 
           await _saveGroupContext();
 
-          logger?.info('Sending chat frame...');
+          logger?.writeLog('Sending chat frame...');
           await GroupApiClient.instance.sendFrame(
             groupId: documentState.id,
             frame: frame,
           );
 
-          logger?.info('Send chat frame operation finished');
+          logger?.writeLog('Send chat frame operation finished');
         },
       );
     } on QueueCancelledException {
@@ -1059,7 +1062,7 @@ extension SyncModelHelpers on SyncModel {
 
   void _emitGroupInfoUpdatesEvent(GroupInfo groupInfo) {
     if (!_eventController.isClosed) {
-      logger?.info('Group info changed, sending update..');
+      logger?.eventLog('Group info changed, sending update..');
       _eventController.add(SyncModelGroupInfoEvent(groupInfo));
     }
   }
