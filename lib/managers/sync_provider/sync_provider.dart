@@ -1,192 +1,98 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:rxdart/subjects.dart';
-import 'package:veil/api/centrifuge.dart';
-import 'package:veil/api/group_api_client.dart';
+import 'package:talker/talker.dart';
 import 'package:veil/main.dart';
-import 'package:veil/managers/change_manager.dart';
-import 'package:veil/managers/sync_provider/pending_sync_model.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
-import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
 import 'package:veil/storage/sqlite/db.dart';
-import 'package:veil/utils/group_context_factory.dart';
-import 'package:veil/utils/local_state.dart';
 
 class SyncProvider {
-  final _centrifugo = CentrifugeProvider.instance;
   final _db = DB.instance;
-  final _api = GroupApiClient.instance;
-  final _changeManager = ChangeManager.instance;
 
-  List<SyncProviderModel> get current => subject.value;
-  BehaviorSubject<List<SyncProviderModel>> subject = BehaviorSubject.seeded([]);
+  List<SyncModel> get current => subject.value;
+  BehaviorSubject<List<SyncModel>> subject = BehaviorSubject.seeded([]);
 
   static final instance = SyncProvider._();
   SyncProvider._();
 
   Future<void> init() async {
-    final documents = await _db.getDocumentList();
+    final documentStateList = await _db.getDocumentStateList();
 
-    for (final doc in documents) {
-      final groupContext = doc.groupContextParts.toGroupContext(
+    for (final documentState in documentStateList) {
+      final groupContext = documentState.groupContextParts.toGroupContext(
         identitySecretKey: Uint8List.fromList(
           AccountSecureStorage.instance.account.keypair.rawPrivateKey,
         ),
       );
 
-      if (doc.localOnly) {
-        await _handleLocal(doc, groupContext);
-      } else {
-        await _handleRemote(doc, groupContext);
-      }
+      final logger = Talker(
+        logger: TalkerLogger(
+          formatter: ColoredLoggerFormatter(),
+          settings: TalkerLoggerSettings(lineSymbol: '-'),
+        ),
+      );
+
+      await add(
+        SyncModel(
+          logger: SyncModelLogger(logger, documentState.id),
+          documentState: documentState,
+          groupContext: groupContext,
+          localCrdtStorage: DB.instance,
+        ),
+      );
     }
-  }
-
-  Future<void> _handleLocal(Document doc, BGroupContext groupContext) async {
-    _addLocal(doc, groupContext);
-  }
-
-  Future<void> _handleRemote(Document doc, BGroupContext groupContext) async {
-    try {
-      await add(doc, groupContext);
-      await DB.instance.updateDocument(doc: doc, parts: groupContext.asParts());
-    } catch (e, st) {
-      if (_isUserRemovedError(e)) {
-        logger.i('User removed from group, making local only');
-        await LocalStateUtils.instance.makeDocumentLocal(doc);
-        _addLocal(doc, groupContext);
-      } else {
-        logger.e('Failed to add from invite: $e\n$st');
-      }
-    }
-  }
-
-  bool _isUserRemovedError(Object e) {
-    return e.toString().contains('User removed from group');
   }
 
   Future<void> add(
-    Document document,
-    BGroupContext groupContext, {
-    insertToDb = false,
+    SyncModel syncModel, {
+    bool insertToDb = false,
+    bool allowFullDocument = false,
   }) async {
-    final syncModel = await _synchronizeDocument(document, groupContext);
+    syncModel.setup(allowFullDocument: allowFullDocument);
+
     if (insertToDb) {
-      await _db.insertDocument(document: document);
+      await _db.insertDocumentState(documentState: syncModel.documentState);
     }
-    current.add(syncModel);
-    subject.add(current);
-  }
-
-  void _addLocal(Document document, BGroupContext groupContext) {
-    final syncModel = SyncProviderModel.local(document, groupContext);
 
     current.add(syncModel);
     subject.add(current);
   }
 
-  Future<void> addFromInvite(
-    Document document,
-    BPendingGroupContext pendingGroupContext, {
-    required BUser user,
-  }) async {
-    final groupContext = await _upgradeGroupContext(
-      document,
-      pendingGroupContext,
-      user,
-    );
-
-    final syncModel = await _synchronizeDocument(document, groupContext);
-    await _db.insertDocument(document: document);
-    current.add(syncModel);
-    subject.add(current);
-  }
-
-  Future<void> remove(String chatId) async {
+  Future<void> remove(String id) async {
     final syncModel = subject.value
-        .where((element) => element.document.id == chatId)
+        .where((element) => element.documentState.id == id)
         .firstOrNull;
 
     if (syncModel == null) {
-      logger.e('no sync model');
+      logger.error('no sync model with id $id found to remove');
       return;
     }
 
-    await syncModel.dispose();
+    if (!syncModel.removedFromGroup && !syncModel.corrupted) {
+      await syncModel.sendLeaveGroupFrame();
+      await syncModel.clearState(
+        disableNetworkListener: true,
+        disableStateBroadcast: true,
+        cancelPendingTasks: true,
+      );
+    }
 
-    await _db.transaction((database) async {
-      await database.deleteDocument(syncModel.document.id);
-    });
+    await Hive.box(syncModel.documentState.id).deleteFromDisk();
+    await _db.deleteDocumentState(syncModel.documentState.id);
 
-    current.removeWhere((element) => element.document.id == chatId);
+    current.removeWhere((element) => element.documentState.id == id);
     subject.add(current);
   }
 
-  SyncProviderModel get(String chatId) {
-    return current.firstWhere((element) => element.document.id == chatId);
+  SyncModel get(String chatId) {
+    return current.firstWhere((element) => element.documentState.id == chatId);
   }
 
-  List<SyncProviderModel> getAll() {
+  List<SyncModel> getAll() {
     return current;
-  }
-
-  Future<SyncProviderModel> _synchronizeDocument(
-    Document doc,
-    BGroupContext groupContext,
-  ) async {
-    final challenge = await _api.getChallenge(doc.id);
-
-    final jwt = await _api.getCentrifugoJWT(
-      groupId: doc.id,
-      epoch: groupContext.getEpoch().toInt(),
-      proof: base64Encode(
-        groupContext.signChallenge(challenge: base64Decode(challenge)),
-      ),
-      challenge: challenge,
-    );
-
-    final stream = await _centrifugo.connect(jwt);
-    _changeManager.setup(doc.id);
-
-    final syncModel = SyncProviderModel.withListener(
-      doc,
-      groupContext,
-      jwt,
-      stream,
-    );
-    await syncModel.synchronizeInitially();
-    return syncModel;
-  }
-
-  Future<BGroupContext> _upgradeGroupContext(
-    Document doc,
-    BPendingGroupContext pendingGroupContext,
-    BUser user,
-  ) async {
-    final challenge = await _api.getChallenge(doc.id);
-
-    final jwt = await _api.getCentrifugoJWT(
-      groupId: doc.id,
-      epoch: pendingGroupContext.getEpoch().toInt(),
-      proof: base64Encode(
-        pendingGroupContext.signChallenge(challenge: base64Decode(challenge)),
-      ),
-      challenge: challenge,
-    );
-
-    final stream = await _centrifugo.connect(jwt);
-
-    final pendingSyncModel = SyncPendingProviderModel(
-      document: doc,
-      groupContext: pendingGroupContext,
-      jwt: jwt,
-    );
-
-    pendingSyncModel.listenCentrifugo(stream);
-    return await pendingSyncModel.synchronizeInitially(user);
   }
 }

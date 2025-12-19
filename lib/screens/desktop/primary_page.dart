@@ -5,8 +5,10 @@ import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/account_page.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/screens/desktop/primary_page_vm.dart';
-import 'package:veil/screens/editor/editor_page.dart';
+import 'package:veil/screens/editor_container/editor_container_page.dart';
+import 'package:veil/widgets/app_label.dart';
 import 'package:veil/widgets/banner.dart';
+import 'package:veil/widgets/circular_loader.dart';
 import 'package:veil/widgets/loader_dialog.dart';
 import 'package:veil/widgets/sidebar.dart';
 
@@ -35,6 +37,7 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
     BuildContext context,
     PrimaryPageViewModel vm,
     GroupInfo groupInfo,
+    String id,
   ) {
     showDialog(
       context: context,
@@ -65,9 +68,9 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   child: FilledButton(
                     onPressed: () async {
                       try {
-                        await vm.removeDocument(context, groupInfo.id);
-                      } catch (err) {
-                        logger.e('Failed to remove document: $err');
+                        await vm.removeDocument(context, id);
+                      } catch (err, st) {
+                        logger.error('Failed to remove document', err, st);
 
                         if (!context.mounted) return;
                         TopBanner.show(
@@ -94,15 +97,6 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
     BuildContext context,
     PrimaryPageViewModel vm,
   ) async {
-    // final result = await showLoaderDialog<String>(
-    //   context: context,
-    //   initial: const Text("Create document"),
-    //   work: () async {
-    //     await Future.delayed(const Duration(seconds: 2));
-    //     return "Done!";
-    //   },
-    // );
-
     final style = Theme.of(context).textTheme;
 
     await showLoaderDialog(
@@ -118,7 +112,6 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
               child: Text('Create document', style: style.titleLarge),
             ),
 
-            // Spacer(),
             TextField(
               controller: _vm.textEditingController,
               decoration: InputDecoration(label: Text('Input document title')),
@@ -191,35 +184,51 @@ class StateDesktopPrimaryPage extends State<DesktopPrimaryPage> {
                   icon: Icons.description_outlined,
                   label: doc.$2.groupContext.retrieveGroupInfo().name,
                   onTap: () => vm.setSelectedPage(
-                    EditorPage(key: doc.$2.document.key, syncModel: doc.$2),
+                    EditorContainerPage(
+                      key: doc.$2.documentState.key,
+                      syncModel: doc.$2,
+                    ),
                   ),
-                  trailingBuilder: () => PopupMenuButton(
-                    icon: Icon(Icons.more_vert_rounded),
-                    itemBuilder: (context) {
-                      return [
-                        PopupMenuItem(
-                          enabled: false,
-                          value: 0,
-                          child: Row(
-                            spacing: 16,
-                            children: [Icon(Icons.edit), Text('Edit')],
-                          ),
-                          onTap: () => {},
-                        ),
-                        PopupMenuItem(
-                          value: 1,
-                          child: Row(
-                            spacing: 16,
-                            children: [Icon(Icons.delete), Text('Delete')],
-                          ),
-                          onTap: () => _areYouSureToDeleteDocumentModal(
+                  trailingBuilder: () => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (doc.$2.corrupted)
+                        AppLabel(
+                          text: 'Error',
+                          backgroundColor: Theme.of(
                             context,
-                            vm,
-                            doc.$2.groupContext.retrieveGroupInfo(),
-                          ),
+                          ).colorScheme.errorContainer,
+                          textColor: Theme.of(
+                            context,
+                          ).colorScheme.onErrorContainer,
                         ),
-                      ];
-                    },
+
+                      if (doc.$2.removedFromGroup) AppLabel(text: 'Local'),
+
+                      if (doc.$2.isSyncing)
+                        CircularLoader(padding: EdgeInsets.only(left: 8)),
+
+                      PopupMenuButton(
+                        icon: Icon(Icons.more_vert_rounded),
+                        itemBuilder: (context) {
+                          return [
+                            PopupMenuItem(
+                              value: 1,
+                              child: Row(
+                                spacing: 16,
+                                children: [Icon(Icons.delete), Text('Delete')],
+                              ),
+                              onTap: () => _areYouSureToDeleteDocumentModal(
+                                context,
+                                vm,
+                                doc.$2.groupContext.retrieveGroupInfo(),
+                                doc.$2.documentState.id,
+                              ),
+                            ),
+                          ];
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),

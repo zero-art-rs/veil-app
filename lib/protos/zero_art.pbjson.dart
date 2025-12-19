@@ -28,6 +28,22 @@ const Role$json = {
 final $typed_data.Uint8List roleDescriptor = $convert.base64Decode(
     'CgRSb2xlEggKBFJFQUQQABIJCgVXUklURRABEg0KCU9XTkVSU0hJUBACEgkKBUFETUlOEAM=');
 
+@$core.Deprecated('Use statusDescriptor instead')
+const Status$json = {
+  '1': 'Status',
+  '2': [
+    {'1': 'ACTIVE', '2': 0},
+    {'1': 'INVITED', '2': 1},
+    {'1': 'LEFT', '2': 2},
+    {'1': 'PENDING_REMOVAL', '2': 3},
+  ],
+};
+
+/// Descriptor for `Status`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List statusDescriptor = $convert.base64Decode(
+    'CgZTdGF0dXMSCgoGQUNUSVZFEAASCwoHSU5WSVRFRBABEggKBExFRlQQAhITCg9QRU5ESU5HX1'
+    'JFTU9WQUwQAw==');
+
 @$core.Deprecated('Use contentAttachmentTypeDescriptor instead')
 const ContentAttachmentType$json = {
   '1': 'ContentAttachmentType',
@@ -52,6 +68,8 @@ const User$json = {
     {'1': 'public_key', '3': 3, '4': 1, '5': 12, '10': 'publicKey'},
     {'1': 'picture', '3': 4, '4': 1, '5': 12, '10': 'picture'},
     {'1': 'role', '3': 5, '4': 1, '5': 14, '6': '.zero_art_proto.Role', '10': 'role'},
+    {'1': 'leaf_key', '3': 10, '4': 1, '5': 12, '10': 'leafKey'},
+    {'1': 'status', '3': 11, '4': 1, '5': 14, '6': '.zero_art_proto.Status', '10': 'status'},
   ],
 };
 
@@ -59,7 +77,8 @@ const User$json = {
 final $typed_data.Uint8List userDescriptor = $convert.base64Decode(
     'CgRVc2VyEg4KAmlkGAEgASgJUgJpZBISCgRuYW1lGAIgASgJUgRuYW1lEh0KCnB1YmxpY19rZX'
     'kYAyABKAxSCXB1YmxpY0tleRIYCgdwaWN0dXJlGAQgASgMUgdwaWN0dXJlEigKBHJvbGUYBSAB'
-    'KA4yFC56ZXJvX2FydF9wcm90by5Sb2xlUgRyb2xl');
+    'KA4yFC56ZXJvX2FydF9wcm90by5Sb2xlUgRyb2xlEhkKCGxlYWZfa2V5GAogASgMUgdsZWFmS2'
+    'V5Ei4KBnN0YXR1cxgLIAEoDjIWLnplcm9fYXJ0X3Byb3RvLlN0YXR1c1IGc3RhdHVz');
 
 @$core.Deprecated('Use contentAttachmentDescriptor instead')
 const ContentAttachment$json = {
@@ -165,16 +184,31 @@ final $typed_data.Uint8List groupActionPayloadDescriptor = $convert.base64Decode
     'bW92YWwYCCABKAsyFC56ZXJvX2FydF9wcm90by5Vc2VySABSD2ZpbmFsaXplUmVtb3ZhbEIICg'
     'ZhY3Rpb24=');
 
+@$core.Deprecated('Use payloadsDescriptor instead')
+const Payloads$json = {
+  '1': 'Payloads',
+  '2': [
+    {'1': 'payloads', '3': 1, '4': 3, '5': 11, '6': '.zero_art_proto.Payload', '10': 'payloads'},
+  ],
+};
+
+/// Descriptor for `Payloads`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List payloadsDescriptor = $convert.base64Decode(
+    'CghQYXlsb2FkcxIzCghwYXlsb2FkcxgBIAMoCzIXLnplcm9fYXJ0X3Byb3RvLlBheWxvYWRSCH'
+    'BheWxvYWRz');
+
 @$core.Deprecated('Use payloadDescriptor instead')
 const Payload$json = {
   '1': 'Payload',
   '2': [
     {'1': 'crdt', '3': 1, '4': 1, '5': 11, '6': '.zero_art_proto.CRDTPayload', '9': 0, '10': 'crdt'},
     {'1': 'chat', '3': 2, '4': 1, '5': 11, '6': '.zero_art_proto.ChatPayload', '9': 0, '10': 'chat'},
-    {'1': 'action', '3': 10, '4': 1, '5': 11, '6': '.zero_art_proto.GroupActionPayload', '9': 0, '10': 'action'},
   ],
   '8': [
     {'1': 'content'},
+  ],
+  '9': [
+    {'1': 10, '2': 11},
   ],
 };
 
@@ -182,8 +216,7 @@ const Payload$json = {
 final $typed_data.Uint8List payloadDescriptor = $convert.base64Decode(
     'CgdQYXlsb2FkEjEKBGNyZHQYASABKAsyGy56ZXJvX2FydF9wcm90by5DUkRUUGF5bG9hZEgAUg'
     'RjcmR0EjEKBGNoYXQYAiABKAsyGy56ZXJvX2FydF9wcm90by5DaGF0UGF5bG9hZEgAUgRjaGF0'
-    'EjwKBmFjdGlvbhgKIAEoCzIiLnplcm9fYXJ0X3Byb3RvLkdyb3VwQWN0aW9uUGF5bG9hZEgAUg'
-    'ZhY3Rpb25CCQoHY29udGVudA==');
+    'QgkKB2NvbnRlbnRKBAgKEAs=');
 
 @$core.Deprecated('Use groupOperationDescriptor instead')
 const GroupOperation$json = {
@@ -195,6 +228,7 @@ const GroupOperation$json = {
     {'1': 'key_update', '3': 4, '4': 1, '5': 12, '9': 0, '10': 'keyUpdate'},
     {'1': 'leave_group', '3': 5, '4': 1, '5': 12, '9': 0, '10': 'leaveGroup'},
     {'1': 'drop_group', '3': 10, '4': 1, '5': 12, '9': 0, '10': 'dropGroup'},
+    {'1': 'aggregated', '3': 11, '4': 1, '5': 12, '9': 0, '10': 'aggregated'},
   ],
   '8': [
     {'1': 'operation'},
@@ -206,8 +240,8 @@ final $typed_data.Uint8List groupOperationDescriptor = $convert.base64Decode(
     'Cg5Hcm91cE9wZXJhdGlvbhIUCgRpbml0GAEgASgMSABSBGluaXQSHwoKYWRkX21lbWJlchgCIA'
     'EoDEgAUglhZGRNZW1iZXISJQoNcmVtb3ZlX21lbWJlchgDIAEoDEgAUgxyZW1vdmVNZW1iZXIS'
     'HwoKa2V5X3VwZGF0ZRgEIAEoDEgAUglrZXlVcGRhdGUSIQoLbGVhdmVfZ3JvdXAYBSABKAxIAF'
-    'IKbGVhdmVHcm91cBIfCgpkcm9wX2dyb3VwGAogASgMSABSCWRyb3BHcm91cEILCglvcGVyYXRp'
-    'b24=');
+    'IKbGVhdmVHcm91cBIfCgpkcm9wX2dyb3VwGAogASgMSABSCWRyb3BHcm91cBIgCgphZ2dyZWdh'
+    'dGVkGAsgASgMSABSCmFnZ3JlZ2F0ZWRCCwoJb3BlcmF0aW9u');
 
 @$core.Deprecated('Use frameTBSDescriptor instead')
 const FrameTBS$json = {
@@ -279,10 +313,14 @@ const ProtectedPayloadTBS$json = {
     {'1': 'user_id', '3': 2, '4': 1, '5': 9, '9': 0, '10': 'userId'},
     {'1': 'leaf_id', '3': 3, '4': 1, '5': 9, '9': 0, '10': 'leafId'},
     {'1': 'created', '3': 4, '4': 1, '5': 11, '6': '.google.protobuf.Timestamp', '10': 'created'},
-    {'1': 'payload', '3': 5, '4': 3, '5': 11, '6': '.zero_art_proto.Payload', '10': 'payload'},
+    {'1': 'group_actions', '3': 10, '4': 3, '5': 11, '6': '.zero_art_proto.GroupActionPayload', '10': 'groupActions'},
+    {'1': 'content', '3': 11, '4': 1, '5': 12, '10': 'content'},
   ],
   '8': [
     {'1': 'sender'},
+  ],
+  '9': [
+    {'1': 5, '2': 6},
   ],
 };
 
@@ -290,8 +328,9 @@ const ProtectedPayloadTBS$json = {
 final $typed_data.Uint8List protectedPayloadTBSDescriptor = $convert.base64Decode(
     'ChNQcm90ZWN0ZWRQYXlsb2FkVEJTEhcKB3NlcV9udW0YASABKARSBnNlcU51bRIZCgd1c2VyX2'
     'lkGAIgASgJSABSBnVzZXJJZBIZCgdsZWFmX2lkGAMgASgJSABSBmxlYWZJZBI0CgdjcmVhdGVk'
-    'GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIHY3JlYXRlZBIxCgdwYXlsb2FkGA'
-    'UgAygLMhcuemVyb19hcnRfcHJvdG8uUGF5bG9hZFIHcGF5bG9hZEIICgZzZW5kZXI=');
+    'GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIHY3JlYXRlZBJHCg1ncm91cF9hY3'
+    'Rpb25zGAogAygLMiIuemVyb19hcnRfcHJvdG8uR3JvdXBBY3Rpb25QYXlsb2FkUgxncm91cEFj'
+    'dGlvbnMSGAoHY29udGVudBgLIAEoDFIHY29udGVudEIICgZzZW5kZXJKBAgFEAY=');
 
 @$core.Deprecated('Use protectedPayloadDescriptor instead')
 const ProtectedPayload$json = {

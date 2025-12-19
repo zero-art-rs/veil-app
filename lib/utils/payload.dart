@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:veil/protos/zero_art.pbserver.dart';
 
 enum ExposedCRDTPayloadKind { incrementalChange, fullDocument }
@@ -9,19 +12,32 @@ class ExposedCRDTPayload {
   ExposedCRDTPayload({required this.crdt, required this.kind});
 }
 
-class PayloadUtils {
-  static final instance = PayloadUtils._();
+class FrameUtils {
+  static final instance = FrameUtils._();
 
-  PayloadUtils._();
+  FrameUtils._();
 
-  (ExposedCRDTPayload?, GroupActionPayload?) exposePayload(Payload payload) {
+  (ExposedCRDTPayload?, Message?) exposePayload(Payload payload) {
     switch (payload.whichContent()) {
       case Payload_Content.crdt:
         return (_handleCRDT(payload.crdt), null);
-      case Payload_Content.action:
-        return (null, _handleGroupOperations(payload.action));
+      case Payload_Content.chat:
+        return (null, _handleChatPayload(payload.chat));
       default:
-        throw UnimplementedError('Received unknown payload type');
+        return (null, null);
+    }
+  }
+
+  Message _handleChatPayload(ChatPayload payload) {
+    switch (payload.whichPayload()) {
+      case ChatPayload_Payload.text:
+        return TextMessage.fromJson(jsonDecode(utf8.decode(payload.text)));
+      case ChatPayload_Payload.img:
+        throw UnimplementedError('Image attachments not supported');
+      case ChatPayload_Payload.file:
+        throw UnimplementedError('File attachments not supported');
+      case ChatPayload_Payload.notSet:
+        throw UnimplementedError('Chat payload not set');
     }
   }
 
@@ -41,29 +57,6 @@ class PayloadUtils {
         throw UnimplementedError('Media attachments not supported');
       case CRDTPayload_Payload.notSet:
         throw UnimplementedError('CRDT payload not set');
-    }
-  }
-
-  GroupActionPayload _handleGroupOperations(GroupActionPayload gop) {
-    switch (gop.whichAction()) {
-      case GroupActionPayload_Action.init:
-        return gop;
-      case GroupActionPayload_Action.inviteMember:
-        return gop;
-      case GroupActionPayload_Action.removeMember:
-        throw UnimplementedError('Remove member not supported');
-      case GroupActionPayload_Action.joinGroup:
-        return gop;
-      case GroupActionPayload_Action.changeUser:
-        throw UnimplementedError('Change user not supported');
-      case GroupActionPayload_Action.changeGroup:
-        throw UnimplementedError('Change group not supported');
-      case GroupActionPayload_Action.leaveGroup:
-        throw UnimplementedError('Leave group not supported');
-      case GroupActionPayload_Action.finalizeRemoval:
-        throw UnimplementedError('Finalize removal not supported');
-      case GroupActionPayload_Action.notSet:
-        throw UnimplementedError('group operation not set');
     }
   }
 }

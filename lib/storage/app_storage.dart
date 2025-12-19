@@ -2,13 +2,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 
 class AppStorage {
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(mOptions: MacOsOptions.defaultOptions);
   static final AppStorage shared = AppStorage._();
 
   AppStorage._();
 
-  clear() {
-    _storage.deleteAll();
+  Future<void> clear() async {
+    await _storage.deleteAll();
   }
 
   Future<String?> read({required String key}) {

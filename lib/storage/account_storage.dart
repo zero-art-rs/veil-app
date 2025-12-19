@@ -1,45 +1,65 @@
 import 'dart:convert';
 
 import 'package:veil/storage/app_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/account.dart';
+
 
 class AccountSecureStorage {
-  final _storage = AppStorage.shared;
   static final AccountSecureStorage instance = AccountSecureStorage._();
+
+  final AppStorage _storage = AppStorage.shared;
   static const String _accountKey = 'account';
 
-  late Account account;
+  Account? _account;
 
   AccountSecureStorage._();
 
-  Future<void> init() async {
-    account = await _setAccountIfNeeded();
+  Account get account {
+    if (_account == null) {
+      throw StateError('Account not initialized. Call init() first.');
+    }
+    return _account!;
   }
 
-  Future<Account?> _getAccount() async {
-    final rawAccount = await _storage.read(key: _accountKey);
+  Future<void> init() async {
+    _account = await _loadOrCreateAccount();
+  }
 
-    if (rawAccount == null) {
+  Future<void> clear() async {
+    await _storage.clear();
+    _account = null;
+  }
+
+  Future<Account?> _getStoredAccount() async {
+    final rawAccount = await _storage.read(key: _accountKey);
+    if (rawAccount == null) return null;
+
+    try {
+      final Map<String, dynamic> json = jsonDecode(rawAccount);
+      return Account.fromJson(json);
+    } catch (e) {
+      await _storage.remove(key: _accountKey);
       return null;
     }
-
-    return Account.fromJson(jsonDecode(rawAccount));
   }
 
   Future<void> setAccount(Account account) async {
     await _storage.write(key: _accountKey, value: jsonEncode(account.toJson()));
-    this.account = account;
+    _account = account;
   }
 
-  Future<Account> _setAccountIfNeeded() async {
-    final account = await _getAccount();
-    if (account != null) {
-      return account;
-    }
+  Future<Account> _loadOrCreateAccount() async {
+    final existing = await _getStoredAccount();
+    if (existing != null) return existing;
 
     final newAccount = Account.withName('Account');
     await setAccount(newAccount);
-
     return newAccount;
+  }
+}
+
+extension AccountStorageTest on AccountSecureStorage {
+  void testInit() {
+    _account = Account.withName('Account');
   }
 }

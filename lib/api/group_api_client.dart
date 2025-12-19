@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:veil/assets/config.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 
 enum ProofMode { useRootKey, useLeafKey }
@@ -18,7 +20,7 @@ extension ProofModeX on ProofMode {
 }
 
 class GroupApiClient {
-  final String baseUrl = 'https://veil.distributedlab.com';
+  final String baseUrl = AppConfig.instance.apiBasePath;
   final http.Client _http = http.Client();
 
   static final instance = GroupApiClient();
@@ -29,11 +31,13 @@ class GroupApiClient {
   }) async {
     final url = Uri.parse('$baseUrl/v1/group/$groupId/frames');
 
-    final response = await _http.post(
-      url,
-      headers: {'Content-Type': 'application/protobuf'},
-      body: frame,
-    );
+    final response = await _http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/protobuf'},
+          body: frame,
+        )
+        .timeout(Duration(seconds: 30));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
@@ -64,7 +68,7 @@ class GroupApiClient {
 
     if (response.statusCode != 200) {
       throw Exception(
-        'Failed to jwt centrifugo: ${response.statusCode} ${response.body}',
+        'Failed to get jwt centrifugo: ${response.statusCode} ${response.body}',
       );
     }
 
@@ -78,7 +82,7 @@ class GroupApiClient {
     final response = await _http.get(url);
 
     if (response.statusCode != 200) {
-      throw Exception(
+      throw HttpException(
         'Failed to get challenge: ${response.statusCode} ${response.body}',
       );
     }
@@ -137,11 +141,9 @@ class GroupApiClient {
       'epoch': epoch.toString(),
     };
 
-    final uri = Uri.https(
-      'veil.distributedlab.com',
-      '/v1/group/$groupId/frames',
-      query,
-    );
+    final uri = Uri.parse(
+      '$baseUrl/v1/group/$groupId/frames',
+    ).replace(queryParameters: query);
 
     final response = await _http.get(uri);
 

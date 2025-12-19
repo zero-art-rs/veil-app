@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:veil/main.dart';
 
 void aysModal({
   required BuildContext context,
@@ -82,8 +83,9 @@ class _AysModalState extends State<_AysModal> {
     try {
       await widget.callback!.call();
       if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      setState(() => _loading = false); // let user retry
+    } catch (e, st) {
+      logger.error('Failed to execute callback', e, st);
+      setState(() => _loading = false);
     }
   }
 

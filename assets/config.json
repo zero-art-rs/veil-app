@@ -1,0 +1,5 @@
+{
+    "api_base_path": "https://veil.distributedlab.com",
+    "sse_base_path": "https://sse-veil.distributedlab.com",
+    "monitor_base_path": "https://veil.distributedlab.com/services"
+}

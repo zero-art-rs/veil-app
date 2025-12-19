@@ -5,16 +5,16 @@
 cmake_minimum_required(VERSION 3.14)
 
 # Project-level configuration.
-set(PROJECT_NAME "rust_lib_zk_notion_app")
+set(PROJECT_NAME "veil_rust")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
 include("../cargokit/cmake/cargokit.cmake")
-apply_cargokit(${PROJECT_NAME} ../../../../../../rust rust_lib_zk_notion_app "")
+apply_cargokit(${PROJECT_NAME} ../../../../../../rust veil_rust "")
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.
-set(rust_lib_zk_notion_app_bundled_libraries
+set(veil_rust_bundled_libraries
   "${${PROJECT_NAME}_cargokit_lib}"
   PARENT_SCOPE
 )

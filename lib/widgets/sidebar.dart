@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// ---------- Public API ----------
-
 sealed class SideNavEntry {
   const SideNavEntry();
 }
@@ -89,7 +87,7 @@ class SideNav extends StatelessWidget {
     final theme = Theme.of(context);
     final bg = backgroundColor ?? theme.colorScheme.surface.withOpacity(0.95);
     final sel = selectedColor ?? theme.colorScheme.primary.withOpacity(0.12);
-    final hov = hoverColor ?? theme.colorScheme.surfaceVariant.withOpacity(0.5);
+    final hov = hoverColor ?? theme.colorScheme.surfaceContainerHighest.withOpacity(0.5);
     final txt =
         itemTextStyle ??
         theme.textTheme.bodyMedium?.copyWith(
@@ -163,8 +161,6 @@ class SideNav extends StatelessWidget {
     );
   }
 }
-
-/// ---------- Internals ----------
 
 class _Header extends StatelessWidget {
   final String label;

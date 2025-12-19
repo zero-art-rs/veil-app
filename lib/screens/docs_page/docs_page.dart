@@ -5,11 +5,12 @@ import 'package:veil/main.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/screens/docs_page/docs_page_vm.dart';
-import 'package:veil/screens/editor/editor_page.dart';
+import 'package:veil/screens/editor_container/editor_container_page.dart';
+import 'package:veil/widgets/app_label.dart';
 import 'package:veil/widgets/banner.dart';
 import 'package:veil/widgets/ays_modal.dart';
 
-enum _DocAction { edit, delete, share }
+enum _DocAction { delete }
 
 class DocsPage extends StatelessWidget {
   const DocsPage({super.key});
@@ -22,11 +23,15 @@ class DocsPage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) => AlertDialog(
         title: Text('Create a document'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            label: Text('Input document title'),
-          ),
+        content: Row(
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                label: Text('Input document title'),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -39,11 +44,12 @@ class DocsPage extends StatelessWidget {
                 await vm.createDoc(controller.text);
                 if (!context.mounted) return;
                 Navigator.pop(context);
-              } catch (err) {
-                logger.e('Failed to create document: $err');
+              } catch (err, st) {
+                logger.error('Failed to create document', err, st);
                 TopBanner.show(
                   context: context,
                   message: 'Failed to create document',
+                  kind: TopBannerCases.error,
                 );
               }
             },
@@ -86,7 +92,7 @@ class DocsPage extends StatelessWidget {
               ),
               itemCount: vm.syncModels.length,
               itemBuilder: (context, i) => _DocCard(
-                doc: vm.syncModels[i],
+                syncModel: vm.syncModels[i],
                 onDelete: () => aysAsyncModal(
                   context: context,
                   title: 'Delete document',
@@ -94,18 +100,17 @@ class DocsPage extends StatelessWidget {
                       'Are you sure to delete ${vm.syncModels[i].groupContext.retrieveGroupInfo().name}?',
                   callback: () async {
                     try {
-                      await vm.deleteDoc(vm.syncModels[i].document);
-                    } catch (err) {
+                      await vm.deleteDoc(vm.syncModels[i].documentState);
+                    } catch (err, st) {
                       if (!context.mounted) return;
                       TopBanner.show(
                         context: context,
                         message: 'Failed to delete document',
                       );
-                      logger.e('Failed to delete document: $err');
+                      logger.error('Failed to delete document', err, st);
                     }
                   },
                 ),
-                onEdit: () => {},
               ),
             ),
     );
@@ -130,12 +135,11 @@ class _NodocumentsYet extends StatelessWidget {
 }
 
 class _DocCard extends StatelessWidget {
-  const _DocCard({required this.doc, this.onEdit, this.onDelete});
-  final SyncProviderModel doc;
-  final VoidCallback? onEdit;
+  const _DocCard({required this.syncModel, this.onDelete});
+  final SyncModel syncModel;
   final VoidCallback? onDelete;
 
-  GroupInfo get groupInfo => doc.groupContext.retrieveGroupInfo();
+  GroupInfo get groupInfo => syncModel.groupContext.retrieveGroupInfo();
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +153,9 @@ class _DocCard extends StatelessWidget {
       child: InkWell(
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => EditorPage(syncModel: doc)),
+          MaterialPageRoute(
+            builder: (context) => EditorContainerPage(syncModel: syncModel),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -193,37 +199,11 @@ class _DocCard extends StatelessWidget {
                           tooltip: 'More options',
                           onSelected: (value) {
                             switch (value) {
-                              case _DocAction.edit:
-                                onEdit?.call();
                               case _DocAction.delete:
                                 onDelete?.call();
-                              case _DocAction.share:
-                                break;
                             }
                           },
                           itemBuilder: (context) => [
-                            PopupMenuItem(
-                              enabled: false,
-                              value: _DocAction.delete,
-                              child: ListTile(
-                                leading: const Icon(Icons.ios_share_outlined),
-                                title: const Text('Share'),
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                              ),
-                            ),
-                            const PopupMenuDivider(),
-                            PopupMenuItem(
-                              enabled: false,
-                              value: _DocAction.edit,
-                              child: ListTile(
-                                leading: const Icon(Icons.edit),
-                                title: const Text('Edit'),
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                              ),
-                            ),
-                            const PopupMenuDivider(),
                             PopupMenuItem(
                               value: _DocAction.delete,
                               child: ListTile(
@@ -236,6 +216,32 @@ class _DocCard extends StatelessWidget {
                           ],
                           icon: const Icon(Icons.more_vert),
                         ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      alignment: Alignment.topLeft,
+                      child: Column(
+                        children: [
+                          if (syncModel.removedFromGroup)
+                            AppLabel(
+                              text: 'Local',
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surface,
+                            ),
+
+                          if (syncModel.corrupted)
+                            AppLabel(
+                              text: 'Error',
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.errorContainer,
+                              textColor: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
+                            ),
+                        ],
                       ),
                     ),
                   ],
@@ -256,7 +262,7 @@ class _DocCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      doc.groupContext.getOwner().name,
+                      syncModel.groupContext.getOwner().name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall,

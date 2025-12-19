@@ -5,7 +5,7 @@ import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/account.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/utils/qr.dart';
 import 'package:veil/widgets/banner.dart';
@@ -51,8 +51,8 @@ class _AccountPageState extends State<AccountPage> {
           text: _account.keypair.publicKeyHex,
         );
       });
-    } catch (err) {
-      logger.e('Failed to init account page: $err');
+    } catch (err, st) {
+      logger.error('Failed to init account page', err, st);
     }
   }
 
@@ -71,11 +71,11 @@ class _AccountPageState extends State<AccountPage> {
 
     await AccountSecureStorage.instance.setAccount(newAccount);
 
-    logger.i(
+    logger.info(
       'AccountSecureStorage.instance.account.name ${AccountSecureStorage.instance.account.name}',
     );
 
-    logger.i(newAccount.name);
+    logger.info(newAccount.name);
 
     setState(() {
       _nameCtrl.text = newAccount.name;

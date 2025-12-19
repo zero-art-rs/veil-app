@@ -1,16 +1,20 @@
-import 'package:collection/collection.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:queue/queue.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import 'package:uuid/v4.dart';
 import 'package:veil/api/group_api_client.dart';
-import 'package:veil/extensions/group_context.dart';
+import 'package:veil/managers/sync_provider/events.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/screens/account_page.dart';
-import 'package:veil/screens/editor/editor_page.dart';
-import 'package:veil/screens/history_page.dart';
+import 'package:veil/screens/editor_container/editor_container_page.dart';
 import 'package:veil/src/rust/api/automerge.dart';
 import 'package:veil/storage/account_storage.dart';
-import 'package:veil/storage/models.dart';
+import 'package:veil/storage/models/document_state.dart';
+import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/group_context_factory.dart';
 import 'package:veil/widgets/banner.dart';
 
@@ -18,6 +22,7 @@ import '../../main.dart';
 
 class PrimaryPageViewModel extends ChangeNotifier {
   final _syncProvider = SyncProvider.instance;
+  final _eventQueue = Queue();
 
   int _selectedIndex = 0;
   int get selectedIndex => _selectedIndex;
@@ -25,16 +30,21 @@ class PrimaryPageViewModel extends ChangeNotifier {
   Widget _selectedPage = AccountPage();
   Widget get selectedPage => _selectedPage;
 
-  List<SyncProviderModel> _syncModels = [];
-  List<SyncProviderModel> get syncModels => _syncModels;
+  List<SyncModel> _syncModels = [];
+  List<SyncModel> get syncModels => _syncModels;
 
   final TextEditingController textEditingController = TextEditingController();
+  final _syncModelsListeners = <String, StreamSubscription<SyncModelEvent>>{};
 
   static const constantTabs = 5;
 
   void init() async {
     _syncProvider.subject.listen((event) {
       _syncModels = event;
+
+      _removeStaleListeners();
+      _addNewListeners();
+
       notifyListeners();
     });
   }
@@ -55,27 +65,45 @@ class PrimaryPageViewModel extends ChangeNotifier {
         actorId: AccountSecureStorage.instance.account.actorId,
       );
 
-      final (groupContext, frame) = GroupContextFactory.createGroupContext(
+      final (
+        groupContext,
+        frame,
+      ) = await GroupContextFactory.createGroupContext(
         groupName: resTitle,
         groupID: docID,
         owner: AccountSecureStorage.instance.account,
       );
 
-      logger.i('name ${AccountSecureStorage.instance.account.name}');
-      final document = Document(
+      final document = DocumentState(
         id: docID,
         createdAt: DateTime.now(),
-        automergeDoc: content,
-        groupContextParts: groupContext.asParts(),
+        crdt: content,
+        groupContextParts: await groupContext.asParts(),
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
-      await _syncProvider.add(document, groupContext, insertToDb: true);
+
+      final logger = Talker(
+        logger: TalkerLogger(
+          formatter: ColoredLoggerFormatter(),
+          settings: TalkerLoggerSettings(defaultTitle: 'Sync model $docID'),
+        ),
+      );
+
+      await _syncProvider.add(
+        SyncModel(
+          logger: SyncModelLogger(logger, document.id),
+          documentState: document,
+          groupContext: groupContext,
+          localCrdtStorage: DB.instance,
+        ),
+        insertToDb: true,
+      );
       textEditingController.clear();
 
       notifyListeners();
-    } catch (err) {
-      logger.e('Failed to create document: $err');
+    } catch (err, st) {
+      logger.error('Failed to create document', err, st);
       if (!context.mounted) return;
       TopBanner.show(
         context: context,
@@ -93,37 +121,27 @@ class PrimaryPageViewModel extends ChangeNotifier {
   Future<void> removeDocument(BuildContext context, String id) async {
     try {
       final index = _syncModels.indexWhere(
-        (element) => element.document.id == id,
+        (element) => element.documentState.id == id,
       );
       if (index == -1) throw FormatException('Document not found');
 
       await _syncProvider.remove(id);
-      _syncModels.removeWhere((element) => element.document.id == id);
+      _syncModels.removeWhere((element) => element.documentState.id == id);
 
       if (_syncModels.isEmpty) {
         setSelectedIndex(0);
         setSelectedPage(AccountPage());
       } else if (index > 0) {
         setSelectedIndex(constantTabs + index - 1);
-        setSelectedPage(
-          EditorPage(
-            key: _syncModels[index - 1].document.key,
-            syncModel: _syncModels[index - 1],
-          ),
-        );
+        setSelectedPage(EditorContainerPage(syncModel: _syncModels[index - 1]));
       } else {
         setSelectedIndex(constantTabs + 1);
-        setSelectedPage(
-          EditorPage(
-            key: _syncModels.first.document.key,
-            syncModel: _syncModels.first,
-          ),
-        );
+        setSelectedPage(EditorContainerPage(syncModel: _syncModels.first));
       }
 
       notifyListeners();
-    } catch (err) {
-      logger.e('Failed to remove document: $err');
+    } catch (err, st) {
+      logger.error('Failed to remove document', err, st);
       if (!context.mounted) return;
 
       TopBanner.show(
@@ -134,31 +152,39 @@ class PrimaryPageViewModel extends ChangeNotifier {
     }
   }
 
-  (List<ChangeEvent>, Document) prepareChanges() {
-    final syncModel = _syncModels[selectedIndex - constantTabs];
-    final members = syncModel.groupContext.retrieveGroupInfo().members;
+  void _removeStaleListeners() {
+    final existingIds = _syncModels.map((e) => e.documentState.id).toSet();
 
-    final changes = syncModel.document.automergeDoc
-        .getChangeList()
-        .indexed
-        .map(
-          (e) => ChangeEvent(
-            title: 'Change',
-            actorIdHex: e.$2.actorIdHex(),
-            changeHashHex: e.$2.changeHash(),
-            date: e.$2.timestamp(),
-            name:
-                members
-                    .firstWhereOrNull((elem) => elem.id == e.$2.actorIdHex())
-                    ?.name ??
-                e.$2.actorIdHex(),
-            isInitial: e.$1 == 0,
-          ),
-        )
-        .toList()
-        .reversed
+    final removedIds = _syncModelsListeners.keys
+        .where((id) => !existingIds.contains(id))
         .toList();
 
-    return (changes, syncModel.document);
+    for (final id in removedIds) {
+      _syncModelsListeners[id]?.cancel();
+      _syncModelsListeners.remove(id);
+    }
+  }
+
+  void _addNewListeners() {
+    for (final model in _syncModels) {
+      final id = model.documentState.id;
+
+      if (_syncModelsListeners.containsKey(id)) continue;
+
+      _syncModelsListeners[id] = model.eventStream.listen((event) {
+        _eventQueue.add(() async {
+          _handleSyncEvent(event);
+        });
+      });
+    }
+  }
+
+  void _handleSyncEvent(SyncModelEvent e) {
+    switch (e) {
+      case SyncModelGroupInfoEvent():
+      case SyncModelCorruptedEvent():
+      case SyncModelSyncingEvent():
+        notifyListeners();
+    }
   }
 }

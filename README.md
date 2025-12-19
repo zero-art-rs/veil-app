@@ -1,31 +1,121 @@
-# How to run
+## Prerequirements
+First of all, you need to install [Flutter](https://docs.flutter.dev/install) to run this project.
+
+This project uses `Rust` ↔ `Dart` and `Protobuf`. So, you need to install [Rust](https://rust-lang.org/tools/install/) and [Protobuf](https://protobuf.dev/installation/).
+
+## Supported Platforms
+* macOS
+* Windows
+* Linux (Ubuntu)
+
+## Run app
+### Mac OS and Linux
+
 ```
-flutter run -d <platform>
+# PLATFORM is one of [macos, linux]
 
-flutter devices # to see avaliable platforms 
+make run PLATFORM=macos
 ```
 
-# Supporting platforms
-- macOS
-- iOS
-- Linux
-- Android (not yet)
-- Windows (not yet)
-# Development tips (optional)
+Under the hood, this command adds tracing logs from `zrt_client_sdk` for the debugging issues. 
 
-### Compile proto 
+### Windows 
+
 ```
-# Install protobuf compiler
-brew install protobuf
+zrt_client_sdk=debug flutter run -d windows
+```
 
-# Activate dart tool to generate proto files
-dart pub global activate protoc_plugin 21.1.2 // other versions will not compile zero_art.proto on dart
 
-# Temporary add it to your PATH 
-# Or add it your shell configuration (.zshrc, .bashrc etc.)
+## Build app  
+### Mac OS (.app)
+
+To build unsigned app use the following command:
+
+```
+# Install Fastforge to pack application
+dart pub global activate fastforge
+
+export PATH="$PATH":"$HOME/.pub-cache/bin"
+
+# Build a release package
+fastforge release --name veil-macos
+```
+
+the output `.app` file find in `/dist` directory.
+The `unsigned app` means that you can't distribute it between other users. Their system will not allow to install it.
+
+### Linux (.deb)
+
+```
+# Install Fastforge to pack application
+dart pub global activate fastforge
+
+export PATH="$PATH":"$HOME/.pub-cache/bin"
+
+# Build a release package
+fastforge release --name veil-linux
+```
+
+### Windows (.exe)
+```
+flutter build windows --release
+$version = (Select-String "^version:" pubspec.yaml).Line.Split(":")[1].Trim()
+Compress-Archive `
+  -Path build\windows\x64\runner\Release\* `
+  -DestinationPath dist\veil-$version-win64.zip `
+  -Force
+```
+
+## Make commands
+
+```bash
+# Runs the application, PLATFORM by default is macos
+make run PLATFORM={platform}
+
+# Use it to update rust dependencies with the bridge
+make update 
+
+# To list available devices/platforms:
+flutter devices
+```
+
+## Local development
+You need to pull the [infrastructure](https://github.com/zero-art-rs/infrastructure) repository and follow the steps described in the README file.
+In a `assets` directory you can see `config.local.json`.
+
+``` json
+{
+    "api_base_path": "http://localhost:8080",
+    "sse_base_path": "http://localhost:8000",
+    "monitor_base_path": "http://localhost:8090"
+}
+```
+
+If you haven’t modified any ports in the infrastructure, no action is required.
+
+To use this configuration, open the `pubspec.yaml` file and, under the `flutter/assets` section, replace `config.json` with `config.local.json`.
+
+``` yaml
+*** 
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/config.local.json
+```
+## For developers
+
+### Compile `.proto` files
+
+```bash
+# Activate Dart protoc plugin (⚠️ version 21.1.2 required for zero_art.proto)
+dart pub global activate protoc_plugin 21.1.2
+
+# Add it temporarily to your PATH (or permanently to .zshrc / .bashrc)
 export PATH="$PATH:$HOME/.pub-cache/bin"
 
-# Generate dart proto files
+# Generate Dart proto files
 protoc \
   -Ilib/protos \
   --dart_out=lib/protos \
@@ -33,25 +123,19 @@ protoc \
   google/protobuf/timestamp.proto
 ```
 
-### Create .deb for linux
-Everything is configurated, so you should only execute the following commands: 
-```
-# Install fastforge
-dart pub global activate fastforge
+### Rust Bridge (Flutter <--> Rust)
 
-# Run this command to make a package
-fastforge release --name veil
+This project uses [`flutter_rust_bridge`](https://cjycode.com/flutter_rust_bridge/quickstart)
+to generate Rust ↔ Dart bindings.
+
+If you modify or add Rust functionality, regenerate the bindings:
+
+```bash
+# In the project root directory
+flutter_rust_bridge_codegen generate
 ```
 
-If you want to another package format see
-[Fastforge docs](https://fastforge.dev/getting-started) 
+> ⚠️ **Avoid Rust ownership moves in bindings.**
+> Dart holds references to Rust memory; after a Rust ownership move,
+> those references become `NULL`, which can cause unexpected crashes.
 
-### Rust bridge
-This project uses `flutter_rust_bridge` to generate `Rust -> Dart` bindings, if you want to provide/modify rust functionallity you need to regenerate bindings, for whis purpose run: 
-```
-# In project directory
-flutter_rust_bridge_codegen run 
-```
-To write `Dart`-compatible `Rust` code see [here](https://cjycode.com/flutter_rust_bridge/quickstart).
-
-> Avoid `Rust` `ownership` operations in bindings. Dart holds reference on memory theorefore after `Rust` ownership operation this reference will be `NULL` that will surprise you.

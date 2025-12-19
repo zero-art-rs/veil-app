@@ -1,24 +1,32 @@
+import 'dart:async';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_symbols_icons/symbols.dart';
-import 'package:veil/api/group_api_client.dart';
+import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
-import 'package:veil/managers/sharing/deeplink_manager.dart';
-import 'package:veil/managers/sync_provider/sync_model_executor.dart';
-import 'package:veil/protos/zero_art.pb.dart';
+import 'package:veil/managers/sync_provider/events.dart';
+import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/protos/zero_art.pbserver.dart';
 import 'package:veil/screens/contacts_page.dart';
-import 'package:veil/screens/editor/frame_processor/executor.dart';
-import 'package:veil/storage/models.dart' as m;
-import 'package:veil/storage/sqlite/db.dart';
-import 'package:veil/utils/group_context_factory.dart';
-import 'package:veil/utils/secret_factory.dart';
+import 'package:veil/storage/account_storage.dart';
+import 'package:veil/storage/models/document_member.dart';
+import 'package:veil/storage/models/external_account.dart';
+import 'package:veil/storage/sqlite/consts.dart';
 import 'package:veil/utils/platform.dart';
 import 'package:veil/widgets/ays_modal.dart';
+import 'package:veil/widgets/banner.dart';
+import 'package:veil/widgets/loader_dialog.dart';
+
+const _pendingForRemovalStatus = 3;
+const _wantsToLeaveStatus = 2;
+const _invitedStatus = 1;
+const _inGroupStatus = 0;
 
 class MemberScreenModel {
-  final m.DocumentMember member;
+  final DocumentMember member;
   final bool isYou;
   final bool isOwner;
 
@@ -30,17 +38,16 @@ class MemberScreenModel {
 }
 
 class DocumentMemberListScreen extends StatefulWidget {
-  const DocumentMemberListScreen({
+  DocumentMemberListScreen({
     super.key,
-    required this.members,
-    required this.doc,
-    required this.executor,
+    required this.syncModel,
+    this.onBackPressed,
   });
 
-  final List<MemberScreenModel> members;
-  final SyncModelExecutor executor;
+  final SyncModel syncModel;
+  final void Function()? onBackPressed;
 
-  final m.Document doc;
+  final updateUserNameTextController = TextEditingController();
 
   @override
   State<DocumentMemberListScreen> createState() =>
@@ -48,6 +55,9 @@ class DocumentMemberListScreen extends StatefulWidget {
 }
 
 class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
+  StreamSubscription? _groupInfoUpdates;
+  var members = <MemberScreenModel>[];
+
   void _onAddMember(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -59,8 +69,54 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
+  List<MemberScreenModel> _prepareMemberList(GroupInfo groupInfo) {
+    final members = groupInfo.members
+        .map(
+          (e) => MemberScreenModel(
+            member: DocumentMember(
+              account: ExternalAccount(
+                actorId: e.id,
+                name: e.name,
+                rawPublicKey: e.publicKey,
+              ),
+              status: e.status.value,
+              role: e.role.value,
+              roleName: e.role.name,
+            ),
+            isYou: AccountSecureStorage.instance.account.actorId == e.id,
+            isOwner: e.role.value == ownerRole,
+          ),
+        )
+        .toList();
+
+    return members;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    members = _prepareMemberList(
+      widget.syncModel.groupContext.retrieveGroupInfo(),
+    );
+
+    _groupInfoUpdates = widget.syncModel.eventStream.listen((e) {
+      if (e is SyncModelGroupInfoEvent) {
+        setState(() {
+          members = _prepareMemberList(e.groupInfo);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _groupInfoUpdates?.cancel();
+    super.dispose();
+  }
+
   get currentAccountIsOwner {
-    final owner = widget.members.firstWhereOrNull((e) {
+    final owner = members.firstWhereOrNull((e) {
       return e.isOwner && e.isYou;
     });
 
@@ -142,140 +198,142 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  void _removeMember(BuildContext context, m.DocumentMember user) {
-    final work = Future<void>(() async {
-      await widget.executor.operate((syncModel) async {
-        logger.i('Removing member in group context..');
-        final (frame, member) = await syncModel.groupContext.removeMember(
-          userId: user.account.actorId,
-          payloads: [],
-        );
-
-        logger.i('Sending remove member frame...');
-        await GroupApiClient.instance.sendFrame(
-          groupId: widget.doc.id,
-          frame: frame,
-        );
-
-        logger.i('Committing state...');
-        syncModel.groupContext.commitState();
-
-        logger.i('Member removed from document');
-        await DB.instance.updateDocument(
-          doc: widget.doc,
-          parts: syncModel.groupContext.asParts(),
-        );
-      }, priority: TaskPriority.low);
-      setState(() {
-        widget.members.removeWhere(
-          (e) => e.member.account.actorId == user.account.actorId,
-        );
-      });
-    });
-
-    aysAsyncModal(
+  Future<void> _removeMember(BuildContext context, DocumentMember user) async {
+    await aysAsyncModal(
       context: context,
       title: 'Are you sure to remove ${user.account.name} from group?',
       content: 'This action cannot be undone.',
       callback: () async {
         try {
-          await work;
-        } catch (e) {
-          logger.e('Failed to remove member: $e');
+          logger.info('Removing member in group context..');
+
+          await widget.syncModel.sendRemoveMember(
+            actorId: user.account.actorId,
+          );
+
+          setState(() {
+            members.removeWhere(
+              (e) => e.member.account.actorId == user.account.actorId,
+            );
+          });
+        } catch (e, st) {
+          logger.error('Failed to remove member', e, st);
+          if (!context.mounted) return;
+          TopBanner.show(
+            context: context,
+            message: 'Failed to remove member',
+            kind: TopBannerCases.error,
+          );
           rethrow;
         }
       },
     );
   }
 
+  Future<void> _openChangeNameModal() async {
+    final style = Theme.of(context).textTheme;
+
+    await showLoaderDialog(
+      context: context,
+      work: () async {
+        try {
+          await widget.syncModel.sendUpdateUserName(
+            name: widget.updateUserNameTextController.text,
+          );
+        } catch (e, st) {
+          if (!mounted) return;
+          logger.error('Failed to update name', e, st);
+          TopBanner.show(
+            context: context,
+            message: 'Failed to update name',
+            kind: TopBannerCases.error,
+          );
+        } finally {
+          widget.updateUserNameTextController.clear();
+        }
+      },
+      initialBuilder: (context, start) => SizedBox(
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 24,
+          children: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: Text('Update your name in group', style: style.titleLarge),
+            ),
+
+            TextField(
+              controller: widget.updateUserNameTextController,
+              decoration: InputDecoration(label: Text('Input your new name')),
+            ),
+
+            Row(
+              spacing: 16,
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Cancel'),
+                  ),
+                ),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      start();
+                    },
+                    child: Text('Update'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _inviteUndentifiedMember(BuildContext context) {
-    final inviteLink = Future(() async {
-      return await widget.executor.operate((syncModel) async {
-        final secretKey = SecretManager.intance.generateSecretKey();
-
-        final payload = Payload(
-          crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-        ).writeToBuffer();
-
-        logger.i('Creating unidentified member invite...');
-        final (frame, invite) = await syncModel.groupContext
-            .addUnidentifiedMember(secretKey: secretKey, payloads: [payload]);
-
-        logger.i('Sending unidentified member invite frame...');
-        await GroupApiClient.instance.sendFrame(
-          groupId: widget.doc.id,
-          frame: frame,
-        );
-
-        logger.i('Committing state...');
-        syncModel.groupContext.commitState();
-        logger.i('Unidentified member invite sent');
-        final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-        await DB.instance.updateDocument(
-          doc: syncModel.document,
-          parts: syncModel.groupContext.asParts(),
-        );
-
-        return inviteLink;
-      }, priority: TaskPriority.low);
+    final work = Future<String>(() async {
+      try {
+        return await widget.syncModel.sendUnidentifiedInvite();
+      } catch (e, st) {
+        logger.error('Failed to create unidentified invite link', e, st);
+        rethrow;
+      }
     });
 
-    showInviteDialog(inviteLink);
+    showInviteDialog(work);
   }
 
   Future<void> _inviteContactMember(Contact contact) async {
     final future = Future(() async {
-      return await widget.executor.operate((syncModel) async {
-        try {
-          final firstSpk = contact.spks.firstOrNull;
-          final spkPublicKey = firstSpk != null
-              ? Uint8List.fromList(firstSpk)
-              : null;
-
-          final payload = Payload(
-            crdt: CRDTPayload(fullDocument: widget.doc.automergeDoc.save()),
-          ).writeToBuffer();
-
-          final (frame, invite) = await syncModel.groupContext
-              .addIdentifiedMember(
-                identityPublicKey: contact.account.rawPublicKey,
-                spkPublicKey: spkPublicKey,
-                payloads: [payload],
-              );
-
-          await GroupApiClient.instance.sendFrame(
-            groupId: widget.doc.id,
-            frame: frame,
-          );
-
-          syncModel.groupContext.commitState();
-
-          logger.i('Member invite sent');
-          final inviteLink = DeeplinkManager.instance.buildInvite(invite);
-
-          await DB.instance.updateDocument(
-            doc: syncModel.document,
-            parts: syncModel.groupContext.asParts(),
-          );
-
-          if (spkPublicKey != null) {
-            logger.i('Removing spk contact spk..');
-            await ContactsManager.instance.removeSpk(
-              contact.account.actorId,
-              spkPublicKey.toList(),
-            );
-          }
-
-          return inviteLink;
-        } catch (e) {
-          logger.e('Failed to invite member: $e');
-          rethrow;
-        }
-      }, priority: TaskPriority.low);
+      try {
+        return await widget.syncModel.sendIdentifiedInvite(contact: contact);
+      } catch (e, st) {
+        logger.error('Failed to create indentified invite link', e, st);
+        rethrow;
+      }
     });
 
     showInviteDialog(future);
+  }
+
+  String status(int status) {
+    switch (status) {
+      case _inGroupStatus:
+        return 'In group';
+      case _invitedStatus:
+        return 'Invited';
+      case _wantsToLeaveStatus:
+        return 'Wants to leave';
+      case _pendingForRemovalStatus:
+        return 'Pending for removal confrimation';
+      default:
+        return 'Unknown';
+    }
   }
 
   @override
@@ -287,21 +345,18 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       appBar: AppBar(
         title: const Text('Document members'),
         leading: PlatformUtils.isDesktop
-            ? CloseButton(
-                onPressed: () =>
-                    Navigator.of(context, rootNavigator: true).pop(),
-              )
+            ? CloseButton(onPressed: () => widget.onBackPressed?.call())
             : BackButton(),
       ),
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 4),
-        itemCount: widget.members.length,
+        itemCount: members.length,
         separatorBuilder: (_, __) => Padding(
           padding: const EdgeInsets.only(left: 16, right: 16),
           child: Divider(height: 1, thickness: 1.2, color: dividerColor),
         ),
         itemBuilder: (context, i) {
-          final g = widget.members[i];
+          final g = members[i];
           return ListTile(
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -327,7 +382,6 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-
                 if (g.isYou)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -348,17 +402,29 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
                   ),
               ],
             ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 2.0),
-              child: Text(
-                g.member.account.actorId,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  color: theme.colorScheme.onSurfaceVariant,
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2.0),
+                  child: Text(
+                    g.member.account.actorId,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
-              ),
+                Text(
+                  'Status: ${status(g.member.status)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
             trailing: buildTrailing(theme, g),
           );
@@ -390,11 +456,17 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   Widget buildTrailing(ThemeData theme, MemberScreenModel g) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      spacing: 12,
       children: [
-        if (currentAccountIsOwner && !g.isYou)
+        if (g.isYou)
           IconButton(
-            onPressed: () => _removeMember(context, g.member),
+            onPressed: () async => await _openChangeNameModal(),
+            icon: Icon(Icons.edit),
+          ),
+
+        if ((currentAccountIsOwner && !g.isYou) ||
+            (!g.isYou && g.member.status == _pendingForRemovalStatus))
+          IconButton(
+            onPressed: () async => await _removeMember(context, g.member),
             icon: Icon(Icons.delete),
           ),
 

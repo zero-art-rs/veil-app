@@ -32,6 +32,25 @@ class Role extends $pb.ProtobufEnum {
   const Role._($core.int v, $core.String n) : super(v, n);
 }
 
+class Status extends $pb.ProtobufEnum {
+  static const Status ACTIVE = Status._(0, _omitEnumNames ? '' : 'ACTIVE');
+  static const Status INVITED = Status._(1, _omitEnumNames ? '' : 'INVITED');
+  static const Status LEFT = Status._(2, _omitEnumNames ? '' : 'LEFT');
+  static const Status PENDING_REMOVAL = Status._(3, _omitEnumNames ? '' : 'PENDING_REMOVAL');
+
+  static const $core.List<Status> values = <Status> [
+    ACTIVE,
+    INVITED,
+    LEFT,
+    PENDING_REMOVAL,
+  ];
+
+  static final $core.Map<$core.int, Status> _byValue = $pb.ProtobufEnum.initByValue(values);
+  static Status? valueOf($core.int value) => _byValue[value];
+
+  const Status._($core.int v, $core.String n) : super(v, n);
+}
+
 class ContentAttachmentType extends $pb.ProtobufEnum {
   static const ContentAttachmentType IMAGE = ContentAttachmentType._(0, _omitEnumNames ? '' : 'IMAGE');
   static const ContentAttachmentType BINARY = ContentAttachmentType._(1, _omitEnumNames ? '' : 'BINARY');

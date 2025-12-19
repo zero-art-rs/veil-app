@@ -1,13 +1,15 @@
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:talker_flutter/talker_flutter.dart';
+import 'package:veil/assets/config.dart';
 import 'package:veil/assets/util.dart';
 import 'package:veil/managers/contacts_manager.dart';
-import 'package:veil/managers/invite_manager.dart';
+import 'package:veil/managers/svces_status_listener.dart';
 import 'package:veil/managers/sharing/deeplink_manager.dart';
 import 'package:veil/managers/sharing/spk_manager.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
@@ -19,40 +21,39 @@ import 'package:veil/screens/tab_bar.dart';
 import 'package:veil/src/rust/api/group_context.dart';
 import 'package:veil/src/rust/frb_generated.dart';
 import 'package:veil/assets/theme.dart';
-import 'package:logger/logger.dart';
 import 'package:app_links/app_links.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/sqlite/db.dart';
 import 'package:veil/utils/platform.dart';
+import 'package:veil/utils/url_protocol/api.dart';
 import 'package:veil/widgets/future_dialog.dart';
+import 'package:veil/widgets/network_status_banner.dart';
+
+final Talker logger = Talker(
+  logger: TalkerLogger(formatter: ColoredLoggerFormatter()),
+);
 
 Future<void> main() async {
-  await RustLib.init();
-  initTracing();
-
-  WidgetsFlutterBinding.ensureInitialized();
-
   try {
+    // register custom scheme for windows deeplinking
+    registerProtocolHandler('veil');
+    WidgetsFlutterBinding.ensureInitialized();
+    await AppConfig.instance.load();
+    await RustLib.init();
+    initTracing();
+    NetworkStatusListener.instance.start();
+    await Hive.initFlutter();
     await AccountSecureStorage.instance.init();
     await DB.instance.open();
     // await DB.instance.removeAll();
     await SyncProvider.instance.init();
     await ContactsManager.instance.setup();
-    logger.d('Db path: ${await getDatabasesPath()}');
-  } catch (e) {
-    logger.e('Launch app error: $e');
+    runApp(MyApp());
+  } catch (e, st) {
+    logger.error('Launch app error', e, st);
   }
-  runApp(MyApp());
 }
 
-var logger = Logger(
-  filter: kDebugMode ? DevelopmentFilter() : ProductionFilter(),
-  printer: PrettyPrinter(
-    noBoxingByDefault: true,
-    dateTimeFormat: DateTimeFormat.dateAndTime,
-  ),
-  level: Level.all,
-);
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatefulWidget {
@@ -64,19 +65,27 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   StreamSubscription? _sub;
+  late final AppLifecycleListener _appLifecycleListener;
+  late StreamSubscription<List<ConnectivityResult>> _networkStatusSubscription;
+
   final AppLinks _appLinks = AppLinks();
 
   @override
   void initState() {
     super.initState();
     _listenUriChanges();
+    _listenLifeCycleChanges();
   }
 
   @override
   void dispose() {
-    logger.d('My app dispose called');
-    _sub?.cancel();
     super.dispose();
+
+    logger.debug('App dispose called');
+    _appLifecycleListener.dispose();
+    NetworkStatusListener.instance.dispose();
+    _networkStatusSubscription.cancel();
+    _sub?.cancel();
   }
 
   void _listenUriChanges() {
@@ -99,14 +108,19 @@ class _MyAppState extends State<MyApp> {
             return;
           }
         },
-        onDone: () => logger.d('Uri stream done'),
-        onError: (err) {
-          logger.e('Failed to get uri: $err');
+        onDone: () => logger.debug('Uri stream done'),
+        onError: (err, st) {
+          logger.error('Failed to get uri', err, st);
         },
       );
-    } catch (err) {
-      logger.e('Failed to get uri: $err');
+    } catch (err, st) {
+      logger.error('Failed to get uri', err, st);
     }
+  }
+
+  void _listenLifeCycleChanges() {
+    // detect sleep
+    // resync all the sync models
   }
 
   void _showDocumentInvitationPopUp(
@@ -119,8 +133,8 @@ class _MyAppState extends State<MyApp> {
       work: () async {
         try {
           await _acceptInvite(context, inviteData);
-        } catch (err) {
-          logger.e('Failed to join document: $err');
+        } catch (err, st) {
+          logger.error('Failed to join document', err, st);
           if (err is DioException) {
             if (err.response?.statusCode == 401) {
               throw FutureDialogError('Error', 'No document found');
@@ -138,15 +152,14 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _acceptInvite(BuildContext context, String inviteData) async {
-    final (pendingGroupContext, document) = await InviteManager.instance.join(
+    final syncModel = await AccountSecureStorage.instance.account.acceptInvite(
       inviteData,
     );
 
-    final account = AccountSecureStorage.instance.account;
-    await SyncProvider.instance.addFromInvite(
-      document,
-      pendingGroupContext,
-      user: BUser(name: account.name, publicKey: account.keypair.rawPublicKey),
+    await SyncProvider.instance.add(
+      syncModel,
+      insertToDb: true,
+      allowFullDocument: true,
     );
 
     if (!context.mounted) return;
@@ -167,8 +180,8 @@ class _MyAppState extends State<MyApp> {
           final spk = await SpkManager.instance.getSpk(payload);
           await ContactsManager.instance.addContact(spk);
           return spk;
-        } catch (err) {
-          logger.e('Failed to get spk: $err');
+        } catch (err, st) {
+          logger.error('Failed to get spk', err, st);
 
           if (err is DioException) {
             if (err.response?.statusCode == 404) {
@@ -258,13 +271,26 @@ class _MyAppState extends State<MyApp> {
             child: DesktopPrimaryPage(),
           ),
           ChangeNotifierProvider(
-            create: (_) => DocsPageViewModel()..sink(),
+            create: (_) => DocsPageViewModel()..init(),
             child: DocsPage(),
           ),
         ],
-        child: PlatformUtils.isDesktop
-            ? DesktopPrimaryPage()
-            : AppBottomTabBar(),
+        child: Scaffold(
+          body: Stack(
+            children: [
+              PlatformUtils.isDesktop
+                  ? DesktopPrimaryPage()
+                  : AppBottomTabBar(),
+
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: NetworkStatusBanner(
+                  stream: NetworkStatusListener.instance.connectionStatus,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       navigatorKey: navigatorKey,
     );
