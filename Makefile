@@ -38,7 +38,7 @@ build-signed-dmg:
 	xcrun notarytool submit "build/macos/Build/Products/Release/Veil.zip" --apple-id $(APPLE_ID) --password $(APP_PASSWORD) --team-id $(TEAM_ID) --wait
 	xcrun stapler staple "build/macos/Build/Products/Release/Veil.app"
 	cp "macos/app_dmg.json" "build/macos/Build/Products/Release"
-	appdmg "build/macos/Build/Products/Release/app_dmg.json" "dist/veil-$(VERSION).dmg"
+	appdmg "build/macos/Build/Products/Release/app_dmg.json" "dist/veil-$(VERSION)-macos.dmg"
 
 help:
 	@echo "" 
