@@ -2,15 +2,17 @@ import 'dart:async';
 
 import 'package:eventflux/eventflux.dart';
 import 'package:talker_flutter/talker_flutter.dart';
+import 'package:veil/assets/config.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 
 const _centrifugoWithoutUpdatesTimeout = 90;
 
 enum CentrifugoConnectionState { success, error }
 
 class CentrifugoListener {
-  final _url = 'https://sse-veil.distributedlab.com';
+  final _url = AppConfig.instance.sseBasePath;
   final _eventFlux = EventFlux.spawn();
-  final Talker logger;
+  final SyncModelLogger? logger;
   final dynamic Function(EventFluxData) _processCallback;
   StreamSubscription<dynamic>? _centrifugoListener;
   DateTime? _lastEventTime;
@@ -42,7 +44,7 @@ class CentrifugoListener {
           connectionChecker.close();
         }
 
-        logger.info('Centrifugo connection established');
+        logger?.centrifugoLog('Centrifugo connection established');
         _centrifugoListener = response?.stream?.listen((data) {
           if (_disconnected) return;
           _lastEventTime = DateTime.now();
@@ -50,12 +52,14 @@ class CentrifugoListener {
         });
       },
       onConnectionClose: () async {
-        logger.info('Connection with Centrifugo closed');
+        logger?.centrifugoLog('Connection with Centrifugo closed');
         await _disconnect();
       },
       onError: (error) async {
-        logger.error(
+        logger?.centrifugoLog(
           'Centrifugo error: ${error.message}, reason: ${error.reasonPhrase}, status: ${error.statusCode}',
+          level: LogLevel.error,
+          stackTrace: StackTrace.current,
         );
 
         await _disconnect();
@@ -90,7 +94,7 @@ class CentrifugoListener {
     final difference = now.difference(_lastEventTime!);
 
     if (difference.inSeconds >= _centrifugoWithoutUpdatesTimeout) {
-      logger.warning(
+      logger?.centrifugoLog(
         'No events received from Centrifugo for ${difference.inSeconds} seconds, disconnecting...',
       );
 
@@ -103,6 +107,6 @@ class CentrifugoListener {
     _disconnected = true;
     _connectionChecker?.cancel();
     await _eventFlux.disconnect();
-    logger.info('Centrifugo connection closed');
+    logger?.centrifugoLog('Centrifugo connection closed');
   }
 }

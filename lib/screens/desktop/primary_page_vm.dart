@@ -1,8 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:queue/queue.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import 'package:uuid/v4.dart';
 import 'package:veil/api/group_api_client.dart';
+import 'package:veil/managers/sync_provider/events.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/managers/sync_provider/sync_provider.dart';
 import 'package:veil/screens/account_page.dart';
@@ -18,6 +22,7 @@ import '../../main.dart';
 
 class PrimaryPageViewModel extends ChangeNotifier {
   final _syncProvider = SyncProvider.instance;
+  final _eventQueue = Queue();
 
   int _selectedIndex = 0;
   int get selectedIndex => _selectedIndex;
@@ -29,7 +34,7 @@ class PrimaryPageViewModel extends ChangeNotifier {
   List<SyncModel> get syncModels => _syncModels;
 
   final TextEditingController textEditingController = TextEditingController();
-  final _syncModelListeners = <String, List<StreamSubscription<bool>>>{};
+  final _syncModelsListeners = <String, StreamSubscription<SyncModelEvent>>{};
 
   static const constantTabs = 5;
 
@@ -37,37 +42,8 @@ class PrimaryPageViewModel extends ChangeNotifier {
     _syncProvider.subject.listen((event) {
       _syncModels = event;
 
-      // remove listeners for removed sync models
-      _syncModelListeners.keys
-          .where(
-            (key) => !_syncModels.map((e) => e.documentState.id).contains(key),
-          )
-          .forEach((key) {
-            _syncModelListeners[key]?.forEach((e) => e.cancel());
-          });
-
-      // add listeners for new sync models
-      for (final syncModel in _syncModels) {
-        if (_syncModelListeners[syncModel.documentState.id] == null) {
-          final groupUpdatesListener = syncModel.groupInfoUpdateEvent.listen(
-            (_) => notifyListeners(),
-          );
-
-          final statusListener = syncModel.corruptedEvent.listen(
-            (_) => notifyListeners(),
-          );
-
-          final synchronizingListener = syncModel.isProcessing.listen(
-            (_) => notifyListeners(),
-          );
-
-          _syncModelListeners[syncModel.documentState.id] = [
-            groupUpdatesListener,
-            statusListener,
-            synchronizingListener,
-          ];
-        }
-      }
+      _removeStaleListeners();
+      _addNewListeners();
 
       notifyListeners();
     });
@@ -106,8 +82,17 @@ class PrimaryPageViewModel extends ChangeNotifier {
       );
 
       await GroupApiClient.instance.sendFrame(groupId: docID, frame: frame);
+
+      final logger = Talker(
+        logger: TalkerLogger(
+          formatter: ColoredLoggerFormatter(),
+          settings: TalkerLoggerSettings(defaultTitle: 'Sync model $docID'),
+        ),
+      );
+
       await _syncProvider.add(
         SyncModel(
+          logger: SyncModelLogger(logger, document.id),
           documentState: document,
           groupContext: groupContext,
           localCrdtStorage: DB.instance,
@@ -164,6 +149,42 @@ class PrimaryPageViewModel extends ChangeNotifier {
         message: 'Failed to remove document',
         kind: TopBannerCases.error,
       );
+    }
+  }
+
+  void _removeStaleListeners() {
+    final existingIds = _syncModels.map((e) => e.documentState.id).toSet();
+
+    final removedIds = _syncModelsListeners.keys
+        .where((id) => !existingIds.contains(id))
+        .toList();
+
+    for (final id in removedIds) {
+      _syncModelsListeners[id]?.cancel();
+      _syncModelsListeners.remove(id);
+    }
+  }
+
+  void _addNewListeners() {
+    for (final model in _syncModels) {
+      final id = model.documentState.id;
+
+      if (_syncModelsListeners.containsKey(id)) continue;
+
+      _syncModelsListeners[id] = model.eventStream.listen((event) {
+        _eventQueue.add(() async {
+          _handleSyncEvent(event);
+        });
+      });
+    }
+  }
+
+  void _handleSyncEvent(SyncModelEvent e) {
+    switch (e) {
+      case SyncModelGroupInfoEvent():
+      case SyncModelCorruptedEvent():
+      case SyncModelSyncingEvent():
+        notifyListeners();
     }
   }
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:veil/api/group_api_client.dart';
 import 'package:veil/managers/sync_provider/local_crdt_storage.dart';
+import 'package:veil/managers/sync_provider/logger/logger.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/protos/zero_art.pb.dart';
 import 'package:veil/src/rust/api/automerge.dart';
@@ -102,12 +103,21 @@ class Account {
       await DB.instance.removeSpk(spkPublicKey);
     }
 
+    final talkerLogger =
+        logger ??
+        Talker(
+          logger: TalkerLogger(
+            formatter: ColoredLoggerFormatter(),
+            settings: TalkerLoggerSettings(defaultTitle: 'Sync model $groupId'),
+          ),
+        );
+
     return SyncModel(
       account: this,
       documentState: document,
       groupContext: groupContext,
       saveToDb: saveToDb,
-      logger: logger,
+      logger: SyncModelLogger(talkerLogger, document.id),
       localCrdtStorage: localCrdtStorage ?? DB.instance,
     );
   }

@@ -5,14 +5,16 @@ use cortado::{self, CortadoAffine, Fr as ScalarField};
 use prost::Message;
 use sha3::{Digest, Sha3_256};
 use std::str::FromStr;
+use ark_std::rand::{SeedableRng, rngs::StdRng, thread_rng};
 use uuid::Uuid;
-use zrt_art::art::art_types::PublicArt;
+use zrt_art::art::PublicArt;
 use zrt_client_sdk::{
     contexts::{
         group::{GroupContext, Nonce},
         invite::InviteContext,
     },
-    core::impls::concurrent::linear_keyed_validator::LinearKeyedValidator,
+    keyed_validator::KeyedValidator,
+    // core::impls::concurrent::linear_keyed_validator::LinearKeyedValidator,
     models::{
         self,
         frame::Frame,
@@ -224,7 +226,7 @@ impl BInviteContext {
 }
 
 pub struct BGroupContext {
-    group_context: GroupContext,
+    group_context: GroupContext<StdRng>,
 }
 
 impl BGroupContext {
@@ -238,7 +240,7 @@ impl BGroupContext {
     ) -> Result<Self> {
         let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
-        let validator = LinearKeyedValidator::deserialize(&validator)
+        let validator = KeyedValidator::<StdRng>::deserialize(&validator, StdRng::from_rng(thread_rng()).unwrap())
             .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
         let group_info: models::group_info::GroupInfo =
             zero_art_proto::GroupInfo::decode(&group_info[..])
@@ -535,7 +537,7 @@ pub fn create_group(
     user: BUser,
     group_info: BGroupInfo,
 ) -> Result<(BGroupContext, Vec<u8>)> {
-    let identity_secret_key = ScalarField::deserialize_compressed(&identity_secret_key[..])
+    let identity_secret_key: ScalarField = ScalarField::deserialize_compressed(&identity_secret_key[..])
         .map_err(|e| anyhow!("failed to deserialize: {}", e.to_string()))?;
 
     let (group_context, frame) =

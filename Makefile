@@ -8,6 +8,7 @@ CERT ?= "Not specified"
 APPLE_ID ?= "Not specified"
 APP_PASSWORD ?= "Not specified"
 TEAM_ID ?= "Not specified"
+VERSION := $(shell sed -n 's/^version:[[:space:]]*//p' pubspec.yaml)
 
 run:
 	@echo "Running Flutter app for $(PLATFORM)..."
@@ -23,11 +24,7 @@ update-deps:
 	@echo "Regenerating Flutter_Rust bindings"
 	flutter_rust_bridge_codegen generate
 
-build-packages:
-	@echo "Building packages"
-	fastforge release --name veil
-
-build-dmg:
+build-signed-dmg:
 	rm dist/veil.dmg || true
 	flutter build macos --release
 	codesign --options=runtime --deep --force \
@@ -41,7 +38,7 @@ build-dmg:
 	xcrun notarytool submit "build/macos/Build/Products/Release/Veil.zip" --apple-id $(APPLE_ID) --password $(APP_PASSWORD) --team-id $(TEAM_ID) --wait
 	xcrun stapler staple "build/macos/Build/Products/Release/Veil.app"
 	cp "macos/app_dmg.json" "build/macos/Build/Products/Release"
-	appdmg "build/macos/Build/Products/Release/app_dmg.json" "dist/veil.dmg"
+	appdmg "build/macos/Build/Products/Release/app_dmg.json" "dist/veil-$(VERSION).dmg"
 
 help:
 	@echo "" 

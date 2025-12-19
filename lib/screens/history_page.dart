@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:veil/extensions/group_context.dart';
+import 'package:veil/managers/sync_provider/events.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
 import 'package:veil/screens/difference_page.dart';
 import 'package:veil/utils/platform.dart';
@@ -62,10 +63,12 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   void _listenCRDTUpdates() {
-    _subscription = widget.syncModel.crdtUpdatesEvent.listen((_) {
-      setState(() {
-        _items = _prepareChangeList(widget.syncModel);
-      });
+    _subscription = widget.syncModel.eventStream.listen((e) {
+      if (e is SyncModelCrdtEvent) {
+        setState(() {
+          _items = _prepareChangeList(widget.syncModel);
+        });
+      }
     });
   }
 

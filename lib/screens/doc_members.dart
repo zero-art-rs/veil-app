@@ -7,7 +7,9 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:veil/extensions/group_context.dart';
 import 'package:veil/main.dart';
 import 'package:veil/managers/contacts_manager.dart';
+import 'package:veil/managers/sync_provider/events.dart';
 import 'package:veil/managers/sync_provider/sync_model.dart';
+import 'package:veil/protos/zero_art.pbserver.dart';
 import 'package:veil/screens/contacts_page.dart';
 import 'package:veil/storage/account_storage.dart';
 import 'package:veil/storage/models/document_member.dart';
@@ -67,9 +69,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
     );
   }
 
-  List<MemberScreenModel> _prepareMemberList() {
-    final groupInfo = widget.syncModel.groupContext.retrieveGroupInfo();
-
+  List<MemberScreenModel> _prepareMemberList(GroupInfo groupInfo) {
     final members = groupInfo.members
         .map(
           (e) => MemberScreenModel(
@@ -96,12 +96,16 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   void initState() {
     super.initState();
 
-    members = _prepareMemberList();
+    members = _prepareMemberList(
+      widget.syncModel.groupContext.retrieveGroupInfo(),
+    );
 
-    _groupInfoUpdates = widget.syncModel.groupInfoUpdateEvent.listen((_) {
-      setState(() {
-        members = _prepareMemberList();
-      });
+    _groupInfoUpdates = widget.syncModel.eventStream.listen((e) {
+      if (e is SyncModelGroupInfoEvent) {
+        setState(() {
+          members = _prepareMemberList(e.groupInfo);
+        });
+      }
     });
   }
 
@@ -203,7 +207,9 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
         try {
           logger.info('Removing member in group context..');
 
-          await widget.syncModel.removeMember(actorId: user.account.actorId);
+          await widget.syncModel.sendRemoveMember(
+            actorId: user.account.actorId,
+          );
 
           setState(() {
             members.removeWhere(
@@ -231,7 +237,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
       context: context,
       work: () async {
         try {
-          await widget.syncModel.updateUserName(
+          await widget.syncModel.sendUpdateUserName(
             name: widget.updateUserNameTextController.text,
           );
         } catch (e, st) {
@@ -292,7 +298,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   void _inviteUndentifiedMember(BuildContext context) {
     final work = Future<String>(() async {
       try {
-        return await widget.syncModel.createUnidentifiedMemberInviteLink();
+        return await widget.syncModel.sendUnidentifiedInvite();
       } catch (e, st) {
         logger.error('Failed to create unidentified invite link', e, st);
         rethrow;
@@ -305,9 +311,7 @@ class _DocumentMemberListScreenState extends State<DocumentMemberListScreen> {
   Future<void> _inviteContactMember(Contact contact) async {
     final future = Future(() async {
       try {
-        return await widget.syncModel.createIdentifiedMemberLink(
-          contact: contact,
-        );
+        return await widget.syncModel.sendIdentifiedInvite(contact: contact);
       } catch (e, st) {
         logger.error('Failed to create indentified invite link', e, st);
         rethrow;
