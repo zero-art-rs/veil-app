@@ -7,6 +7,9 @@ use ark_ff::UniformRand;
 use ark_std::rand::{rngs::StdRng, thread_rng, RngCore, SeedableRng};
 use cortado::{self, CortadoAffine, Fr as ScalarField};
 
+/// An AES-256-GCM key followed by its 12-byte nonce.
+const OKM_LEN: usize = 32 + 12;
+
 pub(crate) struct SecretsFactory {
     rng: StdRng,
 }
@@ -34,8 +37,8 @@ impl SecretsFactory {
         let secret_key = self.generate_secret();
         let public_key = (CortadoAffine::generator() * secret_key).into_affine();
 
-        println!("SecretsFactory: Generated public key: {:?}", public_key);
-        println!("SecretsFactory: Generated secret key: {:?}", secret_key);
+        // never log the secret key: stdout ends up in logcat, the iOS console or log files
+        tracing::debug!("SecretsFactory: Generated public key: {:?}", public_key);
 
         (public_key, secret_key)
     }
@@ -44,7 +47,7 @@ impl SecretsFactory {
         &mut self,
         plaintext: &[u8],
     ) -> Result<(Vec<u8>, Vec<u8>), aes_gcm::Error> {
-        let mut okm = [0u8; 32 + 12];
+        let mut okm = [0u8; OKM_LEN];
         self.rng.fill_bytes(&mut okm);
 
         let (key, nonce) = (&okm[..32], &okm[32..]);
@@ -57,6 +60,10 @@ impl SecretsFactory {
     }
 
     pub(crate) fn decrypt(&self, ciphertext: &[u8], okm: &[u8]) -> Result<Vec<u8>, aes_gcm::Error> {
+        // a key and a nonce, as `encrypt` returns them; other lengths would panic below
+        if okm.len() != OKM_LEN {
+            return Err(aes_gcm::Error);
+        }
         let (key, nonce) = (&okm[..32], &okm[32..]);
         let key = Key::<Aes256Gcm>::from_slice(key);
         let nonce = Nonce::<Aes256Gcm>::from_slice(&nonce);
@@ -73,6 +80,18 @@ mod tests {
     use cortado::{self, CortadoAffine, Fr as ScalarField};
 
     use super::*;
+
+    #[test]
+    fn decrypt_rejects_malformed_keys() {
+        let mut secrets_factory = SecretsFactory::default();
+        let (ciphertext, okm) = secrets_factory.encrypt(b"message").unwrap();
+        assert_eq!(secrets_factory.decrypt(&ciphertext, &okm).unwrap(), b"message");
+
+        for len in [0, 12, 31, 32, 43, 45] {
+            let okm = vec![0u8; len];
+            assert!(secrets_factory.decrypt(&ciphertext, &okm).is_err());
+        }
+    }
 
     #[test]
     fn test_compression() {
