@@ -1,4 +1,4 @@
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:26.04 AS builder
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/flutter/flutter.git /flutter
+RUN git clone --depth 1 -b stable https://github.com/flutter/flutter.git /flutter
 ENV PATH="/flutter/bin:${PATH}"
 
 RUN useradd -ms /bin/bash builder
@@ -42,8 +42,11 @@ RUN . "${HOME}/.cargo/env" && \
     dart pub global activate protoc_plugin 21.1.2 && \
     dart pub global activate fastforge && \
     protoc -Ilib/protos --dart_out=lib/protos lib/protos/*.proto google/protobuf/timestamp.proto && \
-    fastforge release --name veil
+    fastforge release --name veil-linux && \
+    mkdir -p /app/packages && \
+    find dist -type f -name '*.deb' -exec cp {} /app/packages/ \;
 
 FROM alpine:3.19 AS artifacts
 
-COPY --from=builder /app/dist/ /dist
+# the packages of this release, whatever directory fastforge names after the version
+COPY --from=builder /app/packages/ /packages/

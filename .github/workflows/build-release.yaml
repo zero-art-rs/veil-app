@@ -47,15 +47,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     name: Create Release
+    permissions:
+      contents: write
+      packages: read
     steps:
       - name: Login to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - uses: shrink/actions-docker-extract@v3
         name: Extract package
         id: extract
         with:
-          image: $IMAGE_NAME
-          path: dist/${{ github.ref_name }}/.
+          image: ${{ env.IMAGE_NAME }}
+          path: packages/.
           destination: "packages"
       - name: Show Extracted Files
         run: ls -R packages
